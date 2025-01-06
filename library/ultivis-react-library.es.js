@@ -50471,6 +50471,38 @@ const useRoleStore = create((set2, get2) => {
     hasAccessedDashboardId: (id2) => get2().accessedDashboardIds.has(id2)
   };
 });
+const useSidebar = create((set2, get2) => {
+  return {
+    sidebarIsOpen: window.innerWidth > 1375,
+    headerIsOpen: false,
+    toggleSidebar: () => {
+      const headerIsOpen = get2().headerIsOpen;
+      const sidebarIsOpen = get2().sidebarIsOpen;
+      if (headerIsOpen && !sidebarIsOpen) {
+        set2(() => ({ headerIsOpen: false }));
+      }
+      set2((state) => ({ sidebarIsOpen: !state.sidebarIsOpen }));
+    },
+    responsiveSidebar: () => {
+      if (window.innerWidth < 1375) {
+        set2({ sidebarIsOpen: false });
+      } else {
+        set2({ sidebarIsOpen: true });
+      }
+    },
+    toggleHeader: () => {
+      set2((state) => ({ headerIsOpen: !state.headerIsOpen }));
+    }
+  };
+});
+const useUserAgentStore = create((set2) => {
+  return {
+    isDevice: null,
+    setIsDevice: (type2) => {
+      set2(() => ({ isDevice: type2 === "mobile" || type2 === "wearable" }));
+    }
+  };
+});
 const useDashboard = () => {
   const { appName } = useRoutingContext();
   const { postChildInventory, postInventory, putInventory } = useApi();
@@ -53666,38 +53698,6 @@ var uaParser = { exports: {} };
 })(uaParser, uaParser.exports);
 var uaParserExports = uaParser.exports;
 const UAParser = /* @__PURE__ */ getDefaultExportFromCjs(uaParserExports);
-const useSidebar = create((set2, get2) => {
-  return {
-    sidebarIsOpen: window.innerWidth > 1375,
-    headerIsOpen: false,
-    toggleSidebar: () => {
-      const headerIsOpen = get2().headerIsOpen;
-      const sidebarIsOpen = get2().sidebarIsOpen;
-      if (headerIsOpen && !sidebarIsOpen) {
-        set2(() => ({ headerIsOpen: false }));
-      }
-      set2((state) => ({ sidebarIsOpen: !state.sidebarIsOpen }));
-    },
-    responsiveSidebar: () => {
-      if (window.innerWidth < 1375) {
-        set2({ sidebarIsOpen: false });
-      } else {
-        set2({ sidebarIsOpen: true });
-      }
-    },
-    toggleHeader: () => {
-      set2((state) => ({ headerIsOpen: !state.headerIsOpen }));
-    }
-  };
-});
-const useUserAgentStore = create((set2) => {
-  return {
-    isDevice: null,
-    setIsDevice: (type2) => {
-      set2(() => ({ isDevice: type2 === "mobile" || type2 === "wearable" }));
-    }
-  };
-});
 const ActionBar = ({ children }) => {
   const { headerIsOpen } = useSidebar((state) => state);
   const isDevice = useUserAgentStore((state) => state.isDevice);
@@ -60255,7 +60255,9 @@ export {
   useFormField,
   useIntersectionObserver,
   useInventoryContext,
+  useRoleStore,
   useRoutingContext,
+  useSidebar,
   useToast,
   useTransitionNavigate,
   useTranslation,
@@ -60263,6 +60265,7 @@ export {
   useUltivisLogic,
   useUpdateForTypeDashboard,
   useUpdatedConfig,
+  useUserAgentStore,
   useWidgetSize,
   useWidgetState,
   widgetManager
