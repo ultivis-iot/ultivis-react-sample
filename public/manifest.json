@@ -1,0 +1,16 @@
+{
+  "name": "sample",
+  "short_name": "sample",
+  "description": "Ultivis React Sample",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "transparent",
+  "theme_color": "#0075FF",
+  "icons": [
+    {
+      "src": "./favico.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "author": "ISAAC",
+  "name": "sample",
+  "version": "1.0.0",
+  "description": "Ultivis React Sample Developed by ISAAC",
+  "license": "ISC",
+  "keywords": [],
+  "contextPath": "sample",
+  "key": "sample",
+  "contentSecurityPolicy": "base-uri 'none'; default-src 'self' 'unsafe-inline' http: https: ws: wss:; connect-src 'self' http: https: ws: wss:;  script-src 'self' open.mapquestapi.com *.twitter.com *.twimg.com *.aptrinsic.com 'unsafe-inline' 'unsafe-eval' data:; style-src * 'unsafe-inline' blob:; img-src * data:; font-src * data:; frame-src *; worker-src 'self' blob:;"
+}
