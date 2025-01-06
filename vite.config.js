@@ -20,6 +20,46 @@ export default defineConfig(({ mode }) => {
         "@ultivis/style": resolve(__dirname, "./library/index.css"),
       },
     },
+    build: {
+      minify: "terser",
+      outDir: "dist/dashboard",
+      sourcemap: false,
+      assetsInlineLimit: 8192,
+      cssCodeSplit: true,
+      rollupOptions: {
+        input: "index.html",
+        output: {
+          entryFileNames: "assets/[name].[hash].js",
+          chunkFileNames: "assets/[name].[hash].js",
+          assetFileNames: "assets/[name].[hash].[ext]",
+          manualChunks: (id) => {
+            if (id.indexOf("node_modules") !== -1) {
+              const module = id.split("node_modules/").pop().split("/")[0];
+
+              // 특정 모듈을 메인 vendor 청크에 병합
+              if (
+                [
+                  "detect-node-es",
+                  "html-parse-stringify",
+                  "void-elements",
+                ].includes(module)
+              ) {
+                return "vendor";
+              }
+
+              return `vendor-${module}`;
+            }
+          },
+        },
+      },
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+        },
+      },
+      brotliSize: true,
+    },
     server: {
       host: "0.0.0.0",
       port: 5173,
