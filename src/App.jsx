@@ -1,5 +1,5 @@
 import ReactDOM from "react-dom/client";
-import { AppProviders } from "@ultivis/library";
+import { AppProviders, addLanguagePack } from "@ultivis/library";
 import "@ultivis/style";
 import "./index.css";
 import { router } from "./router";
