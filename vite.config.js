@@ -18,6 +18,13 @@ export default defineConfig(({ mode }) => {
           "./library/ultivis-react-library.es"
         ),
         "@ultivis/style": resolve(__dirname, "./library/index.css"),
+
+        "@components": resolve(__dirname, "./src/components"),
+        "@data": resolve(__dirname, "./src/data"),
+        "@locales": resolve(__dirname, "./src/locales"),
+        "@pages": resolve(__dirname, "./src/pages"),
+        "@shared": resolve(__dirname, "./src/shared"),
+        "@utils": resolve(__dirname, "./src/utils"),
       },
     },
     build: {
@@ -36,7 +43,6 @@ export default defineConfig(({ mode }) => {
             if (id.indexOf("node_modules") !== -1) {
               const module = id.split("node_modules/").pop().split("/")[0];
 
-              // 특정 모듈을 메인 vendor 청크에 병합
               if (
                 [
                   "detect-node-es",

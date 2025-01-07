@@ -7022,8 +7022,8 @@ var cometd = { exports: {} };
         return _status;
       };
       this.isDisconnected = _isDisconnected;
-      this.setBackoffIncrement = function(period) {
-        _config.backoffIncrement = period;
+      this.setBackoffIncrement = function(period2) {
+        _config.backoffIncrement = period2;
       };
       this.getBackoffIncrement = function() {
         return _config.backoffIncrement;
@@ -8800,12 +8800,12 @@ class MeasurementService extends Service {
     return entity;
   }
 }
-var aggregationType;
+var aggregationType$1;
 (function(aggregationType2) {
   aggregationType2["MINUTELY"] = "MINUTELY";
   aggregationType2["HOURLY"] = "HOURLY";
   aggregationType2["DAILY"] = "DAILY";
-})(aggregationType || (aggregationType = {}));
+})(aggregationType$1 || (aggregationType$1 = {}));
 class AlarmService extends Service {
   constructor() {
     super(...arguments);
@@ -21551,13 +21551,13 @@ const getComputedType = (field) => {
   )[0];
 };
 const getTargetPath = (field, source2, pathWithSource = true) => {
-  const computedDetail = field == null ? void 0 : field.computedDetail;
-  const apiType = computedDetail ? field == null ? void 0 : field.path : "managedObject";
-  if (apiType !== "managedObject" && computedDetail === void 0)
+  const computedDetail2 = field == null ? void 0 : field.computedDetail;
+  const apiType = computedDetail2 ? field == null ? void 0 : field.path : "managedObject";
+  if (apiType !== "managedObject" && computedDetail2 === void 0)
     return;
   let target2;
   if (apiType === "alarmsStatusCheck") {
-    const targetSourceAndType = computedDetail.detail.map((item) => `${item.__target.id}.${apiType}.${item.type}`).join(",");
+    const targetSourceAndType = computedDetail2.detail.map((item) => `${item.__target.id}.${apiType}.${item.type}`).join(",");
     return targetSourceAndType;
   }
   if (apiType === "managedObject") {
@@ -21578,14 +21578,14 @@ const getTargetPath = (field, source2, pathWithSource = true) => {
         target2 = field == null ? void 0 : field.path;
     }
   } else if (apiType === "lastMeasurement") {
-    target2 = `${computedDetail.detail[0].fragment}=>${computedDetail.detail[0].series}`;
+    target2 = `${computedDetail2.detail[0].fragment}=>${computedDetail2.detail[0].series}`;
   } else {
-    target2 = `${computedDetail.detail[0].type}`;
+    target2 = `${computedDetail2.detail[0].type}`;
   }
   if (!source2)
     return `${apiType}.${target2}`;
   if (pathWithSource) {
-    const targetSource = apiType === "managedObject" ? source2 : computedDetail.detail[0].__target.id;
+    const targetSource = apiType === "managedObject" ? source2 : computedDetail2.detail[0].__target.id;
     return `${targetSource}.${apiType}.${target2}`;
   }
   return `${apiType}.${target2}`;
@@ -21849,12 +21849,12 @@ const reducer$1 = (state, action) => {
       throw new Error();
   }
 };
-function createInitialState$1(isRealtime, aggregationType2, period) {
+function createInitialState$1(isRealtime, aggregationType2, period2) {
   return {
     dateRange: { startDate: null, endDate: null },
     isRealtime,
     aggregationType: aggregationType2,
-    period,
+    period: period2,
     refetchCount: 0
   };
 }
@@ -21868,7 +21868,7 @@ const useDateRangeReducer = ({
     null,
     () => createInitialState$1(initialIsRealtime, initialAggregationType, initialPeriod)
   );
-  const { dateRange, isRealtime, refetchCount, aggregationType: aggregationType2, period } = state;
+  const { dateRange, isRealtime, refetchCount, aggregationType: aggregationType2, period: period2 } = state;
   const isRealtimeRef = useRef(state.isRealtime);
   useEffect(() => {
     isRealtimeRef.current = isRealtime;
@@ -21881,7 +21881,7 @@ const useDateRangeReducer = ({
     refetchCount,
     isRealtimeRef,
     aggregationType: aggregationType2,
-    period
+    period: period2
   };
 };
 const useDeviceInventory = (sourceId, options) => {
@@ -22359,8 +22359,8 @@ const useWidgetSize = ({ widgetRef }) => {
   }, [widgetRef]);
   return { width: width2, height: height2 };
 };
-const defaultCalculateDateRange = ({ period }) => {
-  const startDate = period ? formatISO(sub(/* @__PURE__ */ new Date(), { [period]: 1 })) : formatISO(startOfDay(/* @__PURE__ */ new Date(0)));
+const defaultCalculateDateRange = ({ period: period2 }) => {
+  const startDate = period2 ? formatISO(sub(/* @__PURE__ */ new Date(), { [period2]: 1 })) : formatISO(startOfDay(/* @__PURE__ */ new Date(0)));
   const endDate = formatISO(endOfDay(/* @__PURE__ */ new Date()));
   return { startDate, endDate };
 };
@@ -22427,16 +22427,16 @@ const reducer = (state, action, calculateDateRange) => {
       throw new Error("Unhandled action type in useDateRangeReducer");
   }
 };
-function createInitialState(isRealtime, aggregationType2, period, calculateDateRange) {
+function createInitialState(isRealtime, aggregationType2, period2, calculateDateRange) {
   const dateRange = calculateDateRange({
-    period,
+    period: period2,
     aggregationType: aggregationType2
   });
   return {
     dateRange,
     isRealtime,
     aggregationType: aggregationType2,
-    period,
+    period: period2,
     refetchCount: 0
   };
 }
@@ -22456,7 +22456,7 @@ const useWidgetState = ({
       calculateDateRange
     )
   );
-  const { dateRange, isRealtime, refetchCount, aggregationType: aggregationType2, period } = state;
+  const { dateRange, isRealtime, refetchCount, aggregationType: aggregationType2, period: period2 } = state;
   const isRealtimeRef = useRef(state.isRealtime);
   useEffect(() => {
     isRealtimeRef.current = isRealtime;
@@ -22469,7 +22469,7 @@ const useWidgetState = ({
     refetchCount,
     isRealtimeRef,
     aggregationType: aggregationType2,
-    period
+    period: period2
   };
 };
 const Loader = () => {
@@ -26795,14 +26795,82 @@ const alarmSchema = {
     }
   }
 };
-z.object({
+const bellIconByStatusMapping = {
+  ACTIVE: "dlt-c8y-icon-bell",
+  ACKNOWLEDGED: "dlt-c8y-icon-bell-slash",
+  DEFAULT: "c8y-icon c8y-icon-alert-idle"
+};
+const severityIconMapping = {
+  CRITICAL: "status stroked-icon dlt-c8y-icon-exclamation-circle critical text-red-500",
+  MAJOR: "status stroked-icon dlt-c8y-icon-warning major text-orange-500",
+  MINOR: "status stroked-icon dlt-c8y-icon-high-priority minor text-yellow-500",
+  DEFAULT: "status stroked-icon dlt-c8y-icon-circle warning text-blue-500"
+};
+const status$2 = [
+  {
+    id: "ACTIVE",
+    label: "ACTIVE"
+    // label: '활성',
+  },
+  {
+    id: "ACKNOWLEDGED",
+    label: "ACKNOWLEDGED"
+    // label: '인정함',
+  },
+  {
+    id: "CLEARED",
+    label: "CLEARED"
+    // label: '지워진',
+  }
+];
+const severity$2 = [
+  {
+    id: "WARNING",
+    label: "WARNING",
+    // label: '경고',
+    icon: "icon-lg dlt-c8y-icon-circle text-blue-500"
+  },
+  {
+    id: "MINOR",
+    label: "MINOR",
+    // label: '일반',
+    icon: "icon-lg dlt-c8y-icon-high-priority text-yellow-500"
+  },
+  {
+    id: "MAJOR",
+    label: "MAJOR",
+    // label: '주요',
+    icon: "icon-lg dlt-c8y-icon-warning text-orange-500"
+  },
+  {
+    id: "CRITICAL",
+    label: "CRITICAL",
+    // label: '중요',
+    icon: "icon-lg dlt-c8y-icon-exclamation-circle text-red-500"
+  }
+];
+const orderMode = [
+  {
+    id: "ACTIVE_FIRST",
+    label: "By active status",
+    // label: '활성상태에 따름',
+    description: "활성 상태, 심각도 및 시간에 따라 경보 명령"
+  },
+  {
+    id: "SEVERITY_FIRST",
+    label: "By severity",
+    // label: '심각도에 따름',
+    description: "심각도 및 시간에 따라 경보 명령"
+  }
+];
+const statusSchema = z.object({
   CLEARED: z.boolean(),
   ACKNOWLEDGED: z.boolean(),
   ACTIVE: z.boolean()
 }).refine((data) => Object.values(data).some(Boolean), {
   message: "Please select at least one status to display."
 });
-z.object({
+const severitySchema = z.object({
   MAJOR: z.boolean(),
   MINOR: z.boolean(),
   WARNING: z.boolean(),
@@ -26810,8 +26878,8 @@ z.object({
 }).refine((data) => Object.values(data).some(Boolean), {
   message: "Please select at least one severity level to display."
 });
-z.enum(["ACTIVE_FIRST", "SEVERITY_FIRST"]);
-z.object({
+const orderModeSchema = z.enum(["ACTIVE_FIRST", "SEVERITY_FIRST"]);
+const alarmTypeSchema = z.object({
   type: z.string()
 });
 const chartDisplayOptions = [
@@ -26825,15 +26893,41 @@ const chartTypeOptions = {
   // 'Step before': 'step before',
   // 'Step after': 'step after',
 };
-z.enum(["none", "minute", "hour", "day"]);
-z.enum([
+const yAxisPositionOptions = [
+  { name: "auto", value: "auto" },
+  { name: "left", value: "left" },
+  { name: "right", value: "right" }
+];
+const backgroundFillOptions = [
+  { name: "fill", value: "fill" },
+  { name: "transparent", value: "transparent" },
+  { name: "empty", value: "empty" }
+];
+const aggregationTypeSchema = z.enum(["none", "minute", "hour", "day"]);
+const aggregationType = {
+  None: "none",
+  Minutely: "minute",
+  Hourly: "hour",
+  Daily: "day"
+};
+const chartTypeOptionsSchema = z.enum([
   "line",
   "point",
   "bar",
   "step before",
   "step after"
 ]);
-z.enum(["left", "center", "right"]);
+const legendAlignSchema = z.enum(["left", "center", "right"]);
+const legendAlign = {
+  Left: "left",
+  Center: "center",
+  Right: "right"
+};
+const targetLineStyleOptions = {
+  Line: "solid",
+  Dotted: "dotted",
+  Dashed: "dashed"
+};
 const eventSchema = {
   id: "c8ySchema",
   title: "Events",
@@ -26873,6 +26967,24 @@ const eventSchema = {
     }
   }
 };
+const fonts = [
+  "SUIT-regular",
+  "auto",
+  "BlackHanSans",
+  "cursive",
+  "fantasy",
+  "monospace",
+  "NanumGothic",
+  "NotoSans",
+  "Roboto",
+  "serif",
+  "SongMyung"
+];
+const fontWeights = {
+  light: "100",
+  normal: "400",
+  bold: "700"
+};
 const fontSchema = z.enum([
   "SUIT-regular",
   "auto",
@@ -26887,7 +26999,7 @@ const fontSchema = z.enum([
   "SongMyung"
 ]);
 const fontWeightSchema = z.enum(["100", "400", "700"]);
-z.object({
+const textSchema = z.object({
   text: z.string(),
   font: fontSchema,
   fontSize: z.coerce.number().min(10).max(32),
@@ -27484,7 +27596,31 @@ const measurementSchema = {
     }
   }
 };
-z.enum([
+const Intervals = {
+  Hourly: "Hourly",
+  Daily: "Daily",
+  Weekly: "Weekly",
+  Monthly: "Monthly",
+  Last: "last"
+};
+const Period = {
+  "Last minute": "minutes",
+  "Last hour": "hours",
+  "Last day": "days",
+  "Last week": "weeks",
+  "Last month": "months",
+  "Last year": "years"
+};
+const alarmPeriod = {
+  "last week": "weeks",
+  "last month": "months",
+  "last year": "years",
+  custom: "custom"
+};
+const CustomPeriod = {
+  Custom: "custom"
+};
+const periodSchema = z.enum([
   "minutes",
   "hours",
   "days",
@@ -27492,13 +27628,82 @@ z.enum([
   "months",
   "years"
 ]);
-z.enum([
+const intervalSchema = z.enum([
   "Hourly",
   "Daily",
   "Weekly",
   "Monthly",
   "last"
 ]);
+const period = {
+  "last minute": "minute",
+  "last hour": "hour",
+  "last day": "day",
+  "last week": "week",
+  "last month": "month",
+  "last year": "year"
+};
+const schema$1 = {
+  id: "c8ySchema",
+  title: "Tenants",
+  type: "object",
+  printFormat: "hidden",
+  properties: {
+    customProperties: {
+      title: "Custom properties",
+      type: "object",
+      printFormat: "hidden",
+      properties: {
+        externalReference: {
+          title: "External reference",
+          type: "string"
+        },
+        "limit.devices.number": {
+          title: "Limit number of devices",
+          type: "integer",
+          minimum: 0
+        },
+        "limit.http.requests": {
+          title: "Limit HTTP requests",
+          type: "integer",
+          minimum: -1
+        },
+        "limit.http.queue": {
+          title: "Limit HTTP queue",
+          type: "integer",
+          minimum: -1
+        },
+        "limit.stream.requests": {
+          title: "Limit stream requests",
+          type: "integer",
+          minimum: -1
+        },
+        "limit.stream.queue": {
+          title: "Limit stream queue",
+          type: "integer",
+          minimum: -1
+        },
+        "cepServer.queue.limit": {
+          title: "Limit CEP server queue",
+          type: "integer",
+          minimum: 0,
+          "x-show-if-any-available": [{ contextPath: "cep" }]
+        },
+        "data-broker.queue.limit": {
+          title: "Limit data broker queue",
+          type: "integer",
+          minimum: 0,
+          "x-show-if-any-available": [{ contextPath: "feature-broker" }]
+        },
+        gainsightEnabled: {
+          type: "boolean",
+          title: "Enable Gainsight product experience tracking",
+          default: true
+        }
+      }
+    }
+  }
+};
 const DataDetail = ({
   dataType,
   data,
@@ -50471,7 +50676,7 @@ const useRoleStore = create((set2, get2) => {
     hasAccessedDashboardId: (id2) => get2().accessedDashboardIds.has(id2)
   };
 });
-const useSidebar = create((set2, get2) => {
+const useSidebarStore = create((set2, get2) => {
   return {
     sidebarIsOpen: window.innerWidth > 1375,
     headerIsOpen: false,
@@ -53699,7 +53904,7 @@ var uaParser = { exports: {} };
 var uaParserExports = uaParser.exports;
 const UAParser = /* @__PURE__ */ getDefaultExportFromCjs(uaParserExports);
 const ActionBar = ({ children }) => {
-  const { headerIsOpen } = useSidebar((state) => state);
+  const { headerIsOpen } = useSidebarStore((state) => state);
   const isDevice = useUserAgentStore((state) => state.isDevice);
   const { isDashboard } = useDashboardStore((state) => state);
   useEffect(() => {
@@ -58175,6 +58380,30 @@ const ComputedPropertyConfig = ({
     )
   ] }) });
 };
+const computedInventoryList = [
+  "lastDeviceMessage",
+  "childDevicesCount",
+  "childAssetsCount",
+  "configurationSnapshot"
+];
+const computedDetail = z.object({
+  type: z.enum(["alarm", "event", "measurement"]),
+  detail: dataSchema
+});
+const propertySchema = z.object({
+  path: z.string(),
+  label: z.string(),
+  computed: z.boolean(),
+  complex: z.boolean(),
+  show: z.boolean(),
+  targetPath: z.string(),
+  computedDetail: computedDetail.optional()
+}).refine((data) => {
+  if (data.computed && !computedInventoryList.includes(data.path)) {
+    return data.computedDetail !== void 0;
+  }
+  return true;
+});
 const QuestionTooltip = ({
   hover = false,
   description: description2,
@@ -59547,7 +59776,7 @@ const AppItem = ({ app }) => {
 const Header = ({ pageTitle, headerItems }) => {
   const { t: t2, i18n } = useTranslation();
   const { toggleTheme } = useDark();
-  const { toggleSidebar, sidebarIsOpen, headerIsOpen, toggleHeader } = useSidebar((state) => state);
+  const { toggleSidebar, sidebarIsOpen, headerIsOpen, toggleHeader } = useSidebarStore((state) => state);
   const { currentUser, tenant: tenant2, logout: logout2, applications } = useAuth();
   const [authApp, setAuthApp] = useState([]);
   const toggleLanguage = () => {
@@ -59739,7 +59968,7 @@ const ListItem = forwardRef(
 );
 ListItem.displayName = "ListItem";
 const Sidebar = ({ children }) => {
-  const sidebarIsOpen = useSidebar((state) => state.sidebarIsOpen);
+  const sidebarIsOpen = useSidebarStore((state) => state.sidebarIsOpen);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     "aside",
     {
@@ -59756,7 +59985,7 @@ const SidebarAccordionItem = ({
   asChild,
   depth = 0
 }) => {
-  const responsiveSidebar = useSidebar((state) => state.responsiveSidebar);
+  const responsiveSidebar = useSidebarStore((state) => state.responsiveSidebar);
   const { t: t2 } = useTranslation();
   const { goTo } = useTransitionNavigate();
   const [open, setOpen] = useState(false);
@@ -59861,7 +60090,7 @@ const SidebarAccordionItem = ({
 };
 const SidebarItem = ({ icon: icon2, label: label2, to = "/", className }) => {
   const { goTo } = useTransitionNavigate();
-  const responsiveSidebar = useSidebar((state) => state.responsiveSidebar);
+  const responsiveSidebar = useSidebarStore((state) => state.responsiveSidebar);
   const IconComponent = icon2;
   const match2 = useMatch(`${to}/*`);
   const accordionTriggerClasses = cn(
@@ -59945,7 +60174,9 @@ const GroupAccordion = ({ managedObject = null, onlyGroup = false, depth }) => {
   ) });
 };
 const Layout = ({ headerItems, sidebarItems, pageTitle }) => {
-  const { sidebarIsOpen, responsiveSidebar } = useSidebar((state) => state);
+  const { sidebarIsOpen, responsiveSidebar } = useSidebarStore(
+    (state) => state
+  );
   const isFullScreen = useDashboardStore((state) => state.isFullScreen);
   useEffect(() => {
     const handleResize = (e) => {
@@ -60042,6 +60273,7 @@ export {
   ComputedPropertyConfig,
   ContextDashboard,
   SvgCritical as CriticalIcon,
+  CustomPeriod,
   DarkProvider,
   Dashboard,
   DashboardActionItems,
@@ -60114,6 +60346,7 @@ export {
   SvgInfo as InfoIcon,
   Input,
   SvgInputDelete as InputDeleteIcon,
+  Intervals,
   Label$1 as Label,
   LastUpdated,
   Layout,
@@ -60145,6 +60378,7 @@ export {
   NavigationMenuTrigger,
   NavigationMenuViewport,
   NotFound,
+  Period,
   SvgPlus as PlusIcon,
   Popover,
   PopoverContent,
@@ -60215,9 +60449,19 @@ export {
   WidgetDatePicker,
   SvgWidgetPlus as WidgetPlusIcon,
   addLanguagePack,
+  aggregationType,
+  aggregationTypeSchema,
+  alarmPeriod,
+  alarmSchema,
+  alarmTypeSchema,
+  backgroundFillOptions,
   badgeVariants,
   baseSchema,
+  bellIconByStatusMapping,
   buttonVariants,
+  chartDisplayOptions,
+  chartTypeOptions,
+  chartTypeOptionsSchema,
   cn,
   dataMinMaxRequireSchema,
   dataRequireSchema,
@@ -60225,6 +60469,11 @@ export {
   deviceSchema,
   deviceTypeDashboardForDevice,
   encodeAuth,
+  eventSchema,
+  fontSchema,
+  fontWeightSchema,
+  fontWeights,
+  fonts,
   getActiveData,
   getApiMap,
   getComputedType,
@@ -60233,14 +60482,32 @@ export {
   getTypesFromLocal,
   hexToRgba,
   humanizeAppName,
+  intervalSchema,
   isSameDatapoint,
   isSameId,
   isSameType,
+  legendAlign,
+  legendAlignSchema,
+  managedObjectSchema,
+  measurementSchema,
   navigationMenuTriggerStyle,
+  orderMode,
+  orderModeSchema,
+  period,
+  periodSchema,
+  propertySchema,
   reducer$2 as reducer,
+  schema$1 as schema,
   setBasicAuth,
   setDatapointsToLocal,
   setTypesToLocal,
+  severity$2 as severity,
+  severityIconMapping,
+  severitySchema,
+  status$2 as status,
+  statusSchema,
+  targetLineStyleOptions,
+  textSchema,
   toast,
   useApi,
   useAuth,
@@ -60257,7 +60524,7 @@ export {
   useInventoryContext,
   useRoleStore,
   useRoutingContext,
-  useSidebar,
+  useSidebarStore,
   useToast,
   useTransitionNavigate,
   useTranslation,
@@ -60268,5 +60535,6 @@ export {
   useUserAgentStore,
   useWidgetSize,
   useWidgetState,
-  widgetManager
+  widgetManager,
+  yAxisPositionOptions
 };
