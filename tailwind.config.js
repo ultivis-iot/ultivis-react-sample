@@ -1,7 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: "class",
-  content: ["./library/**/*.{js,jsx}", "./src/**/*.{js,jsx}"],
+  content: ["./src/**/*.{js,jsx}", "./test/**/*.{js,jsx}"],
   theme: {
     container: {
       center: true,
@@ -21,7 +21,7 @@ module.exports = {
         dialog: "calc(100vh-200px)",
       },
       screens: {
-        mobile: "480px",
+        xs: "480px",
         tablet: "1375px",
         "3xl": "1920px",
       },
@@ -315,19 +315,33 @@ module.exports = {
         2: "0px 1px 4px rgba(0, 0, 0, 0.12)",
       },
       keyframes: {
+        "accordion-down": {
+          from: { height: 0 },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: 0 },
+        },
         "alarm-ping": {
           "70%, 100%": {
             transform: "scale(2)",
             opacity: "0",
           },
         },
+        ripple: {
+          "0%": { transform: "scale(1)", opacity: "1" },
+          "100%": { transform: "scale(2)", opacity: "0" },
+        },
       },
       animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
         "alarm-ping":
           "alarm-ping 1.2s cubic-bezier(0, 0, 0.3, 0.4) infinite alternate ",
         ripple: "ripple 1.5s infinite ease-out",
       },
     },
   },
-  plugins: [require("tailwindcss-animated")],
+  plugins: [require("tailwindcss-animated", "prettier-plugin-tailwindcss")],
 };

@@ -4,8 +4,14 @@ import {
   UltivisDeviceProvider,
   MenuBar,
   ContextDashboard,
+  StaticDashboard,
+  NotFound,
 } from "@ultivis/library";
+
+import Text from "./Text";
+
 const Main = lazy(() => import("./Main"));
+const Groups = lazy(() => import("./Groups"));
 
 export const router = createHashRouter([
   {
@@ -20,14 +26,47 @@ export const router = createHashRouter([
         element: (
           <>
             <MenuBar />
-            <ContextDashboard />
+            <StaticDashboard
+              widgets={[
+                {
+                  title: `CCTV #4`,
+                  content: <Text key="camera_d" text="Hello Widget" />,
+                  i: "d",
+                  x: 2,
+                  y: 2,
+                  w: 10,
+                  h: 10,
+                },
+              ]}
+              widgetMargin={24}
+            />
           </>
         ),
+      },
+      {
+        path: "/group/:groupId",
+        element: <Groups />,
+        children: [
+          {
+            path: "dashboard/:dashboardId",
+            element: <ContextDashboard />,
+          },
+        ],
+      },
+      {
+        path: "device/:deviceId",
+        element: <Groups />,
+        children: [
+          {
+            path: "dashboard/:dashboardId",
+            element: <ContextDashboard />,
+          },
+        ],
       },
     ],
   },
   {
     path: "*",
-    element: <></>,
+    element: <NotFound />,
   },
 ]);

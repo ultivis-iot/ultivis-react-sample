@@ -4640,12 +4640,12 @@ class QueriesUtil {
   buildQuery(query) {
     const q = [];
     const filter2 = this.buildQueryFilter(query.__filter || query);
-    const orderBy = this.buildQueryOrderby(query.__orderby);
+    const orderBy2 = this.buildQueryOrderby(query.__orderby);
     if (filter2) {
       q.push(`$filter=(${filter2})`);
     }
-    if (orderBy) {
-      q.push(`$orderby=${orderBy}`);
+    if (orderBy2) {
+      q.push(`$orderby=${orderBy2}`);
     }
     return q.join(" ");
   }
@@ -4730,7 +4730,7 @@ class QueriesUtil {
         const token = "$orderby=";
         const tokenIndex = query.lastIndexOf(token);
         return tokenIndex !== -1 ? query.substring(tokenIndex + token.length) : null;
-      }).filter((orderBy) => orderBy !== null).join(",");
+      }).filter((orderBy2) => orderBy2 !== null).join(",");
       return orderByQuery ? `$orderby=${orderByQuery}` : "";
     }
   }
@@ -13435,7 +13435,7 @@ const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginMode, setLoginMode] = useState(void 0);
   const [loading, setLoading] = useState(true);
-  const applications = useRef(null);
+  const [applications, setApplications] = useState(null);
   const tenant2 = useRef(void 0);
   const loginOption = useRef(void 0);
   const currentUser = useRef(null);
@@ -13499,7 +13499,7 @@ const AuthProvider = ({ children }) => {
         noPaging: true
       }
     );
-    applications.current = res;
+    setApplications(res);
   };
   const getLoginOption = async (client2) => {
     try {
@@ -13619,7 +13619,7 @@ const AuthProvider = ({ children }) => {
         client: client.current,
         fetchClient: fetchClient.current,
         tenant: tenant2.current,
-        applications: applications.current
+        applications
       },
       children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx(Loading, { fullScreen: true }) : children
     }
@@ -15373,6 +15373,19 @@ function baseOrderBy(collection, iteratees, orders) {
     return compareMultiple(object, other, orders);
   });
 }
+function orderBy(collection, iteratees, orders, guard) {
+  if (collection == null) {
+    return [];
+  }
+  if (!isArray(iteratees)) {
+    iteratees = iteratees == null ? [] : [iteratees];
+  }
+  orders = orders;
+  if (!isArray(orders)) {
+    orders = orders == null ? [] : [orders];
+  }
+  return baseOrderBy(collection, iteratees, orders);
+}
 function set(object, path2, value2) {
   return object == null ? object : baseSet(object, path2, value2);
 }
@@ -15699,7 +15712,7 @@ const UltivisDeviceProvider = ({ children }) => {
   const isUltivisDevice = (id2) => device2.idSet.has(id2);
   const isDeviceAssignedGroup = (deviceId, groupId) => {
     var _a;
-    return !!((_a = device2.groupMap.get(groupId)) == null ? void 0 : _a.has(deviceId));
+    return !!((_a = device2.groupMap.get(groupId)) == null ? void 0 : _a.has(deviceId)) || false;
   };
   const getParentList = () => parent.infoList;
   const getTotalParentCount = () => parent.infoList.length;
@@ -15712,7 +15725,7 @@ const UltivisDeviceProvider = ({ children }) => {
   const isUltivisParent = (id2) => parent.idSet.has(id2);
   const isParentAssignedGroup = (parentId, groupId) => {
     var _a;
-    return !!((_a = parent.groupMap.get(groupId)) == null ? void 0 : _a.has(parentId));
+    return !!((_a = parent.groupMap.get(groupId)) == null ? void 0 : _a.has(parentId)) || false;
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     UltivisDeviceContext.Provider,
@@ -21856,7 +21869,7 @@ const useWidgetSize = ({ widgetRef }) => {
 };
 const LoadingSpinner = () => {
   const { t: t2 } = useTranslation();
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 transform flex-col items-center gap-y-2 md:flex-row md:gap-y-0", children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 transform flex-col items-center gap-y-2 sm:flex-row sm:gap-y-0", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "svg",
       {
@@ -32915,7 +32928,7 @@ const CarouselPrevious = forwardRef(
         size: size2,
         type: "button",
         className: cn(
-          "absolute left-0 h-11.5 w-20 bg-gradient-to-r from-grayscale-900 from-20% to-transparent dark:from-dark-grayscale-900 ",
+          "absolute left-0 h-10 w-20  bg-gradient-to-r from-grayscale-900 from-20% to-transparent pb-0.5 pt-1.5 dark:from-dark-grayscale-900 ",
           orientation === "horizontal" ? "top-1/2 -translate-y-1/2" : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
           className
         ),
@@ -32941,7 +32954,7 @@ const CarouselNext = forwardRef(
         size: size2,
         type: "button",
         className: cn(
-          "absolute right-0 h-11.5 w-20 cursor-pointer bg-gradient-to-l from-grayscale-900 from-20% to-transparent dark:from-dark-grayscale-900",
+          "absolute right-0 h-10 w-20 cursor-pointer bg-gradient-to-l from-grayscale-900 from-20% to-transparent pb-0.5 pt-1.5 dark:from-dark-grayscale-900",
           orientation === "horizontal" ? "top-1/2 -translate-y-1/2" : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
           className
         ),
@@ -34696,7 +34709,7 @@ const DialogContent = forwardRef(
             }
           },
           className: cn(
-            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 bg-grayscale-1000 px-6 shadow-xl duration-200 dark:bg-dark-bg-444 md:max-w-lg md:rounded-2xl",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 bg-grayscale-1000 px-6 shadow-xl duration-200 dark:bg-dark-bg-444 sm:max-w-lg sm:rounded-2xl",
             className
           ),
           ...props,
@@ -39295,7 +39308,7 @@ const NavigationMenuContent = forwardRef(({ className, ...props }, ref) => /* @_
   {
     ref,
     className: cn(
-      "left-0 top-0 w-full data-[motion^=from-]:animate-in data-[motion^=to-]:animate-out data-[motion^=from-]:fade-in data-[motion^=to-]:fade-out data-[motion=from-end]:slide-in-from-right-52 data-[motion=from-start]:slide-in-from-left-52 data-[motion=to-end]:slide-out-to-right-52 data-[motion=to-start]:slide-out-to-left-52 md:absolute md:w-auto ",
+      "data-[motion^=from-]:animate-in data-[motion^=to-]:animate-out data-[motion^=from-]:fade-in data-[motion^=to-]:fade-out data-[motion=from-end]:slide-in-from-right-52 data-[motion=from-start]:slide-in-from-left-52 data-[motion=to-end]:slide-out-to-right-52 data-[motion=to-start]:slide-out-to-left-52 left-0 top-0 w-full sm:absolute sm:w-auto ",
       className
     ),
     ...props
@@ -39314,7 +39327,7 @@ const NavigationMenuViewport = forwardRef(
         Viewport$3,
         {
           className: cn(
-            "origin-top-center grayscale-400 relative mt-1.5 h-[var(--radix-navigation-menu-viewport-height)] w-full overflow-hidden rounded-none border bg-popover text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-90 dark:bg-dark-bg-444 md:w-[var(--radix-navigation-menu-viewport-width)]",
+            "origin-top-center grayscale-400 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-90 relative mt-1.5 h-[var(--radix-navigation-menu-viewport-height)] w-full overflow-hidden rounded-none border bg-popover text-popover-foreground shadow-lg dark:bg-dark-bg-444 sm:w-[var(--radix-navigation-menu-viewport-width)]",
             className
           ),
           ref,
@@ -39330,7 +39343,7 @@ const NavigationMenuIndicator = forwardRef(({ className, ...props }, ref) => /* 
   {
     ref,
     className: cn(
-      "top-full z-[1] flex h-1.5 items-end justify-center overflow-hidden data-[state=visible]:animate-in data-[state=hidden]:animate-out data-[state=hidden]:fade-out data-[state=visible]:fade-in",
+      "data-[state=visible]:animate-in data-[state=hidden]:animate-out data-[state=hidden]:fade-out data-[state=visible]:fade-in top-full z-[49] flex h-1.5 items-end justify-center overflow-hidden",
       className
     ),
     ...props,
@@ -40623,29 +40636,31 @@ function useResizeObserver(element, onResize) {
 var Root$2 = ScrollArea$1;
 var Viewport$2 = ScrollAreaViewport;
 var Corner = ScrollAreaCorner;
-const ScrollArea = forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-  Root$2,
-  {
-    ref,
-    className: cn("relative overflow-hidden", className),
-    ...props,
-    children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        Viewport$2,
-        {
-          className: "!block h-full w-full rounded",
-          asChild: true,
-          children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-full w-full rounded", children })
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollBar, {}),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(Corner, {})
-    ]
-  }
-));
+const ScrollArea = forwardRef(
+  ({ className, children, scrollBar = true, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    Root$2,
+    {
+      ref,
+      className: cn("relative overflow-hidden", className),
+      ...props,
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Viewport$2,
+          {
+            className: "!block h-full w-full rounded",
+            asChild: true,
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-full w-full rounded", children })
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollBar, { visible: scrollBar }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Corner, {})
+      ]
+    }
+  )
+);
 ScrollArea.displayName = Root$2.displayName;
 const ScrollBar = forwardRef(
-  ({ className, orientation = "vertical", ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+  ({ className, orientation = "vertical", visible, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
     ScrollAreaScrollbar,
     {
       ref,
@@ -40654,6 +40669,7 @@ const ScrollBar = forwardRef(
         "mx-auto flex w-1 touch-none select-none rounded bg-grayscale-700 transition-colors dark:bg-dark-grayscale-700",
         orientation === "vertical" && "h-[95%] ",
         orientation === "horizontal" && "h-1 w-[95%] flex-col border-t border-t-transparent",
+        visible ? "visible" : "invisible",
         className
       ),
       ...props,
@@ -43057,7 +43073,7 @@ const ToastViewport = forwardRef(({ className, ...props }, ref) => /* @__PURE__ 
   {
     ref,
     className: cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:max-w-[420px] sm:flex-col",
       className
     ),
     ...props
@@ -43646,7 +43662,7 @@ const WidgetDatePicker = ({
   const { t: t2 } = useTranslation();
   const { updateIsRealtime, updateDateRange, updateAggrType } = useDatePickerStore(storeKey, storeCache2);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("flex w-full justify-end", className), children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-w-1/2 flex w-full items-center justify-end gap-x-2 ", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex w-full items-center justify-end gap-x-1 md:gap-x-2", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex w-full items-center justify-end gap-x-1 sm:gap-x-2", children: [
       onBack && showDatePicker ? /* @__PURE__ */ jsxRuntimeExports.jsx(
         SvgArrowLeft,
         {
@@ -43686,7 +43702,7 @@ const WidgetDatePicker = ({
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
-        className: `flex min-w-fit ${showDatePicker && "flex-col md:flex-row"} items-center gap-x-2`,
+        className: `flex min-w-fit ${showDatePicker && "flex-col sm:flex-row"} items-center gap-x-2`,
         children: [
           useRealtime && /* @__PURE__ */ jsxRuntimeExports.jsxs(
             "div",
@@ -43721,7 +43737,7 @@ const WidgetDatePicker = ({
                 /* @__PURE__ */ jsxRuntimeExports.jsx(
                   "span",
                   {
-                    className: `hidden font-normal md:block ${isRealtime ? "text-warning" : "text-grayscale-400"}`,
+                    className: `hidden font-normal sm:block ${isRealtime ? "text-warning" : "text-grayscale-400"}`,
                     children: t2("Realtime")
                   }
                 )
@@ -49839,6 +49855,56 @@ function requireReactGridLayout() {
   return reactGridLayout.exports;
 }
 var reactGridLayoutExports = requireReactGridLayout();
+const StaticWidgetWrapper = forwardRef(({ style, className, widget: widget2 }, ref) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      style: { ...style },
+      className: cn(
+        `flex flex-col rounded-2xl bg-grayscale-1000 font-bold text-grayscale-100 shadow-sm dark:bg-dark-bg-333 dark:text-dark-grayscale-100`,
+        className
+      ),
+      ref,
+      children: [
+        widget2.title && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "dashboard-item-header flex items-center justify-between px-6 py-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "line-clamp-1 text-lg", children: widget2.title }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: `dashboard-item-content relative flex h-full flex-col overflow-auto`,
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "h-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { children: widget2.content }) }) })
+          }
+        )
+      ]
+    }
+  ) });
+});
+StaticWidgetWrapper.displayName = "StaticWidgetWrapper";
+const ResGridLayout = reactGridLayoutExports.WidthProvider(reactGridLayoutExports.Responsive);
+const StaticDashboard = ({ widgets = [], widgetMargin = 24 }) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    ResGridLayout,
+    {
+      breakpoints: { md: 820, sm: 768 },
+      cols: { md: 20, sm: 1 },
+      rowHeight: 24,
+      isBounded: true,
+      margin: [widgetMargin, widgetMargin],
+      draggableCancel: ".dashboard-item-content",
+      draggableHandle: ".dashboard-item-header",
+      containerPadding: [0, 0],
+      resizeHandle: null,
+      useCSSTransforms: false,
+      children: widgets.map((widget2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        StaticWidgetWrapper,
+        {
+          widget: widget2,
+          "data-grid": { ...widget2 }
+        },
+        widget2.i
+      ))
+    }
+  );
+};
 const useRoleStore = create((set2, get2) => {
   return {
     roles: [],
@@ -49944,7 +50010,6 @@ const useDashboard = () => {
      * @param {string} params.name - The updated name.
      * @param {string} params.icon - The updated icon.
      * @param {Object} params.dashboard - The existing dashboard managedobject to be updated.
-     * @param {string} params.dashboardId - The ID of the dashboard to update.
      * @returns {Promise<Object>} A promise resolving to the response data of the updated dashboard.
      */
     putDashboard: async ({
@@ -49953,8 +50018,7 @@ const useDashboard = () => {
       priority,
       name: name2,
       icon: icon2,
-      dashboard: dashboard2,
-      dashboardId
+      dashboard: dashboard2
     }) => {
       const obj = cloneDeep(dashboard2);
       obj["name"] = name2;
@@ -49964,7 +50028,7 @@ const useDashboard = () => {
       obj["u5s_Dashboard"]["name"] = name2;
       delete obj["u5s_Dashboard"]["widgetClasses"];
       obj["u5s_Dashboard"]["widgetClasses"] = { [headerStyle]: true };
-      return await putInventory(dashboardId, obj);
+      return await putInventory(dashboard2.id, obj);
     },
     // 위젯 추가
     /**
@@ -50023,7 +50087,6 @@ const useDashboard = () => {
      * Updates the layout of widgets in a dashboard.
      *
      * @param {Object} dashboard - The dashboard managedobject containing the current widgets.
-     * @param {string} dashboardId - The ID of the dashboard to update.
      * @param {Array<Object>} newLayout - An array of layout objects, each representing a widget's new position and size.
      * @param {string} newLayout[].i - The ID of the widget to update.
      * @param {number} newLayout[].x - The new x-coordinate of the widget.
@@ -50033,7 +50096,7 @@ const useDashboard = () => {
      *
      * @returns {Promise<void>} A promise that resolves when the dashboard layout has been successfully updated.
      */
-    putLayout: async (dashboard2, dashboardId, newLayout) => {
+    putLayout: async (dashboard2, newLayout) => {
       const updatedDashboard = cloneDeep(dashboard2);
       newLayout.forEach(({ i: i2, x, y, w, h }) => {
         const widget2 = updatedDashboard["u5s_Dashboard"]["children"][i2];
@@ -50047,7 +50110,7 @@ const useDashboard = () => {
           };
         }
       });
-      await putInventory(dashboardId, updatedDashboard);
+      await putInventory(dashboard2.id, updatedDashboard);
     }
   };
   return methods;
@@ -50069,109 +50132,6 @@ const useQueryDashboardStore = create((set2) => ({
   setQueryDeleteInvalidated: () => set2({ isQueryDeleteInvalidated: true }),
   resetQueryDeleteInvalidated: () => set2({ isQueryDeleteInvalidated: false })
 }));
-const useWidgetActions = ({
-  action,
-  widgetId,
-  dashboardId,
-  closeModal,
-  successMessage,
-  errorMessage,
-  callback
-}) => {
-  const { toast } = useToast();
-  const { putWidget } = useDashboard();
-  const queryClient = useQueryClient();
-  const setQueryInvalidated = useQueryStore(
-    (state) => state.setQueryInvalidated
-  );
-  let mutationFn;
-  if (action === "edit") {
-    mutationFn = ({ dashboard: dashboard2, obj }) => putWidget({
-      dashboard: dashboard2,
-      widget: obj,
-      widgetId,
-      action: "edit"
-    });
-  }
-  if (action === "remove") {
-    mutationFn = (dashboard2) => putWidget({
-      dashboard: dashboard2,
-      action: "remove",
-      widgetId
-    });
-  }
-  const { mutate } = useMutation({
-    mutationFn,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard", dashboardId] }).then(() => {
-        setQueryInvalidated();
-        if (callback) callback();
-      });
-      toast({
-        title: successMessage,
-        duration: 3e3,
-        variant: "success"
-      });
-    },
-    onError: () => {
-      toast({
-        title: errorMessage,
-        duration: 3e3,
-        variant: "destructive"
-      });
-    },
-    onSettled: () => {
-      closeModal(false);
-    }
-  });
-  return mutate;
-};
-const DynamicWidget = ({ widgetId, searchQuery, type: type2, onSelect, ...props }) => {
-  const { t: t2 } = useTranslation();
-  const [error2, setError] = useState("");
-  const widgetComponent = widgetManager.load(widgetId);
-  if (error2) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      t2("Error loading widget:"),
-      " ",
-      error2
-    ] });
-  }
-  if (type2 === "previewImage") {
-    const path2 = widgetComponent && widgetComponent["previewImage"];
-    const label2 = widgetComponent && widgetComponent["label"];
-    const highlightedLabel = (label22) => {
-      if (!searchQuery) return t2(label22);
-      const regex = new RegExp(`(${searchQuery})`, "gi");
-      const searchQueries = t2(label22).split(regex);
-      return searchQueries.map(
-        (query, index2) => regex.test(query) ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
-          {
-            className: "font-bold text-primary dark:text-dark-primary",
-            children: query
-          },
-          index2
-        ) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: query }, index2)
-      );
-    };
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        className: "rounded-lg bg-grayscale-900 p-1 duration-150 hover:ring-4 hover:ring-blue-500 dark:bg-dark-grayscale-900",
-        ...props,
-        onClick: () => onSelect(widgetComponent),
-        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-lg bg-grayscale-1000 p-2 dark:bg-dark-bg-333", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-gray-200 mb-2 w-full p-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: path2, alt: t2(label2), className: "aspect-square" }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center text-sm uppercase", children: highlightedLabel(label2) })
-        ] })
-      }
-    );
-  }
-  const Widget = widgetComponent && widgetComponent[type2];
-  return Widget ? /* @__PURE__ */ jsxRuntimeExports.jsx(Widget, { ...props }) : null;
-};
-const DynamicWidget$1 = memo$1(DynamicWidget);
 const initializeState = (dashboard2, key, defaultValue) => {
   if (!dashboard2 || !dashboard2["u5s_Dashboard"]) return defaultValue;
   if (key === "widgetClasses") {
@@ -50469,8 +50429,7 @@ const DashboardModal = ({
   const editDashboard = useCustomMutation({
     mutationFn: (data) => putDashboard({
       ...data,
-      dashboard: dashboard2,
-      dashboardId
+      dashboard: dashboard2
     }),
     queryKey: [],
     successMessage: "Dashboard edited successfully.",
@@ -50492,7 +50451,7 @@ const DashboardModal = ({
       className: "w-full max-w-full bg-grayscale-1000 lg:max-w-screen-lg",
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { className: "text-2xl", children: mode2 === "edit" ? t2("Edit dashboard") : t2("Add dashboard") }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "flex h-dialog items-center justify-center md:h-[60vh]", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3 py-2 lg:flex lg:gap-x-6 lg:space-y-0", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "flex h-dialog items-center justify-center sm:h-[60vh]", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3 py-2 lg:flex lg:gap-x-6 lg:space-y-0", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "lg:w-1/2", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               GeneralSection,
@@ -50536,7 +50495,7 @@ const RemoveModal = ({ open, onOpenChange, title: title2, onDelete, children }) 
     {
       overlay: true,
       closeButton: false,
-      className: "w-full max-w-[335px] gap-0 rounded-2xl p-6 md:max-w-[400px] md:p-7",
+      className: "w-full max-w-[335px] gap-0 rounded-2xl p-6 sm:max-w-[400px] sm:p-7",
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { className: "mb-3 text-start", children: /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { className: "pb-3 pt-0 text-xl font-bold", children: title2 }) }),
         children,
@@ -50619,6 +50578,52 @@ var n = function(r2, e) {
     }
   };
 };
+const DynamicWidget = ({ widgetId, searchQuery, type: type2, onSelect, ...props }) => {
+  const { t: t2 } = useTranslation();
+  const [error2, setError] = useState("");
+  const widgetComponent = widgetManager.load(widgetId);
+  if (error2) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      t2("Error loading widget:"),
+      " ",
+      error2
+    ] });
+  }
+  if (type2 === "previewImage") {
+    const path2 = widgetComponent && widgetComponent["previewImage"];
+    const label2 = widgetComponent && widgetComponent["label"];
+    const highlightedLabel = (label22) => {
+      if (!searchQuery) return t2(label22);
+      const regex = new RegExp(`(${searchQuery})`, "gi");
+      const searchQueries = t2(label22).split(regex);
+      return searchQueries.map(
+        (query, index2) => regex.test(query) ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            className: "font-bold text-primary dark:text-dark-primary",
+            children: query
+          },
+          index2
+        ) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: query }, index2)
+      );
+    };
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        className: "rounded-lg bg-grayscale-900 p-1 duration-150 hover:ring-4 hover:ring-blue-500 dark:bg-dark-grayscale-900",
+        ...props,
+        onClick: () => onSelect(widgetComponent),
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-lg bg-grayscale-1000 p-2 dark:bg-dark-bg-333", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-gray-200 mb-2 w-full p-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: path2, alt: t2(label2), className: "aspect-square" }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center text-sm uppercase", children: highlightedLabel(label2) })
+        ] })
+      }
+    );
+  }
+  const Widget = widgetComponent && widgetComponent[type2];
+  return Widget ? /* @__PURE__ */ jsxRuntimeExports.jsx(Widget, { ...props }) : null;
+};
+const DynamicWidget$1 = memo$1(DynamicWidget);
 const SelectWidget = ({ widgetList, handleSelectWidget }) => {
   const { t: t2 } = useTranslation();
   const { control } = useFormContext();
@@ -50916,13 +50921,13 @@ const WidgetModal = ({
                 ScrollArea,
                 {
                   ref: scrollAreaRef,
-                  className: "flex h-dialog items-center justify-center md:h-[60vh]",
+                  className: "flex h-dialog items-center justify-center sm:h-[60vh]",
                   children: /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(LazyLoader, { children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
                       TabsContent,
                       {
                         value: "select-widget",
-                        className: "bg-gray-200 p-5 md:p-6",
+                        className: "bg-gray-200 p-5 sm:p-6",
                         children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                           SelectWidget,
                           {
@@ -50932,7 +50937,7 @@ const WidgetModal = ({
                         )
                       }
                     ),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "configuration", className: "p-5 md:p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(TabsContent, { value: "configuration", className: "p-5 sm:p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                       Configuration,
                       {
                         selectedWidget,
@@ -50943,7 +50948,7 @@ const WidgetModal = ({
                       TabsContent,
                       {
                         value: "appearance",
-                        className: "justify-between space-y-6 p-5 md:p-6 lg:flex lg:gap-x-6 lg:space-y-0",
+                        className: "justify-between space-y-6 p-5 sm:p-6 lg:flex lg:gap-x-6 lg:space-y-0",
                         children: [
                           /* @__PURE__ */ jsxRuntimeExports.jsx(
                             LayoutSection,
@@ -50987,7 +50992,194 @@ const WidgetModal = ({
     }
   ) });
 };
-const WidgetWrapper = forwardRef(
+const useWidgetActions = ({
+  action,
+  widgetId,
+  dashboardId,
+  closeModal,
+  successMessage,
+  errorMessage,
+  callback
+}) => {
+  const { toast } = useToast();
+  const { putWidget } = useDashboard();
+  const queryClient = useQueryClient();
+  const setQueryInvalidated = useQueryStore(
+    (state) => state.setQueryInvalidated
+  );
+  let mutationFn;
+  if (action === "edit") {
+    mutationFn = ({ dashboard: dashboard2, obj }) => putWidget({
+      dashboard: dashboard2,
+      widget: obj,
+      widgetId,
+      action: "edit"
+    });
+  }
+  if (action === "remove") {
+    mutationFn = (dashboard2) => putWidget({
+      dashboard: dashboard2,
+      action: "remove",
+      widgetId
+    });
+  }
+  const { mutate } = useMutation({
+    mutationFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard", dashboardId] }).then(() => {
+        setQueryInvalidated();
+        if (callback) callback();
+      });
+      toast({
+        title: successMessage,
+        duration: 3e3,
+        variant: "success"
+      });
+    },
+    onError: () => {
+      toast({
+        title: errorMessage,
+        duration: 3e3,
+        variant: "destructive"
+      });
+    },
+    onSettled: () => {
+      closeModal(false);
+    }
+  });
+  return mutate;
+};
+const ContextWidgetActionItems = ({
+  dashboard: dashboard2,
+  widget: widget2,
+  sourceId,
+  isHovered,
+  setIsEdit
+}) => {
+  var _a;
+  const { goTo } = useTransitionNavigate();
+  const { t: t2 } = useTranslation();
+  const [editModalIsOpen, setEditModalIsOpen] = useState(false);
+  const [removeModalIsOpen, setRemoveModalIsOpen] = useState(false);
+  const [isConfigurationClick, setIsConfigurationClick] = useState(false);
+  const headerStyle = Object.keys(widget2.classes)[0];
+  const widgetMsgSuccess = "Widget edited successfully.";
+  const widgetMsgFail = "Widget editing failed.";
+  const getURL = () => {
+    if ((widget2 == null ? void 0 : widget2.link.length) < 1) return;
+    const { isGroup, __original, id: id2 } = widget2.link[0];
+    return `/${isGroup ? "group" : "device"}/${__original.id}/dashboard/${id2}`;
+  };
+  const editWidget = useWidgetActions({
+    action: "edit",
+    widgetId: widget2.i,
+    dashboardId: dashboard2.id,
+    closeModal: setEditModalIsOpen,
+    callback: () => setIsEdit((pre) => pre + 1),
+    successMessage: t2(widgetMsgSuccess),
+    errorMessage: t2(widgetMsgFail)
+  });
+  const removeWidget = useWidgetActions({
+    action: "remove",
+    widgetId: widget2.i,
+    dashboardId: dashboard2.id,
+    closeModal: setEditModalIsOpen,
+    successMessage: t2("Widget removed."),
+    errorMessage: t2("Widget removal failed.")
+  });
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    editModalIsOpen && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      WidgetModal,
+      {
+        open: editModalIsOpen,
+        onOpenChange: () => setEditModalIsOpen((pre) => !pre),
+        dashboardId: dashboard2.id,
+        onEditWidget: editWidget,
+        mode: "configuration",
+        sourceId,
+        widget: widget2
+      }
+    ),
+    removeModalIsOpen && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      RemoveModal,
+      {
+        onOpenChange: () => setRemoveModalIsOpen((pre) => !pre),
+        open: removeModalIsOpen,
+        onDelete: () => removeWidget(dashboard2),
+        title: t2("Remove widget"),
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-grayscale-300", children: [
+          t2("you are about to remove widget from your dashboard."),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+          t2("do you want to proceed?")
+        ] })
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: `flex items-center justify-center ${headerStyle === "panel-title-hidden" ? "absolute  right-6 top-6 z-1 h-6" : "relative"} `,
+        children: [
+          ((_a = widget2 == null ? void 0 : widget2.link) == null ? void 0 : _a.length) > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            SvgArrowRight,
+            {
+              className: `h-6 w-6 cursor-pointer text-grayscale-300`,
+              onClick: () => goTo(getURL())
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(DropdownMenu, { onOpenChange: (open) => setIsConfigurationClick(open), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DropdownMenuTrigger, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              SvgSetting,
+              {
+                className: cn(
+                  {
+                    hidden: !isHovered && !isConfigurationClick,
+                    visible: isHovered || isConfigurationClick
+                  },
+                  "ml-1 text-grayscale-300 outline-none transition-opacity"
+                )
+              }
+            ) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              DropdownMenuContent,
+              {
+                align: "end",
+                className: cn(
+                  headerStyle === "panel-title-hidden" ? "" : "",
+                  " shadow-md dark:border-dark-grayscale-400 dark:bg-dark-bg-444"
+                ),
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    DropdownMenuItem,
+                    {
+                      onSelect: () => setEditModalIsOpen(true),
+                      className: "gap-x-2",
+                      children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(SvgEdit, {}),
+                        t2("Edit")
+                      ]
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    DropdownMenuItem,
+                    {
+                      className: "gap-x-2",
+                      onSelect: () => setRemoveModalIsOpen(true),
+                      children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(SvgTrash, { className: "h-4 w-4" }),
+                        t2("Remove")
+                      ]
+                    }
+                  )
+                ]
+              }
+            )
+          ] })
+        ]
+      }
+    )
+  ] });
+};
+const ContextWidgetWrapper = forwardRef(
   ({
     style,
     className,
@@ -50996,26 +51188,14 @@ const WidgetWrapper = forwardRef(
     onTouchEnd,
     widget: widget2,
     dashboard: dashboard2,
-    dashboardId,
     sourceId,
     isFrozen,
     props,
     children
   }, ref) => {
-    var _a;
-    const { t: t2 } = useTranslation();
-    const [editModalIsOpen, setEditModalIsOpen] = useState(false);
-    const [removeModalIsOpen, setRemoveModalIsOpen] = useState(false);
     const [isEdit, setIsEdit] = useState(0);
     const [isHovered, setIsHovered] = useState(false);
-    const [isConfigurationClick, setIsConfigurationClick] = useState(false);
     const headerStyle = Object.keys(widget2.classes)[0];
-    const getURL = () => {
-      var _a2;
-      if (((_a2 = widget2.link) == null ? void 0 : _a2.length) < 1) return;
-      const { isGroup, __original, id: id2 } = widget2.link[0];
-      return `/${isGroup ? "group" : "device"}/${__original.id}/dashboard/${id2}`;
-    };
     const getHeaderClass = () => {
       switch (headerStyle) {
         case "panel-title-border":
@@ -51026,244 +51206,110 @@ const WidgetWrapper = forwardRef(
           return "px-6 px-6 py-6";
       }
     };
-    const widgetMsgSuccess = "Widget edited successfully.";
-    const widgetMsgFail = "Widget editing failed.";
-    const editWidget = useWidgetActions({
-      action: "edit",
-      widgetId: widget2.i,
-      dashboardId,
-      closeModal: setEditModalIsOpen,
-      callback: () => setIsEdit((pre) => pre + 1),
-      successMessage: t2(widgetMsgSuccess),
-      errorMessage: t2(widgetMsgFail)
-    });
-    const removeWidget = useWidgetActions({
-      action: "remove",
-      widgetId: widget2.i,
-      dashboardId,
-      closeModal: setEditModalIsOpen,
-      successMessage: t2("Widget removed."),
-      errorMessage: t2("Widget removal failed.")
-    });
-    const { goTo } = useTransitionNavigate();
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-      editModalIsOpen && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        WidgetModal,
-        {
-          open: editModalIsOpen,
-          onOpenChange: () => setEditModalIsOpen((pre) => !pre),
-          dashboardId,
-          onEditWidget: editWidget,
-          mode: "configuration",
-          sourceId,
-          widget: widget2
-        }
-      ),
-      removeModalIsOpen && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        RemoveModal,
-        {
-          onOpenChange: () => setRemoveModalIsOpen((pre) => !pre),
-          open: removeModalIsOpen,
-          onDelete: () => removeWidget(dashboard2),
-          title: t2("Remove widget"),
-          children: /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-grayscale-300", children: [
-            t2("you are about to remove widget from your dashboard."),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
-            t2("do you want to proceed?")
-          ] })
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "div",
-        {
-          style: { ...style },
-          className: cn(
-            `flex flex-col rounded-2xl bg-grayscale-1000 font-bold text-grayscale-100 shadow-sm dark:bg-dark-bg-333 dark:text-dark-grayscale-100`,
-            className
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: { ...style },
+        className: cn(
+          `flex flex-col rounded-2xl bg-grayscale-1000 font-bold text-grayscale-100 shadow-sm dark:bg-dark-bg-333 dark:text-dark-grayscale-100`,
+          className
+        ),
+        ref,
+        onMouseDown,
+        onMouseUp,
+        onTouchEnd,
+        onMouseEnter: () => setIsHovered(true),
+        onMouseLeave: () => setIsHovered(false),
+        ...props,
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: cn(
+                getHeaderClass(),
+                `dashboard-item-header flex ${isFrozen ? "" : "cursor-move "} items-center justify-between`
+              ),
+              children: [
+                headerStyle === "panel-title-hidden" ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", {}) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "line-clamp-1 text-lg", children: widget2.title }),
+                !isFrozen && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  ContextWidgetActionItems,
+                  {
+                    dashboard: dashboard2,
+                    widget: widget2,
+                    sourceId,
+                    isHovered,
+                    setIsEdit
+                  }
+                )
+              ]
+            }
           ),
-          ref,
-          onMouseDown,
-          onMouseUp,
-          onTouchEnd,
-          onMouseEnter: () => setIsHovered(true),
-          onMouseLeave: () => setIsHovered(false),
-          ...props,
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              "div",
-              {
-                className: cn(
-                  getHeaderClass(),
-                  `dashboard-item-header flex ${isFrozen ? "" : "cursor-move "} items-center justify-between`
-                ),
-                children: [
-                  headerStyle === "panel-title-hidden" ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", {}) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "line-clamp-1 text-lg", children: widget2.title }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                    "div",
-                    {
-                      className: `flex items-center justify-center ${headerStyle === "panel-title-hidden" ? "absolute  right-6 top-6 z-1 h-6" : "relative"} `,
-                      children: [
-                        ((_a = widget2.link) == null ? void 0 : _a.length) > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
-                          SvgArrowRight,
-                          {
-                            className: `h-6 w-6 cursor-pointer text-grayscale-300`,
-                            onClick: () => goTo(getURL())
-                          }
-                        ),
-                        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                          DropdownMenu,
-                          {
-                            onOpenChange: (open) => setIsConfigurationClick(open),
-                            children: [
-                              !isFrozen && /* @__PURE__ */ jsxRuntimeExports.jsx(DropdownMenuTrigger, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                                SvgSetting,
-                                {
-                                  className: cn(
-                                    {
-                                      hidden: !isHovered && !isConfigurationClick,
-                                      visible: isHovered || isConfigurationClick
-                                    },
-                                    "ml-1 text-grayscale-300 outline-none transition-opacity"
-                                  )
-                                }
-                              ) }),
-                              /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                                DropdownMenuContent,
-                                {
-                                  align: "end",
-                                  className: cn(
-                                    headerStyle === "panel-title-hidden" ? "" : "",
-                                    " shadow-md dark:border-dark-grayscale-400 dark:bg-dark-bg-444"
-                                  ),
-                                  children: [
-                                    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                                      DropdownMenuItem,
-                                      {
-                                        onSelect: () => setEditModalIsOpen(true),
-                                        className: "gap-x-2",
-                                        children: [
-                                          /* @__PURE__ */ jsxRuntimeExports.jsx(SvgEdit, {}),
-                                          t2("Edit")
-                                        ]
-                                      }
-                                    ),
-                                    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                                      DropdownMenuItem,
-                                      {
-                                        className: "gap-x-2",
-                                        onSelect: () => setRemoveModalIsOpen(true),
-                                        children: [
-                                          /* @__PURE__ */ jsxRuntimeExports.jsx(SvgTrash, { className: "h-4 w-4" }),
-                                          t2("Remove")
-                                        ]
-                                      }
-                                    )
-                                  ]
-                                }
-                              )
-                            ]
-                          }
-                        )
-                      ]
-                    }
-                  )
-                ]
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              "div",
-              {
-                className: `dashboard-item-content relative flex h-full flex-col overflow-auto`,
-                children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "mb-3 mr-3 h-full pb-3 pl-6 pr-3", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    DynamicWidget$1,
-                    {
-                      widgetId: widget2.id,
-                      config: widget2.config,
-                      type: "component",
-                      widgetKey: widget2.i,
-                      sourceId,
-                      w: widget2.w,
-                      h: widget2.h,
-                      headerStyle
-                    },
-                    `${widget2.id}_${isEdit}`
-                  ) }) }) }),
-                  children
-                ]
-              }
-            )
-          ]
-        }
-      )
-    ] });
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: `dashboard-item-content relative flex h-full flex-col overflow-auto`,
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "mb-3 mr-3 h-full pb-3 pl-6 pr-3", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  DynamicWidget$1,
+                  {
+                    widgetId: widget2.id,
+                    config: widget2.config,
+                    type: "component",
+                    widgetKey: widget2.i,
+                    sourceId,
+                    w: widget2.w,
+                    h: widget2.h,
+                    headerStyle
+                  },
+                  `${widget2.id}_${isEdit}`
+                ) }) }) }),
+                children
+              ]
+            }
+          )
+        ]
+      }
+    ) });
   }
 );
-WidgetWrapper.displayName = "WidgetWrapper";
-const ResGridLayout = reactGridLayoutExports.WidthProvider(reactGridLayoutExports.Responsive);
-const Grid = ({ dashboard: dashboard2, dashboardId, sourceId }) => {
+ContextWidgetWrapper.displayName = "ContextWidgetWrapper";
+const ContextGrid = ({ dashboard: dashboard2, sourceId }) => {
+  const minSize = { minH: 4, minW: 2 };
   const { putLayout } = useDashboard();
+  const ResGridLayout2 = useMemo(() => reactGridLayoutExports.WidthProvider(reactGridLayoutExports.Responsive), []);
+  const containerRef = useRef(null);
   const access = useRoleStore((state) => state.access);
-  const widgets = useMemo(
-    () => Object.values(dashboard2["u5s_Dashboard"]["children"]),
-    [dashboard2]
-  );
+  const widgets = useMemo(() => {
+    const widgets2 = Object.values(dashboard2["u5s_Dashboard"]["children"]);
+    return orderBy(widgets2, ["y", "x"], ["asc", "asc"]);
+  }, [dashboard2["u5s_Dashboard"]["children"], dashboard2.id]);
+  const [updatedWidgets, setUpdatedWidgets] = useState([]);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const widgetMargin = Number(dashboard2.u5s_Dashboard.widgetMargin);
-  const isFrozen = !access || dashboard2["u5s_Dashboard"]["isFrozen"] || windowWidth <= 768;
+  const isFrozen = !access || dashboard2["u5s_Dashboard"]["isFrozen"] || windowWidth <= 1024;
   const queryClient = useQueryClient();
   const [isDragging, setIsDragging] = useState(false);
   const [preLayout, setPreLayout] = useState([]);
-  const [currentBreakpoint, setCurrentBreakpoint] = useState("lg");
   const { mutate: handleDrag } = useMutation({
-    mutationFn: ({ newLayout }) => putLayout(dashboard2, dashboardId, newLayout),
+    mutationFn: ({ newLayout }) => putLayout(dashboard2, newLayout),
     onSettled: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["dashboard", dashboardId]
+        queryKey: ["dashboard", dashboard2.id]
       });
     }
   });
   const onDragStart = (layout2) => {
-    if (currentBreakpoint !== "sm") {
-      setPreLayout(layout2);
-    }
+    setPreLayout(layout2);
     setIsDragging(true);
   };
   const onDragStop = (newLayout) => {
     if (isEqual(preLayout, newLayout)) return;
-    if (currentBreakpoint === "sm") {
-      newLayout = newLayout.map((item) => {
-        const originalItem = preLayout.find((prev) => prev.i === item.i);
-        if (originalItem) {
-          return {
-            ...item,
-            w: originalItem.w,
-            x: originalItem.x,
-            y: originalItem.y
-          };
-        }
-        return item;
-      });
-    }
     setIsDragging(false);
     handleDrag({ newLayout });
   };
-  const onBreakpointChange = (newBreakpoint) => {
-    setCurrentBreakpoint(newBreakpoint);
+  const onBreakpointChange = (newBreakpoint, newCols) => {
+    calculateGrid(newBreakpoint, newCols);
   };
-  useEffect(() => {
-    if (currentBreakpoint === "sm") {
-      const layout2 = widgets.map((widget2) => ({
-        i: widget2.i,
-        x: widget2.x,
-        y: widget2.y,
-        w: widget2.w,
-        h: widget2.h
-      }));
-      setPreLayout(layout2);
-    }
-  }, [currentBreakpoint, widgets]);
-  const minSize = { minH: 4, minW: 3 };
   useEffect(() => {
     const updateWindowWidth = () => {
       setWindowWidth(window.innerWidth);
@@ -51273,11 +51319,112 @@ const Grid = ({ dashboard: dashboard2, dashboardId, sourceId }) => {
       window.removeEventListener("resize", updateWindowWidth);
     };
   }, []);
+  const calculateGrid = (breakpoint, maxColumns) => {
+    if (breakpoint === "xl") return setUpdatedWidgets(widgets);
+    const totalWidgets = widgets.length;
+    const updatedWidgets2 = [];
+    let currentRowY = 0;
+    for (let i2 = 0; i2 < totalWidgets; i2++) {
+      const currentWidget = widgets[i2];
+      const { w: widgetWidth, h: widgetHeight } = currentWidget;
+      let maxRowHeight = widgetHeight;
+      if (widgetWidth >= maxColumns) {
+        updatedWidgets2.push({
+          ...currentWidget,
+          y: currentRowY,
+          w: widgetWidth > maxColumns ? maxColumns : widgetWidth
+        });
+        currentRowY += widgetHeight;
+        continue;
+      }
+      let currentRowWidth = 0;
+      let startWidgetIndex = i2;
+      let nextWidgetIndex = i2;
+      while (nextWidgetIndex < totalWidgets && currentRowWidth + widgets[nextWidgetIndex].w <= maxColumns) {
+        const nextWidget = widgets[nextWidgetIndex];
+        currentRowWidth += nextWidget.w;
+        maxRowHeight = Math.max(maxRowHeight, nextWidget.h);
+        nextWidgetIndex++;
+      }
+      if (currentRowWidth > maxColumns) {
+        nextWidgetIndex--;
+      }
+      if (nextWidgetIndex - startWidgetIndex === 1) {
+        const singleWidget = widgets[startWidgetIndex];
+        updatedWidgets2.push({
+          ...singleWidget,
+          h: maxRowHeight,
+          w: maxColumns,
+          // 행 전체를 차지하도록 너비 설정
+          y: currentRowY,
+          x: 0
+          // 왼쪽부터 시작
+        });
+        currentRowY += maxRowHeight;
+        continue;
+      }
+      let convertW = Math.floor(
+        maxColumns / (nextWidgetIndex - startWidgetIndex)
+      );
+      let remainingColumns = maxColumns - convertW * (nextWidgetIndex - startWidgetIndex);
+      let currentX = 0;
+      while (startWidgetIndex < nextWidgetIndex) {
+        const widget2 = widgets[startWidgetIndex];
+        let widgetW = convertW;
+        if (remainingColumns > 0) {
+          widgetW++;
+          remainingColumns--;
+        }
+        updatedWidgets2.push({
+          ...widget2,
+          h: maxRowHeight,
+          w: widgetW,
+          y: currentRowY,
+          x: currentX
+        });
+        currentX += widgetW;
+        startWidgetIndex++;
+      }
+      currentRowY += maxRowHeight;
+      i2 = nextWidgetIndex - 1;
+    }
+    setUpdatedWidgets(updatedWidgets2);
+  };
+  useEffect(() => {
+    const calculateBreakpoint = (width) => {
+      if (width >= 1440) return { breakpoint: "xl", cols: 12 };
+      if (width >= 1024) return { breakpoint: "lg", cols: 6 };
+      if (width >= 768) return { breakpoint: "md", cols: 6 };
+      if (width >= 576) return { breakpoint: "sm", cols: 4 };
+      if (width >= 480) return { breakpoint: "xs", cols: 4 };
+      return { breakpoint: "xss", cols: 1 };
+    };
+    if (containerRef.current) {
+      const width = containerRef.current.state.width;
+      const { breakpoint, cols } = calculateBreakpoint(width);
+      onBreakpointChange(breakpoint, cols);
+    }
+  }, [dashboard2.iId]);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    ResGridLayout,
+    ResGridLayout2,
     {
-      breakpoints: { md: 820, sm: 768 },
-      cols: { md: 20, sm: 1 },
+      breakpoints: {
+        xl: 1440,
+        lg: 1024,
+        md: 768,
+        sm: 576,
+        xs: 480,
+        xss: 0
+      },
+      cols: {
+        xl: 12,
+        lg: 6,
+        md: 6,
+        sm: 4,
+        xs: 4,
+        xss: 1
+      },
+      ref: containerRef,
       rowHeight: 24,
       isResizable: !isFrozen,
       isDraggable: !isFrozen,
@@ -51294,12 +51441,11 @@ const Grid = ({ dashboard: dashboard2, dashboardId, sourceId }) => {
       onBreakpointChange,
       useCSSTransforms: false,
       children: widgets.map((widget2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        WidgetWrapper,
+        ContextWidgetWrapper,
         {
           widget: widget2,
           "data-grid": { ...widget2, ...minSize },
           dashboard: dashboard2,
-          dashboardId,
           sourceId,
           isFrozen
         },
@@ -51308,7 +51454,7 @@ const Grid = ({ dashboard: dashboard2, dashboardId, sourceId }) => {
     }
   );
 };
-const Grid$1 = memo$1(Grid);
+const ContextGrid$1 = memo$1(ContextGrid);
 const RenderEmptyStateMessage = ({
   title: title2,
   description: description2,
@@ -51469,10 +51615,20 @@ const useDashboardActions = (dashboard2) => {
     access
   };
 };
-const Dashboard = ({ dashboard: dashboard2 }) => {
+const ContextDashboard = () => {
   var _a;
-  const { t: t2 } = useTranslation();
   const { dashboardId, sourceId, category } = useRoutingContext();
+  const { getInventory } = useApi();
+  const { data: dashboard2 } = useSuspenseQuery({
+    queryKey: ["dashboard", dashboardId],
+    staleTime: Infinity,
+    enabled: !!dashboardId,
+    queryFn: async () => {
+      const res = await getInventory(dashboardId);
+      return res.data;
+    }
+  });
+  const { t: t2 } = useTranslation();
   const {
     dashboardModalIsOpen,
     editModalIsOpen,
@@ -51515,14 +51671,7 @@ const Dashboard = ({ dashboard: dashboard2 }) => {
         }
       );
     }
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(
-      Grid$1,
-      {
-        dashboard: dashboard2,
-        dashboardId,
-        sourceId
-      }
-    );
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(ContextGrid$1, { dashboard: dashboard2, sourceId });
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
     (dashboardModalIsOpen || editModalIsOpen) && /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -51565,143 +51714,8 @@ const Dashboard = ({ dashboard: dashboard2 }) => {
         }) })
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-grayscale-900 dark:bg-dark-grayscale-900", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { children: renderContent() }) }) })
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { scrollBar: false, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-grayscale-900 dark:bg-dark-grayscale-900", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { children: renderContent() }) }) }) })
   ] });
-};
-const ContextDashboard = () => {
-  const { dashboardId } = useRoutingContext();
-  const { getInventory } = useApi();
-  const { data: dashboard2 } = useSuspenseQuery({
-    queryKey: ["dashboard", dashboardId],
-    staleTime: Infinity,
-    enabled: !!dashboardId,
-    queryFn: async () => {
-      const res = await getInventory(dashboardId);
-      return res.data;
-    }
-  });
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(Dashboard, { dashboard: dashboard2 }) });
-};
-const DashboardActionItems = () => {
-  var _a, _b;
-  const { dashboardId } = useRoutingContext();
-  const { pathname } = useLocation();
-  const { t: t2 } = useTranslation();
-  const { setDeleteModalIsOpen } = useDashboardStore((state) => ({
-    setDeleteModalIsOpen: state.setDeleteModalIsOpen
-  }));
-  const { getInventory } = useApi();
-  const { data: dashboard2 } = useQuery({
-    queryKey: ["dashboard", dashboardId],
-    enabled: !!dashboardId,
-    staleTime: Infinity,
-    queryFn: async () => {
-      const res = await getInventory(dashboardId);
-      return res.data;
-    }
-  });
-  const isFrozen = (_a = dashboard2 == null ? void 0 : dashboard2.u5s_Dashboard) == null ? void 0 : _a.isFrozen;
-  const { handleFullScreen, handleDashboard, mutations, access } = useDashboardActions(dashboard2);
-  const handleSelect = (type2) => {
-    {
-      setDeleteModalIsOpen((pre) => !pre);
-    }
-  };
-  const deleteDashboard = () => {
-    if (!access) return;
-    if (pathname === "/") return;
-    handleSelect();
-  };
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      ActionItem,
-      {
-        onClick: () => handleDashboard("add"),
-        icon: SvgWidgetPlus,
-        label: t2("Add widget"),
-        isDisabled: !access || isFrozen
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      ActionItem,
-      {
-        onClick: () => handleDashboard("edit"),
-        icon: SvgEdit,
-        label: t2("Edit"),
-        isDisabled: !access || isFrozen
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      ActionItem,
-      {
-        onClick: handleFullScreen,
-        icon: SvgFullframe,
-        label: t2("Full screen")
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      ActionItem,
-      {
-        onClick: () => {
-          var _a2;
-          if (!access) return;
-          mutations.handleLock(!((_a2 = dashboard2 == null ? void 0 : dashboard2["u5s_Dashboard"]) == null ? void 0 : _a2["isFrozen"]));
-        },
-        label: t2("Lock dashboard"),
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Switch,
-          {
-            checked: !!((_b = dashboard2 == null ? void 0 : dashboard2["u5s_Dashboard"]) == null ? void 0 : _b["isFrozen"]),
-            className: `${access ? "cursor-pointer" : "cursor-not-allowed"}`
-          }
-        )
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "my-auto hidden h-3 w-px shrink-0 bg-grayscale-600 dark:bg-dark-grayscale-600 md:block" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(DropdownMenu, { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        DropdownMenuTrigger,
-        {
-          className: "hidden md:block",
-          disabled: isFrozen,
-          children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "div",
-            {
-              className: cn(
-                "flex items-center gap-x-1 stroke-grayscale-400 text-base",
-                isFrozen ? "cursor-not-allowed" : ""
-              ),
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(SvgMore, {}),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: t2("More") })
-              ]
-            }
-          )
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(DropdownMenuContent, { className: "dark:bg-dark-bg-333", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        DropdownMenuItem,
-        {
-          onSelect: deleteDashboard,
-          className: `dark:stroke-dark-grayscale-300 dark:text-dark-grayscale-300 ${access && pathname !== "/" ? "cursor-pointer" : "cursor-not-allowed"} `,
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(SvgTrash, { className: "h-5 w-5" }),
-            " ",
-            t2("Delete dashboard")
-          ]
-        }
-      ) })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      ActionItem,
-      {
-        className: "md:hidden",
-        onClick: deleteDashboard,
-        icon: SvgTrash,
-        label: t2("Delete dashboard")
-      }
-    )
-  ] }) });
 };
 var uaParser$1 = { exports: {} };
 var uaParser = uaParser$1.exports;
@@ -53084,46 +53098,10 @@ function requireUaParser() {
 }
 var uaParserExports = requireUaParser();
 const UAParser = /* @__PURE__ */ getDefaultExportFromCjs(uaParserExports);
-const getIconComponent = (iconName) => {
-  const icons = {
-    administration: SvgAdministration,
-    simulators: SvgAdvancedSimulators,
-    cockpit: SvgCockpit,
-    devicemanagement: SvgDeviceManagement,
-    "migration-tool": SvgMigrationTool,
-    "machine-learning-workbench": SvgMachineLearningWorkbench
-  };
-  return icons[iconName] || null;
-};
-const getInitials = (name2) => {
-  const firstLetter = name2.slice(0, 1).toUpperCase();
-  const secondLetter = name2.slice(1, 2).toLowerCase();
-  return firstLetter + secondLetter;
-};
-const AppItem = ({ app }) => {
-  var _a;
-  const { t: t2 } = useTranslation();
-  const href = app.contextPath ? `/apps/${app.contextPath}/` : app.externalUrl;
-  const IconComponent = getIconComponent(app.contextPath);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: "h-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx(NavigationMenuLink, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "my-auto flex h-full w-full transform flex-col items-center space-y-1.5 px-2 pb-2 pt-3 group-hover:text-primary dark:group-hover:text-dark-primary", children: [
-    IconComponent ? /* @__PURE__ */ jsxRuntimeExports.jsx(IconComponent, { className: "h-9 min-h-[36px] w-9 min-w-[36px] group-hover:text-primary dark:group-hover:text-dark-primary" }) : (
-      /* 커스텀 아이콘이 없고, app.manifest.icon.class 속성이 있는 경우 */
-      ((_a = app.manifest) == null ? void 0 : _a.icon) && app.manifest.icon.class ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
-        {
-          className: `c8y-icon ${app.manifest.icon.class} text-[36px] group-hover:text-primary`
-        }
-      ) : (
-        /* 위의 조건을 만족하지 않으면 getInitials 실행 */
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-9 w-9 items-center justify-center rounded-lg border-[3px] border-grayscale-100 text-lg font-bold text-grayscale-100 group-hover:border-primary group-hover:text-primary dark:border-dark-grayscale-100 dark:text-dark-grayscale-100  dark:group-hover:border-dark-primary  dark:group-hover:text-dark-primary", children: getInitials(app.name) })
-      )
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "flex h-full max-w-full items-center whitespace-normal break-words text-center text-xs font-medium text-grayscale-100 group-hover:text-primary dark:text-dark-grayscale-100 dark:group-hover:text-dark-primary", children: t2(humanizeAppName(app.name)) })
-  ] }) }) }) });
-};
 const useSidebarStore = create((set2, get2) => {
+  const xxl = 1375;
   return {
-    sidebarIsOpen: window.innerWidth > 1375,
+    sidebarIsOpen: window.innerWidth >= xxl,
     headerIsOpen: false,
     toggleSidebar: () => {
       const headerIsOpen = get2().headerIsOpen;
@@ -53134,7 +53112,7 @@ const useSidebarStore = create((set2, get2) => {
       set2((state) => ({ sidebarIsOpen: !state.sidebarIsOpen }));
     },
     responsiveSidebar: () => {
-      if (window.innerWidth < 1375) {
+      if (window.innerWidth <= xxl) {
         set2({ sidebarIsOpen: false });
       } else {
         set2({ sidebarIsOpen: true });
@@ -53146,38 +53124,16 @@ const useSidebarStore = create((set2, get2) => {
   };
 });
 const Header = ({ pageTitle, headerItems }) => {
-  const { t: t2, i18n } = useTranslation();
-  const { toggleTheme } = useDark();
   const { toggleSidebar, sidebarIsOpen, headerIsOpen, toggleHeader } = useSidebarStore((state) => state);
-  const { currentUser, tenant: tenant2, logout: logout2, applications } = useAuth();
-  const [authApp, setAuthApp] = useState([]);
-  const toggleLanguage = () => {
-    const newLang = i18n.language === "en" ? "ko" : "en";
-    i18n.changeLanguage(newLang);
-  };
-  useEffect(() => {
-    if (applications) {
-      const filteredApps = sortBy(
-        applications.data.filter(
-          (app) => {
-            var _a;
-            return app.type !== "MICROSERVICE" && ((_a = app.manifest) == null ? void 0 : _a.noAppSwitcher) !== true;
-          }
-        ),
-        (app) => app.name.toLowerCase()
-      );
-      setAuthApp(filteredApps);
-    }
-  }, [applications]);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "header",
     {
-      className: `fixed top-0  flex w-full flex-col border-b bg-grayscale-1000 shadow-2 dark:bg-dark-bg-444 dark:drop-shadow-none md:flex-row ${headerIsOpen ? "z-10 max-h-32 shadow-none" : "z-[2] md:z-10"}`,
+      className: `fixed top-0  flex w-full flex-col border-b bg-grayscale-1000 shadow-2 dark:bg-dark-bg-444 dark:drop-shadow-none sm:flex-row ${headerIsOpen ? "z-50 max-h-32 shadow-none" : "z-50"}`,
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "div",
           {
-            className: `${headerIsOpen ? "max-h-32" : "max-h-16 overflow-hidden"} ease flex w-full flex-col justify-start px-4 transition-[max-height] duration-150 md:flex-row md:items-center md:justify-between md:overflow-visible md:border-none lg:px-12`,
+            className: `${headerIsOpen ? "max-h-32" : "max-h-16 overflow-hidden"} ease flex w-full flex-col justify-start px-4 transition-[max-height] duration-150 sm:flex-row sm:items-center sm:justify-between sm:overflow-visible sm:border-none lg:px-12`,
             children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "my-auto flex min-h-16 items-center gap-3 sm:gap-4", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -53193,7 +53149,7 @@ const Header = ({ pageTitle, headerItems }) => {
                   NavLink,
                   {
                     to: "/",
-                    className: `${sidebarIsOpen ? "block" : "hidden tablet:block"}`,
+                    className: `${sidebarIsOpen ? "block" : "hidden 2xl:block"}`,
                     children: /* @__PURE__ */ jsxRuntimeExports.jsx(SvgLogo02, { className: "h-6 w-fit" })
                   }
                 ),
@@ -53208,101 +53164,13 @@ const Header = ({ pageTitle, headerItems }) => {
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "ul",
                 {
-                  className: `relative z-10 my-auto flex min-h-16 w-full justify-center gap-2 md:border-none`,
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-1 items-center  gap-3 whitespace-nowrap text-base text-grayscale-100 dark:text-dark-grayscale-300 max-md:flex-wrap", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  className: `relative z-50 my-auto flex min-h-16 w-full justify-center gap-2 sm:border-none`,
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-1 items-center  gap-3 whitespace-nowrap text-base text-grayscale-100 dark:text-dark-grayscale-300 max-sm:flex-wrap", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                     NavigationMenu,
                     {
-                      className: "w-full max-w-full  justify-evenly md:justify-end",
-                      viewportClassNames: "right-auto md:-right-4 lg:-right-12",
-                      children: [
-                        headerItems && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-                          headerItems,
-                          /* @__PURE__ */ jsxRuntimeExports.jsx(NavigationMenuItem, { children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mx-2 my-auto h-3 w-px shrink-0 bg-grayscale-600 " }) })
-                        ] }),
-                        /* @__PURE__ */ jsxRuntimeExports.jsxs(NavigationMenuItem, { children: [
-                          /* @__PURE__ */ jsxRuntimeExports.jsx(
-                            NavigationMenuTrigger,
-                            {
-                              className: "group h-13 w-full px-0 text-lg font-bold focus:!bg-inherit disabled:!pointer-events-auto disabled:cursor-not-allowed disabled:text-grayscale-500  dark:bg-dark-bg-444",
-                              onPointerMove: (event) => event.preventDefault(),
-                              onPointerLeave: (event) => event.preventDefault(),
-                              children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(SvgAppSwitch, { className: "h-6 w-6 group-data-[state=open]:text-primary" }) })
-                            }
-                          ),
-                          /* @__PURE__ */ jsxRuntimeExports.jsx(
-                            NavigationMenuContent,
-                            {
-                              onPointerEnter: (event) => event.preventDefault(),
-                              onPointerLeave: (event) => event.preventDefault(),
-                              children: /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "h-[calc(100vh-128px)] w-[100vw] md:h-125 md:w-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "mx-auto grid w-90 grid-cols-3 justify-center gap-1.5 py-5 text-center md:p-3", children: authApp.map((app) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-                                "div",
-                                {
-                                  className: "group rounded-2xl border-2 border-grayscale-700 bg-white hover:bg-primary/10 hover:text-primary dark:border-dark-bg-333 dark:border-dark-grayscale-700 dark:bg-dark-bg-444 dark:text-dark-grayscale-200 dark:hover:bg-dark-primary/10 dark:hover:text-dark-primary",
-                                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(AppItem, { app })
-                                },
-                                app.name
-                              )) }) })
-                            }
-                          )
-                        ] }),
-                        /* @__PURE__ */ jsxRuntimeExports.jsx(NavigationMenuItem, { children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mx-2 my-auto h-3 w-px shrink-0 bg-grayscale-600 " }) }),
-                        /* @__PURE__ */ jsxRuntimeExports.jsxs(NavigationMenuItem, { children: [
-                          /* @__PURE__ */ jsxRuntimeExports.jsx(
-                            NavigationMenuTrigger,
-                            {
-                              className: "group h-13 !bg-inherit bg-white px-0 text-lg focus:!bg-inherit data-[state=open]:text-primary  dark:bg-dark-bg-444 dark:text-dark-grayscale-300 dark:data-[state=open]:text-dark-primary",
-                              onPointerMove: (event) => event.preventDefault(),
-                              onPointerLeave: (event) => event.preventDefault(),
-                              children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5", children: [
-                                /* @__PURE__ */ jsxRuntimeExports.jsx(SvgProfile, { className: "h-6 w-6 group-data-[state=open]:text-primary" }),
-                                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "my-auto hidden text-grayscale-300 group-data-[state=open]:text-primary dark:text-dark-grayscale-200 md:flex", children: currentUser.userName })
-                              ] })
-                            }
-                          ),
-                          /* @__PURE__ */ jsxRuntimeExports.jsx(
-                            NavigationMenuContent,
-                            {
-                              onPointerEnter: (event) => event.preventDefault(),
-                              onPointerLeave: (event) => event.preventDefault(),
-                              children: /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: "h-[calc(100vh-128px)] w-[100vw] md:h-fit md:w-full", children: [
-                                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                                  ListItem,
-                                  {
-                                    icon: SvgMoonNight,
-                                    className: "cursor-pointer",
-                                    onClick: toggleTheme,
-                                    title: t2("dark mode")
-                                  }
-                                ),
-                                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                                  ListItem,
-                                  {
-                                    icon: SvgTranslate,
-                                    className: "cursor-pointer",
-                                    onClick: toggleLanguage,
-                                    title: i18n.language === "en" ? t2("korean") : t2("english")
-                                  }
-                                ),
-                                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                                  ListItem,
-                                  {
-                                    icon: SvgLogOut,
-                                    className: "cursor-pointer",
-                                    onClick: logout2,
-                                    title: t2("logout")
-                                  }
-                                ),
-                                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                                  ListItem,
-                                  {
-                                    title: `${t2("Tenant")} ID: ${tenant2}`
-                                  }
-                                )
-                              ] })
-                            }
-                          )
-                        ] })
-                      ]
+                      className: "w-full max-w-full  justify-evenly sm:justify-end",
+                      viewportClassNames: "right-auto sm:-right-4 lg:-right-12",
+                      children: headerItems
                     }
                   ) })
                 }
@@ -53310,7 +53178,7 @@ const Header = ({ pageTitle, headerItems }) => {
             ]
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `absolute -bottom-3 !z-10 w-full md:hidden`, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `absolute -bottom-3 !z-[50] w-full sm:hidden`, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
           {
             className: "mx-auto flex h-6 w-10 justify-center rounded-full bg-white  shadow-2 dark:bg-dark-bg-444",
@@ -53327,10 +53195,69 @@ const Header = ({ pageTitle, headerItems }) => {
     }
   ) });
 };
-const ListItem = forwardRef(
+const HeaderDivider = () => /* @__PURE__ */ jsxRuntimeExports.jsx(NavigationMenuItem, { children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mx-2 my-auto h-3 w-px shrink-0 bg-grayscale-600 " }) });
+const getIconComponent = (iconName) => {
+  const icons = {
+    administration: SvgAdministration,
+    simulators: SvgAdvancedSimulators,
+    cockpit: SvgCockpit,
+    devicemanagement: SvgDeviceManagement,
+    "migration-tool": SvgMigrationTool,
+    "machine-learning-workbench": SvgMachineLearningWorkbench
+  };
+  return icons[iconName] || null;
+};
+const getInitials = (name2) => {
+  const firstLetter = name2.slice(0, 1).toUpperCase();
+  const secondLetter = name2.slice(1, 2).toLowerCase();
+  return firstLetter + secondLetter;
+};
+const AppSwitcherItem = ({ app }) => {
+  var _a;
+  const { t: t2 } = useTranslation();
+  const href = app.contextPath ? `/apps/${app.contextPath}/` : app.externalUrl;
+  const IconComponent = getIconComponent(app.contextPath);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "group rounded-2xl border-2 border-grayscale-700 bg-white hover:bg-primary/10 hover:text-primary dark:border-dark-bg-333 dark:border-dark-grayscale-700 dark:bg-dark-bg-444 dark:text-dark-grayscale-200 dark:hover:bg-dark-primary/10 dark:hover:text-dark-primary", children: /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: "h-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx(NavigationMenuLink, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "my-auto flex h-full w-full transform flex-col items-center space-y-1.5 px-2 pb-2 pt-3 group-hover:text-primary dark:group-hover:text-dark-primary", children: [
+    IconComponent ? /* @__PURE__ */ jsxRuntimeExports.jsx(IconComponent, { className: "h-9 min-h-[36px] w-9 min-w-[36px] group-hover:text-primary dark:group-hover:text-dark-primary" }) : (
+      /* 커스텀 아이콘이 없고, app.manifest.icon.class 속성이 있는 경우 */
+      ((_a = app == null ? void 0 : app.manifest) == null ? void 0 : _a.icon) && app.manifest.icon.class ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: `c8y-icon ${app.manifest.icon.class} text-[36px] group-hover:text-primary`
+        }
+      ) : (
+        /* 위의 조건을 만족하지 않으면 getInitials 실행 */
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-9 w-9 items-center justify-center rounded-lg border-[3px] border-grayscale-100 text-lg font-bold text-grayscale-100 group-hover:border-primary group-hover:text-primary dark:border-dark-grayscale-100 dark:text-dark-grayscale-100  dark:group-hover:border-dark-primary  dark:group-hover:text-dark-primary", children: getInitials(app.name) })
+      )
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "flex h-full max-w-full items-center whitespace-normal break-words text-center text-xs font-medium text-grayscale-100 group-hover:text-primary dark:text-dark-grayscale-100 dark:group-hover:text-dark-primary", children: t2(humanizeAppName(app.name)) })
+  ] }) }) }) }) });
+};
+const AppSwitcher = ({ applications }) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(NavigationMenuItem, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      NavigationMenuTrigger,
+      {
+        className: "group h-13 w-full px-0 text-lg font-bold focus:!bg-inherit disabled:!pointer-events-auto disabled:cursor-not-allowed disabled:text-grayscale-500  dark:bg-dark-bg-444",
+        onPointerMove: (event) => event.preventDefault(),
+        onPointerLeave: (event) => event.preventDefault(),
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(SvgAppSwitch, { className: "h-6 w-6 group-data-[state=open]:text-primary" }) })
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      NavigationMenuContent,
+      {
+        onPointerEnter: (event) => event.preventDefault(),
+        onPointerLeave: (event) => event.preventDefault(),
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "h-[calc(100vh-8rem)] w-[100vw] sm:h-125 sm:w-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "mx-auto grid w-90 grid-cols-3 justify-center gap-1.5 py-5 text-center sm:p-3", children: applications.map((app) => /* @__PURE__ */ jsxRuntimeExports.jsx(AppSwitcherItem, { app }, app == null ? void 0 : app.name)) }) })
+      }
+    )
+  ] }) });
+};
+const UserMenuItem = forwardRef(
   ({ icon: IconComponent, title: title2, children, ...props }, ref) => {
     return /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(NavigationMenuLink, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { ref, ...props, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-20 w-full transform items-center justify-center gap-x-2.5 border-y border-grayscale-600 px-5 text-base font-bold text-grayscale-400 hover:text-primary dark:border-dark-bg-333 dark:hover:text-dark-primary md:h-[65px] md:w-full md:px-12.5", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-20 w-full transform items-center justify-center gap-x-2.5 border-y border-grayscale-600 px-5 text-base font-bold text-grayscale-400 hover:text-primary dark:border-dark-bg-333 dark:hover:text-dark-primary sm:h-[65px] sm:w-full sm:px-12.5", children: [
         IconComponent && /* @__PURE__ */ jsxRuntimeExports.jsx(IconComponent, { className: "h-5 w-5" }),
         title2
       ] }),
@@ -53338,13 +53265,79 @@ const ListItem = forwardRef(
     ] }) }) });
   }
 );
-ListItem.displayName = "ListItem";
+UserMenuItem.displayName = "UserMenuItem";
+const UserMenu = () => {
+  const { i18n, t: t2 } = useTranslation();
+  const { toggleTheme } = useDark();
+  const { currentUser, tenant: tenant2, logout: logout2 } = useAuth();
+  const toggleLanguage = () => {
+    const newLang = i18n.language === "en" ? "ko" : "en";
+    i18n.changeLanguage(newLang);
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(NavigationMenuItem, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      NavigationMenuTrigger,
+      {
+        className: "group h-13 !bg-inherit bg-white px-0 text-lg focus:!bg-inherit data-[state=open]:text-primary  dark:bg-dark-bg-444 dark:text-dark-grayscale-300 dark:data-[state=open]:text-dark-primary",
+        onPointerMove: (event) => event.preventDefault(),
+        onPointerLeave: (event) => event.preventDefault(),
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SvgProfile, { className: "h-6 w-6 group-data-[state=open]:text-primary" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "my-auto hidden text-grayscale-300 group-data-[state=open]:text-primary dark:text-dark-grayscale-200 sm:flex", children: currentUser.userName })
+        ] })
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      NavigationMenuContent,
+      {
+        onPointerEnter: (event) => event.preventDefault(),
+        onPointerLeave: (event) => event.preventDefault(),
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: "h-[calc(100vh-8rem)] w-[100vw] sm:h-fit sm:w-full", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            UserMenuItem,
+            {
+              icon: SvgMoonNight,
+              className: "cursor-pointer",
+              onClick: toggleTheme,
+              title: t2("dark mode")
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            UserMenuItem,
+            {
+              icon: SvgTranslate,
+              className: "cursor-pointer",
+              onClick: toggleLanguage,
+              title: i18n.language === "en" ? t2("korean") : t2("english")
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            UserMenuItem,
+            {
+              icon: SvgLogOut,
+              className: "cursor-pointer",
+              onClick: logout2,
+              title: t2("logout")
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(UserMenuItem, { title: `${t2("Tenant")} ID: ${tenant2}` })
+        ] })
+      }
+    )
+  ] }) });
+};
 const Sidebar = ({ children }) => {
-  const sidebarIsOpen = useSidebarStore((state) => state.sidebarIsOpen);
+  const { sidebarIsOpen, responsiveSidebar } = useSidebarStore(
+    (state) => state
+  );
+  useEffect(() => {
+    window.addEventListener("resize", responsiveSidebar, { passive: true });
+    return () => window.removeEventListener("resize", responsiveSidebar);
+  }, []);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     "aside",
     {
-      className: `z-0 mb-5 mt-5 flex w-full flex-col rounded-2xl border border-solid border-grayscale-700 bg-grayscale-1000 text-lg font-medium shadow-lg duration-300 dark:border-grayscale-300 dark:border-opacity-10 dark:bg-dark-bg-444 md:mb-10 ${sidebarIsOpen ? "mx-5 min-w-[calc(100%-40px)] max-w-[calc(100%-40px)]  mobile:min-w-[280px] mobile:max-w-[280px]" : "min-w-0 max-w-0 border-0 duration-100"}`,
+      className: `z-0 mb-5 mt-5 flex w-full flex-col rounded-2xl border border-solid border-grayscale-700 bg-grayscale-1000 text-lg font-medium shadow-lg duration-300 dark:border-grayscale-300 dark:border-opacity-10 dark:bg-dark-bg-444 ${sidebarIsOpen ? "ml-5 min-w-[calc(100%-40px)] max-w-[calc(100%-40px)]  xs:min-w-[280px] xs:max-w-[280px]" : "min-w-0 max-w-0 border-0 duration-100"}`,
       children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "no-scrollbar flex flex-col overflow-y-auto duration-300 ease-linear", children: /* @__PURE__ */ jsxRuntimeExports.jsx("nav", { className: "p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-1.5", children }) }) }) })
     }
   );
@@ -53396,7 +53389,7 @@ const SidebarAccordionItem = ({
               "div",
               {
                 title: label2,
-                className: "flex max-w-[calc(100%-64px)] flex-1 items-center gap-x-3 p-3",
+                className: "flex max-w-[calc(100%-4rem)] flex-1 items-center gap-x-3 p-3",
                 onClick: handleTriggerClick,
                 children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { className: "h-6 w-6 shrink-0" }),
@@ -53546,48 +53539,136 @@ const GroupAccordion = ({ managedObject = null, onlyGroup = false, depth }) => {
   ) });
 };
 const Layout = ({ headerItems, sidebarItems, pageTitle }) => {
-  const { sidebarIsOpen, responsiveSidebar } = useSidebarStore(
-    (state) => state
-  );
   const isFullScreen = useDashboardStore((state) => state.isFullScreen);
-  useEffect(() => {
-    const handleResize = (e) => {
-      responsiveSidebar(e.target.innerWidth > 768);
-    };
-    window.addEventListener("resize", handleResize, { passive: true });
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-screen bg-grayscale-900 dark:bg-dark-grayscale-900", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(Header, { pageTitle: pageTitle(), headerItems }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative top-16 flex h-full max-h-[calc(100vh-4rem)] flex-1 overflow-hidden", children: [
+      sidebarItems && /* @__PURE__ */ jsxRuntimeExports.jsx(Sidebar, { children: sidebarItems }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "fullscreen mt-5 flex h-full w-full flex-col bg-grayscale-900 duration-300 dark:bg-dark-grayscale-900 tablet:pb-12", children: [
+        !isFullScreen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ml-2 hidden w-full px-5 py-3 text-3xl font-bold  text-grayscale-100 dark:text-dark-grayscale-200 tablet:block", children: pageTitle() }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: `relative flex h-full flex-col px-5 pb-10 tablet:pb-13 
+             ${isFullScreen ? "flex-1" : ""}
+            `,
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {})
+          }
+        )
+      ] })
+    ] })
+  ] });
+};
+const ConetextDashboardActionItems = () => {
+  var _a, _b;
+  const { dashboardId } = useRoutingContext();
+  const { pathname } = useLocation();
+  const { t: t2 } = useTranslation();
+  const { setDeleteModalIsOpen } = useDashboardStore((state) => ({
+    setDeleteModalIsOpen: state.setDeleteModalIsOpen
+  }));
+  const { getInventory } = useApi();
+  const { data: dashboard2 } = useQuery({
+    queryKey: ["dashboard", dashboardId],
+    enabled: !!dashboardId,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const res = await getInventory(dashboardId);
+      return res.data;
+    }
+  });
+  const isFrozen = (_a = dashboard2 == null ? void 0 : dashboard2.u5s_Dashboard) == null ? void 0 : _a.isFrozen;
+  const { handleFullScreen, handleDashboard, mutations, access } = useDashboardActions(dashboard2);
+  const handleSelect = (type2) => {
+    {
+      setDeleteModalIsOpen((pre) => !pre);
+    }
+  };
+  const deleteDashboard = () => {
+    if (!access) return;
+    if (pathname === "/") return;
+    handleSelect();
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ActionItem,
       {
-        className: "relative top-16 flex h-full max-h-[calc(100vh-64px)] flex-1 overflow-hidden",
-        children: [
-          sidebarItems && /* @__PURE__ */ jsxRuntimeExports.jsx(Sidebar, { children: sidebarItems }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "mb-5 mt-5 flex w-full flex-col duration-300 md:mb-10 md:mt-10", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                className: `hidden w-full pb-8 text-3xl font-bold text-grayscale-100  dark:text-dark-grayscale-200 tablet:block  ${sidebarIsOpen ? "px-7 pr-12" : "px-4 lg:px-12"}`,
-                children: pageTitle()
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              ScrollArea,
-              {
-                className: `fullscreen ${isFullScreen ? "pb-5 md:pb-10" : "flex-1"}  bg-grayscale-900 dark:bg-dark-grayscale-900`,
-                children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "div",
-                  {
-                    className: `${sidebarIsOpen ? "px-7 pr-12" : "px-4 lg:px-12"} h-full`,
-                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {})
-                  }
-                )
-              }
-            )
-          ] })
-        ]
+        onClick: () => handleDashboard("add"),
+        icon: SvgWidgetPlus,
+        label: t2("Add widget"),
+        isDisabled: !access || isFrozen
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ActionItem,
+      {
+        onClick: () => handleDashboard("edit"),
+        icon: SvgEdit,
+        label: t2("Edit"),
+        isDisabled: !access || isFrozen
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ActionItem,
+      {
+        onClick: handleFullScreen,
+        icon: SvgFullframe,
+        label: t2("Full screen")
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ActionItem,
+      {
+        onClick: () => {
+          var _a2;
+          if (!access) return;
+          mutations.handleLock(!((_a2 = dashboard2 == null ? void 0 : dashboard2["u5s_Dashboard"]) == null ? void 0 : _a2["isFrozen"]));
+        },
+        label: t2("Lock dashboard"),
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Switch,
+          {
+            checked: !!((_b = dashboard2 == null ? void 0 : dashboard2["u5s_Dashboard"]) == null ? void 0 : _b["isFrozen"]),
+            className: `${access ? "cursor-pointer" : "cursor-not-allowed"}`
+          }
+        )
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "my-auto hidden h-3 w-px shrink-0 bg-grayscale-600 dark:bg-dark-grayscale-600 sm:block" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(DropdownMenu, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(DropdownMenuTrigger, { className: "hidden sm:block", disabled: isFrozen, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: cn(
+            "flex items-center gap-x-1 stroke-grayscale-400 text-base",
+            isFrozen ? "cursor-not-allowed" : ""
+          ),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(SvgMore, {}),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: t2("More") })
+          ]
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(DropdownMenuContent, { className: "dark:bg-dark-bg-333", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        DropdownMenuItem,
+        {
+          onSelect: deleteDashboard,
+          className: `dark:stroke-dark-grayscale-300 dark:text-dark-grayscale-300 ${access && pathname !== "/" ? "cursor-pointer" : "cursor-not-allowed"} `,
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(SvgTrash, { className: "h-5 w-5" }),
+            " ",
+            t2("Delete dashboard")
+          ]
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ActionItem,
+      {
+        className: "sm:hidden",
+        onClick: deleteDashboard,
+        icon: SvgTrash,
+        label: t2("Delete dashboard")
       }
     )
   ] });
@@ -53604,16 +53685,16 @@ const ActionBar = ({ children }) => {
       setIsDevice(type2);
     }
   }, []);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: !isDevice && /* @__PURE__ */ jsxRuntimeExports.jsx(
     "div",
     {
-      className: `ease fixed left-0 w-full transition-[top] duration-150 md:static ${headerIsOpen ? "top-32" : "top-16"} ${isDevice ? "z-10" : "z-[2]"} `,
-      children: !isDevice && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      className: `ease fixed left-0 w-full transition-[top] duration-150 sm:static ${headerIsOpen ? "top-32" : "top-16"} z-[40]`,
+      children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "ul",
         {
-          className: `flex w-full ${!headerIsOpen ? "h-0 w-0 divide-y-[0px] py-0 shadow-none" : "h-[calc(100vh-128px)] divide-y-[1px] py-1 shadow-lg "} flex-col overflow-hidden whitespace-nowrap bg-white text-base text-grayscale-400 shadow-lg dark:bg-dark-bg-444 md:relative md:top-0 md:z-0 md:h-11.5 md:flex-row md:justify-end md:gap-x-4 md:divide-y-0 md:bg-transparent md:shadow-none  md:dark:bg-transparent`,
+          className: `flex w-full ${!headerIsOpen ? "h-0 w-0 divide-y-[0px] py-0 shadow-none" : "h-[calc(100vh-8rem)] divide-y-[1px] py-1 shadow-lg "} flex-col overflow-hidden whitespace-nowrap bg-white text-base text-grayscale-400 shadow-lg dark:bg-dark-bg-444 sm:relative sm:top-0 sm:z-0 sm:h-11.5 sm:flex-row sm:justify-end sm:gap-x-4 sm:divide-y-0 sm:bg-transparent sm:shadow-none  sm:dark:bg-transparent`,
           children: [
-            isDashboard && /* @__PURE__ */ jsxRuntimeExports.jsx(DashboardActionItems, {}),
+            isDashboard && /* @__PURE__ */ jsxRuntimeExports.jsx(ConetextDashboardActionItems, {}),
             children
           ]
         }
@@ -53621,10 +53702,11 @@ const ActionBar = ({ children }) => {
     }
   ) });
 };
-const Tabs = ({ children }) => {
+const Tabs = ({ context, children }) => {
   const sourceRef = useRef();
   const { goTo } = useTransitionNavigate();
   const { dashboardId, sourceId, category, subCategory } = useRoutingContext();
+  const isDevice = useUserAgentStore((state) => state.isDevice);
   const { handleDashboard, access } = useDashboardActions();
   const { dashboardModalIsOpen, setDashboardModalIsOpen } = useDashboardStore(
     (state) => state
@@ -53672,28 +53754,38 @@ const Tabs = ({ children }) => {
     }
   }, [isQueryDeleteInvalidated, isQueryAddInvalidated]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex h-11.5 w-full items-center gap-x-5 border-b border-grayscale-600 lg:border-none 2xl:gap-x-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-      Carousel,
-      {
-        opts: {
-          align: "center",
-          containScroll: "trimSnaps"
-        },
-        className: "w-full",
-        children: /* @__PURE__ */ jsxRuntimeExports.jsxs(CarouselContent, { className: "flex max-w-full whitespace-nowrap lg:max-w-[400px] 2xl:max-w-[600px] 3xl:max-w-[980px]", children: [
-          children,
-          /* @__PURE__ */ jsxRuntimeExports.jsx(CarouselItem, { className: "lg:basis-1/8 basis-1/9", children: /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: "relative flex cursor-pointer flex-col items-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "cursor-pointer flex-col items-center py-2 text-lg font-medium text-grayscale-300 dark:text-dark-grayscale-300 lg:flex-row", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "button",
-            {
-              type: "button",
-              disabled: !access,
-              onClick: () => handleDashboard("dashboard"),
-              children: /* @__PURE__ */ jsxRuntimeExports.jsx(SvgWidgetPlus, { className: "h-7 w-5 hover:text-primary dark:hover:text-primary-dark" })
-            }
-          ) }) }) })
-        ] })
-      }
-    ) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: "items-cente flex h-10 w-full", children: [
+      context && access && !isDevice && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: "relative h-10 cursor-pointer pb-2 pt-3  text-grayscale-300 dark:text-dark-grayscale-300", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            disabled: !access,
+            onClick: () => handleDashboard("dashboard"),
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(SvgWidgetPlus, { className: "h-5 w-5 hover:text-primary dark:hover:text-primary-dark" })
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Separator,
+          {
+            className: "mb-2 ml-1.5 mt-3 h-5",
+            orientation: "vertical"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Carousel,
+        {
+          opts: {
+            align: "center",
+            containScroll: "trimSnaps",
+            skipSnaps: true
+          },
+          className: "w-full",
+          children: /* @__PURE__ */ jsxRuntimeExports.jsx(CarouselContent, { className: "flex max-w-full whitespace-nowrap lg:max-w-[400px] tablet:max-w-[600px] 3xl:max-w-[980px]", children })
+        }
+      )
+    ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { fallback: /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, {}), children: dashboardModalIsOpen && /* @__PURE__ */ jsxRuntimeExports.jsx(
       DashboardModal,
       {
@@ -53711,16 +53803,16 @@ const Tabs = ({ children }) => {
     ) })
   ] });
 };
-const MenuBar = ({ tabItems = null, actionItems = null }) => {
+const MenuBar = ({ context = true, tabItems = null, actionItems = null }) => {
   const isFullScreen = useDashboardStore((state) => state.isFullScreen);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sticky top-0 z-[2] flex flex-wrap bg-grayscale-900 pb-8 dark:bg-dark-grayscale-900 lg:flex-nowrap lg:justify-between", children: [
-    tabItems && !isFullScreen && /* @__PURE__ */ jsxRuntimeExports.jsx(Tabs, { children: tabItems }),
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sticky top-0 z-[48] flex flex-wrap bg-grayscale-900 pb-4 pl-2 dark:bg-dark-grayscale-900 xl:flex-nowrap xl:justify-between", children: [
+    tabItems && !isFullScreen && /* @__PURE__ */ jsxRuntimeExports.jsx(Tabs, { context, children: tabItems }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ActionBar, { children: actionItems })
   ] });
 };
 const TabItem = ({ to, label: label2, icon: icon2 = "default", className, ...props }) => {
   const IconComponent = icon2;
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(CarouselItem, { className: "lg:basis-1/8 basis-1/9", children: /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: "relative flex cursor-pointer flex-col items-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(CarouselItem, { className: "lg:basis-1/8 basis-1/9 h-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: "relative flex cursor-pointer flex-col items-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     NavLink,
     {
       to,
@@ -53739,30 +53831,28 @@ const TabItem = ({ to, label: label2, icon: icon2 = "default", className, ...pro
     }
   ) }) });
 };
-const ActionItem = function({
+const ActionItem = ({
   onClick,
   icon: Icon2,
   label: label2,
   isDisabled = false,
   className,
   children
-}) {
-  /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "li",
-    {
-      className: cn(
-        `${isDisabled ? "cursor-not-allowed" : "cursor-pointer"} flex items-center gap-x-1 p-4 md:p-0`,
-        className
-      ),
-      onClick: !isDisabled ? onClick : null,
-      children: [
-        Icon2 && /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { className: "h-4 w-4" }),
-        children,
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: label2 })
-      ]
-    }
-  );
-};
+}) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+  "li",
+  {
+    className: cn(
+      `${isDisabled ? "cursor-not-allowed" : "cursor-pointer"} flex items-center gap-x-1 p-4 sm:p-0`,
+      className
+    ),
+    onClick: isDisabled ? null : onClick,
+    children: [
+      Icon2 && /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { className: "h-4 w-4" }),
+      children,
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: label2 })
+    ]
+  }
+);
 const HeaderStyleEnum = z.enum([
   "panel-title-regular",
   "panel-title-border",
@@ -54194,9 +54284,9 @@ function hasArrayChanged() {
   let b = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : [];
   return a.length !== b.length || a.some((item, index2) => !Object.is(item, b[index2]));
 }
-const FallbackUi = ({ children, customRetryUi }) => {
+const FallbackUi = ({ children, customRetryUi, fullScreen }) => {
   const { t: t2 } = useTranslation();
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(QueryErrorResetBoundary, { children: ({ reset }) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+  const FallbackComponent = /* @__PURE__ */ jsxRuntimeExports.jsx(QueryErrorResetBoundary, { children: ({ reset }) => /* @__PURE__ */ jsxRuntimeExports.jsx(
     ErrorBoundary,
     {
       onReset: reset,
@@ -54217,6 +54307,7 @@ const FallbackUi = ({ children, customRetryUi }) => {
       children
     }
   ) });
+  return fullScreen ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "relative h-screen w-screen", children: FallbackComponent }) : FallbackComponent;
 };
 const FormInputField$1 = ({
   control,
@@ -57883,7 +57974,7 @@ const ComputedPropertyConfig = ({
       DialogContent,
       {
         closeButton: false,
-        className: "w-full gap-0 rounded-2xl p-6 md:p-7",
+        className: "w-full gap-0 rounded-2xl p-6 sm:p-7",
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { className: "p-0 text-xl font-bold", children: t2("Computed property configuration") }) }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "my-6 text-center text-xl", children: [
@@ -59165,7 +59256,7 @@ const AppProviders = ({ router, login = true }) => {
     addLanguagePack("en", "translation", enTranslation);
   }, []);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(DarkProvider, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(QueryClientProvider, { client: new QueryClient(), children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { fallback: /* @__PURE__ */ jsxRuntimeExports.jsx(Loading, { fullScreen: true }), children: login ? /* @__PURE__ */ jsxRuntimeExports.jsx(AuthProvider, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(ProtectedRoute, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(RouterProvider, { router }) }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx(RouterProvider, { router }) }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { fullScreen: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { fallback: /* @__PURE__ */ jsxRuntimeExports.jsx(Loading, { fullScreen: true }), children: login ? /* @__PURE__ */ jsxRuntimeExports.jsx(AuthProvider, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(ProtectedRoute, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(RouterProvider, { router }) }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx(RouterProvider, { router }) }) }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(Toaster, {})
   ] }) });
 };
@@ -59196,6 +59287,8 @@ export {
   SvgAlarmWarning as AlarmWarningIcon,
   AppProviders,
   SvgAppSwitch as AppSwitchIcon,
+  AppSwitcher,
+  AppSwitcherItem,
   SvgArrowDown as ArrowDownIcon,
   SvgArrowLeft as ArrowLeftIcon,
   SvgArrowRight as ArrowRightIcon,
@@ -59222,8 +59315,6 @@ export {
   ContextDashboard,
   SvgCritical as CriticalIcon,
   DarkProvider,
-  Dashboard,
-  DashboardActionItems,
   SvgDashboard as DashboardIcon,
   SvgDashboardPlus as DashboardPlusIcon,
   SvgData as DataIcon,
@@ -59285,9 +59376,9 @@ export {
   FormSelectField,
   FormInputField as FormTextareaField,
   SvgFullframe as FullFrameIcon,
-  Grid$1 as Grid,
   GroupAccordion,
   Header,
+  HeaderDivider,
   SvgHome as HomeIcon,
   SvgImage as ImageIcon,
   SvgInfo as InfoIcon,
@@ -59354,6 +59445,7 @@ export {
   Sidebar,
   SidebarAccordionItem,
   SidebarItem,
+  StaticDashboard,
   Status,
   SvgStyle as StyleIcon,
   SvgSuccess as SuccessIcon,
@@ -59388,6 +59480,8 @@ export {
   SvgTranslate as TranslateIcon,
   SvgTrash as TrashIcon,
   UltivisDeviceProvider,
+  UserMenu,
+  UserMenuItem,
   SvgVideo as VideoIcon,
   SvgWarning as WarningIcon,
   WidgetDatePicker,
