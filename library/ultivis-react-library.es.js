@@ -51714,7 +51714,7 @@ const ContextDashboard = () => {
         }) })
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { scrollBar: false, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-grayscale-900 dark:bg-dark-grayscale-900", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { children: renderContent() }) }) }) })
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "h-full pb-15", scrollBar: false, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-grayscale-900 dark:bg-dark-grayscale-900", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { children: renderContent() }) }) }) })
   ] });
 };
 var uaParser$1 = { exports: {} };
@@ -53544,12 +53544,13 @@ const Layout = ({ headerItems, sidebarItems, pageTitle }) => {
     /* @__PURE__ */ jsxRuntimeExports.jsx(Header, { pageTitle: pageTitle(), headerItems }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative top-16 flex h-full max-h-[calc(100vh-4rem)] flex-1 overflow-hidden", children: [
       sidebarItems && /* @__PURE__ */ jsxRuntimeExports.jsx(Sidebar, { children: sidebarItems }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "fullscreen mt-5 flex h-full w-full flex-col bg-grayscale-900 duration-300 dark:bg-dark-grayscale-900 tablet:pb-12", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "fullscreen mt-5 flex h-full w-full flex-col bg-grayscale-900 duration-300 dark:bg-dark-grayscale-900 tablet:pb-10", children: [
         !isFullScreen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ml-2 hidden w-full px-5 py-3 text-3xl font-bold  text-grayscale-100 dark:text-dark-grayscale-200 tablet:block", children: pageTitle() }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "div",
           {
-            className: `relative flex h-full flex-col px-5 pb-10 tablet:pb-13 
+            style: { height: "inherit" },
+            className: `relative flex flex-col px-5
              ${isFullScreen ? "flex-1" : ""}
             `,
             children: /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {})
