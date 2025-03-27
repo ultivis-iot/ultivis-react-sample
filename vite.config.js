@@ -17,8 +17,10 @@ export default defineConfig(({ mode }) => {
           __dirname,
           "./library/ultivis-react-library.es"
         ),
-        "@ultivis/style": resolve(__dirname, "./library/index.css"),
-
+        "@ultivis/style": resolve(
+          __dirname,
+          "./library/ultivis-react-library.css"
+        ),
         "@components": resolve(__dirname, "./src/components"),
         "@data": resolve(__dirname, "./src/data"),
         "@locales": resolve(__dirname, "./src/locales"),
