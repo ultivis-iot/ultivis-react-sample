@@ -10,7 +10,8 @@
       "@store": ["./src/store/index.js"],
       "@styles": ["./src/styles/index.js"],
       "@utils": ["./src/utils/index.js"],
-      "@ultivis/library": ["./library/ultivis-react-library.es.js"]
+      "@ultivis/library": ["./library/ultivis-react-library.es.js"],
+      "@ultivis/style": ["./library/index.css"]
     }
   },
   "include": ["src"]

@@ -1,12 +1,13 @@
 import * as React from "react";
-import React__default, { useMemo, createContext, useState, useRef, useEffect, useContext, startTransition, forwardRef, useLayoutEffect, useCallback, useId as useId$2, memo as memo$1, Component, createElement, Suspense } from "react";
+import React__default, { useMemo, createContext, useState, useRef, useEffect, useContext, useCallback, startTransition, forwardRef, useLayoutEffect, useId as useId$2, memo as memo$2, Component, createElement, Suspense, Fragment } from "react";
 import { useQueryClient, useMutation, useSuspenseQuery, useQuery, useSuspenseQueries, QueryErrorResetBoundary, QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { useParams, useLocation, useNavigate, NavLink, useMatch, Outlet, RouterProvider } from "react-router-dom";
 import { useFormContext, useFieldArray, useWatch, FormProvider, Controller, useForm, get as get$2, set as set$1, appendErrors } from "react-hook-form";
 import { useTranslation as useTranslation$1, initReactI18next } from "react-i18next";
+import { z } from "zod";
 import { create } from "zustand";
 import * as ReactDOM from "react-dom";
-import ReactDOM__default from "react-dom";
+import ReactDOM__default, { flushSync } from "react-dom";
 function _mergeNamespaces(n2, m) {
   for (var i2 = 0; i2 < m.length; i2++) {
     const e = m[i2];
@@ -1140,7 +1141,7 @@ function isSameDay(dateLeft, dateRight) {
 function isDate(value2) {
   return value2 instanceof Date || typeof value2 === "object" && Object.prototype.toString.call(value2) === "[object Date]";
 }
-function isValid$1(date) {
+function isValid(date) {
   if (!isDate(date) && typeof date !== "number") {
     return false;
   }
@@ -2531,7 +2532,7 @@ function format(date, formatStr, options) {
   const firstWeekContainsDate = (options == null ? void 0 : options.firstWeekContainsDate) ?? ((_b = (_a = options == null ? void 0 : options.locale) == null ? void 0 : _a.options) == null ? void 0 : _b.firstWeekContainsDate) ?? defaultOptions2.firstWeekContainsDate ?? ((_d = (_c = defaultOptions2.locale) == null ? void 0 : _c.options) == null ? void 0 : _d.firstWeekContainsDate) ?? 1;
   const weekStartsOn = (options == null ? void 0 : options.weekStartsOn) ?? ((_f = (_e = options == null ? void 0 : options.locale) == null ? void 0 : _e.options) == null ? void 0 : _f.weekStartsOn) ?? defaultOptions2.weekStartsOn ?? ((_h = (_g = defaultOptions2.locale) == null ? void 0 : _g.options) == null ? void 0 : _h.weekStartsOn) ?? 0;
   const originalDate = toDate(date);
-  if (!isValid$1(originalDate)) {
+  if (!isValid(originalDate)) {
     throw new RangeError("Invalid time value");
   }
   let parts = formatStr.match(longFormattingTokensRegExp).map((substring) => {
@@ -2716,8 +2717,8 @@ const patterns = {
   timeZoneDelimiter: /[Z ]/i,
   timezone: /([Z+-].*)$/
 };
-const dateRegex$1 = /^-?(?:(\d{3})|(\d{2})(?:-?(\d{2}))?|W(\d{2})(?:-?(\d{1}))?|)$/;
-const timeRegex$1 = /^(\d{2}(?:[.,]\d*)?)(?::?(\d{2}(?:[.,]\d*)?))?(?::?(\d{2}(?:[.,]\d*)?))?$/;
+const dateRegex = /^-?(?:(\d{3})|(\d{2})(?:-?(\d{2}))?|W(\d{2})(?:-?(\d{1}))?|)$/;
+const timeRegex = /^(\d{2}(?:[.,]\d*)?)(?::?(\d{2}(?:[.,]\d*)?))?(?::?(\d{2}(?:[.,]\d*)?))?$/;
 const timezoneRegex = /^([+-])(\d{2})(?::?(\d{2}))?$/;
 function splitDateString(dateString) {
   const dateStrings = {};
@@ -2765,7 +2766,7 @@ function parseYear(dateString, additionalDigits) {
 }
 function parseDate(dateString, year) {
   if (year === null) return /* @__PURE__ */ new Date(NaN);
-  const captures = dateString.match(dateRegex$1);
+  const captures = dateString.match(dateRegex);
   if (!captures) return /* @__PURE__ */ new Date(NaN);
   const isWeekDate = !!captures[4];
   const dayOfYear = parseDateUnit(captures[1]);
@@ -2791,7 +2792,7 @@ function parseDateUnit(value2) {
   return value2 ? parseInt(value2) : 1;
 }
 function parseTime(timeString) {
-  const captures = timeString.match(timeRegex$1);
+  const captures = timeString.match(timeRegex);
   if (!captures) return NaN;
   const hours2 = parseTimeUnit(captures[1]);
   const minutes2 = parseTimeUnit(captures[2]);
@@ -3068,6 +3069,70 @@ const useApi = () => {
         };
         const resp = await client.inventory.childAssetsList(id2, params).then((res) => res.data);
         return resp;
+      },
+      /**
+       * Fetch child assets of an inventory item.
+       * @param {string} id - Inventory item ID.
+       * @param {Object} [filter={}] - Additional filters.
+       * @returns {Promise<Array<Object>>} List of child assets.
+       */
+      getChildAssetsListPaging: async (id2, filter2 = {}) => {
+        const params = {
+          pageSize: 2e3,
+          ...filter2
+        };
+        const resp = await client.inventory.childAssetsList(id2, params);
+        return resp;
+      },
+      /**
+       * Creates a new child asset for a parent asset in the inventory.
+       * This function adds a single child asset to a specified parent asset.
+       *
+       * @param {Object} body - The data object containing the child asset details.
+       * @param {string} parentId - The ID of the parent asset to which the child will be added.
+       * @returns {Promise<Object>} The response object from the server containing the result of the operation.
+       *
+       * @throws {Error} Throws an error if the request fails.
+       *
+       */
+      postChildAssets: async (body, parentId) => {
+        const resp = await client.inventory.childAssetsCreate(body, parentId);
+        return resp;
+      },
+      /**
+       * Adds multiple child assets to a parent asset in the inventory.
+       * This function adds an array of child assets to a specified parent asset in bulk.
+       *
+       * @param {Array<string>} childAssetIds - An array of IDs representing the child assets to be added.
+       * @param {string} parentAssetId - The ID of the parent asset to which the child assets will be added.
+       * @returns {Promise<Object>} The response object from the server containing the result of the operation.
+       *
+       * @throws {Error} Throws an error if the request fails.
+       *
+       */
+      postChildAssetToParent: async (childAssetIds, parentAssetId) => {
+        const response = await client.inventory.childAssetsBulkAdd(
+          childAssetIds,
+          parentAssetId
+        );
+        return response;
+      },
+      /**
+       * Removes one or more child assets from a parent asset in the inventory.
+       *
+       * @param {string | number} childAssetId -The ID of child asset ID to be removed from the parent asset.
+       * @param {string} parentAssetId - The ID of the parent asset from which the child assets will be removed.
+       * @returns {Promise<Object>} The response object from the server, containing the result of the removal operation.
+       *
+       * @throws {Error} Throws an error if the removal request fails.
+       *
+       */
+      removeChildAssetToParent: async (childAssetId, parentAssetId) => {
+        const response = await client.inventory.childAssetsRemove(
+          childAssetId,
+          parentAssetId
+        );
+        return response;
       },
       /**
        * Fetch child devices of an inventory item.
@@ -3385,6 +3450,19 @@ const useApi = () => {
        */
       getBinary: async (source2) => {
         const resp = await fetchClient.fetch(`inventory/binaries/${source2}`);
+        return resp;
+      },
+      /**
+       * Changes password for the current user.
+       * @param {string} newPassword - New password for current user
+       * @param {string} currentPassword - The password of the currently logged user
+       * @returns {Promise<Object>} Response from the password change operation
+       */
+      putPassword: async (newPassword, currentPassword) => {
+        const resp = await client.user.changeCurrentUserPassword(
+          newPassword,
+          currentPassword
+        );
         return resp;
       }
     };
@@ -5843,8 +5921,8 @@ function requireCometd() {
           if (window.console) {
             var logger = window.console[level];
             if (_isFunction(logger)) {
-              var now = /* @__PURE__ */ new Date();
-              [].splice.call(args, 0, 0, _zeroPad(now.getHours(), 2) + ":" + _zeroPad(now.getMinutes(), 2) + ":" + _zeroPad(now.getSeconds(), 2) + "." + _zeroPad(now.getMilliseconds(), 3));
+              var now2 = /* @__PURE__ */ new Date();
+              [].splice.call(args, 0, 0, _zeroPad(now2.getHours(), 2) + ":" + _zeroPad(now2.getMinutes(), 2) + ":" + _zeroPad(now2.getSeconds(), 2) + "." + _zeroPad(now2.getMilliseconds(), 3));
               logger.apply(window.console, args);
             }
           }
@@ -6383,16 +6461,16 @@ function requireCometd() {
                 this.increaseBackoffPeriod();
               }
             } else {
-              var now = (/* @__PURE__ */ new Date()).getTime();
+              var now2 = (/* @__PURE__ */ new Date()).getTime();
               if (_unconnectTime === 0) {
-                _unconnectTime = now;
+                _unconnectTime = now2;
               }
               if (failureInfo.action === "retry") {
                 failureInfo.delay = this.increaseBackoffPeriod();
                 var maxInterval = _advice.maxInterval;
                 if (maxInterval > 0) {
                   var expiration = _advice.timeout + _advice.interval + maxInterval;
-                  var unconnected = now - _unconnectTime;
+                  var unconnected = now2 - _unconnectTime;
                   if (unconnected + _backoff > expiration) {
                     failureInfo.action = "handshake";
                   }
@@ -13487,7 +13565,7 @@ const AuthProvider = ({ children }) => {
         });
       }
       setIsAuthenticated(false);
-      result = false;
+      result = loginResult == null ? void 0 : loginResult.data.name;
     }
     return { result, detail: loginResult };
   };
@@ -13532,7 +13610,7 @@ const AuthProvider = ({ children }) => {
     const { result } = await checkCredential(loginClient, true);
     if (result) {
       setClient(auth);
-      await postLoginProcess();
+      await postLoginProcess(result);
     }
     setLoading(false);
   };
@@ -13557,9 +13635,10 @@ const AuthProvider = ({ children }) => {
       auth = cookieAuth;
     }
     setClient(auth);
-    await postLoginProcess();
+    await postLoginProcess(result);
   };
-  const postLoginProcess = async () => {
+  const postLoginProcess = async (tenantId) => {
+    tenant2.current = tenantId;
     await getUserData();
     getAppByUser();
     setIsAuthenticated(true);
@@ -14153,11 +14232,11 @@ function assignValue(object, key, value2) {
     baseAssignValue(object, key, value2);
   }
 }
-var nativeMax$1 = Math.max;
+var nativeMax$2 = Math.max;
 function overRest(func, start2, transform) {
-  start2 = nativeMax$1(start2 === void 0 ? func.length - 1 : start2, 0);
+  start2 = nativeMax$2(start2 === void 0 ? func.length - 1 : start2, 0);
   return function() {
-    var args = arguments, index2 = -1, length = nativeMax$1(args.length - start2, 0), array = Array(length);
+    var args = arguments, index2 = -1, length = nativeMax$2(args.length - start2, 0), array = Array(length);
     while (++index2 < length) {
       array[index2] = args[start2 + index2];
     }
@@ -14454,10 +14533,10 @@ MapCache.prototype["delete"] = mapCacheDelete;
 MapCache.prototype.get = mapCacheGet;
 MapCache.prototype.has = mapCacheHas;
 MapCache.prototype.set = mapCacheSet;
-var FUNC_ERROR_TEXT = "Expected a function";
+var FUNC_ERROR_TEXT$1 = "Expected a function";
 function memoize(func, resolver) {
   if (typeof func != "function" || resolver != null && typeof resolver != "function") {
-    throw new TypeError(FUNC_ERROR_TEXT);
+    throw new TypeError(FUNC_ERROR_TEXT$1);
   }
   var memoized = function() {
     var args = arguments, key = resolver ? resolver.apply(this, args) : args[0], cache = memoized.cache;
@@ -15233,6 +15312,92 @@ function createBaseEach(eachFunc, fromRight) {
   };
 }
 var baseEach = createBaseEach(baseForOwn);
+var now = function() {
+  return root.Date.now();
+};
+var FUNC_ERROR_TEXT = "Expected a function";
+var nativeMax$1 = Math.max, nativeMin = Math.min;
+function debounce$1(func, wait, options) {
+  var lastArgs, lastThis, maxWait, result, timerId, lastCallTime, lastInvokeTime = 0, leading = false, maxing = false, trailing = true;
+  if (typeof func != "function") {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  wait = toNumber(wait) || 0;
+  if (isObject$2(options)) {
+    leading = !!options.leading;
+    maxing = "maxWait" in options;
+    maxWait = maxing ? nativeMax$1(toNumber(options.maxWait) || 0, wait) : maxWait;
+    trailing = "trailing" in options ? !!options.trailing : trailing;
+  }
+  function invokeFunc(time2) {
+    var args = lastArgs, thisArg = lastThis;
+    lastArgs = lastThis = void 0;
+    lastInvokeTime = time2;
+    result = func.apply(thisArg, args);
+    return result;
+  }
+  function leadingEdge(time2) {
+    lastInvokeTime = time2;
+    timerId = setTimeout(timerExpired, wait);
+    return leading ? invokeFunc(time2) : result;
+  }
+  function remainingWait(time2) {
+    var timeSinceLastCall = time2 - lastCallTime, timeSinceLastInvoke = time2 - lastInvokeTime, timeWaiting = wait - timeSinceLastCall;
+    return maxing ? nativeMin(timeWaiting, maxWait - timeSinceLastInvoke) : timeWaiting;
+  }
+  function shouldInvoke(time2) {
+    var timeSinceLastCall = time2 - lastCallTime, timeSinceLastInvoke = time2 - lastInvokeTime;
+    return lastCallTime === void 0 || timeSinceLastCall >= wait || timeSinceLastCall < 0 || maxing && timeSinceLastInvoke >= maxWait;
+  }
+  function timerExpired() {
+    var time2 = now();
+    if (shouldInvoke(time2)) {
+      return trailingEdge(time2);
+    }
+    timerId = setTimeout(timerExpired, remainingWait(time2));
+  }
+  function trailingEdge(time2) {
+    timerId = void 0;
+    if (trailing && lastArgs) {
+      return invokeFunc(time2);
+    }
+    lastArgs = lastThis = void 0;
+    return result;
+  }
+  function cancel2() {
+    if (timerId !== void 0) {
+      clearTimeout(timerId);
+    }
+    lastInvokeTime = 0;
+    lastArgs = lastCallTime = lastThis = timerId = void 0;
+  }
+  function flush() {
+    return timerId === void 0 ? result : trailingEdge(now());
+  }
+  function debounced() {
+    var time2 = now(), isInvoking = shouldInvoke(time2);
+    lastArgs = arguments;
+    lastThis = this;
+    lastCallTime = time2;
+    if (isInvoking) {
+      if (timerId === void 0) {
+        return leadingEdge(lastCallTime);
+      }
+      if (maxing) {
+        clearTimeout(timerId);
+        timerId = setTimeout(timerExpired, wait);
+        return invokeFunc(lastCallTime);
+      }
+    }
+    if (timerId === void 0) {
+      timerId = setTimeout(timerExpired, wait);
+    }
+    return result;
+  }
+  debounced.cancel = cancel2;
+  debounced.flush = flush;
+  return debounced;
+}
 function arrayIncludesWith(array, value2, comparator) {
   var index2 = -1, length = array == null ? 0 : array.length;
   while (++index2 < length) {
@@ -15561,21 +15726,24 @@ const useIntersectionObserver = ({
   threshold: threshold2 = 0.1
 }) => {
   const observerTarget = useRef(null);
-  const IntersectionObserverCallback = (entries) => {
-    if (entries[0].isIntersecting && hasNextPage && !isFetching) {
-      fetchNextPage();
-    }
-  };
+  const handleIntersect = useCallback(
+    (entries) => {
+      const [entry] = entries;
+      if (entry.isIntersecting && hasNextPage && !isFetching) {
+        fetchNextPage();
+      }
+    },
+    [hasNextPage, fetchNextPage, isFetching]
+  );
   useEffect(() => {
-    if (!observerTarget.current) return;
-    const observer = new IntersectionObserver(IntersectionObserverCallback, {
-      threshold: threshold2
-    });
-    observer.observe(observerTarget.current);
+    const node = observerTarget.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(handleIntersect, { threshold: threshold2 });
+    observer.observe(node);
     return () => {
-      if (observerTarget.current) observer.unobserve(observerTarget.current);
+      if (node) observer.unobserve(node);
     };
-  }, [fetchNextPage, threshold2, hasNextPage]);
+  }, [handleIntersect, isFetching]);
   return { observerTarget };
 };
 const useInventoryContext = (sourceId) => {
@@ -15630,11 +15798,16 @@ class u5sClass {
 const UltivisDeviceProvider = ({ children }) => {
   const [device2, setDevice] = useState(new u5sClass("u5s_IsDevice"));
   const [parent, setParent] = useState(new u5sClass("u5s_IsParent"));
+  const [isLoading, setIsLoading] = useState(false);
   const { getInventoryByFragmentType, realtimeSub, realtimeUnSub } = useApi();
   useEffect(() => {
     const subscribe = async () => {
-      await getAllData(device2, setDevice);
-      await getAllData(parent, setParent);
+      setIsLoading(false);
+      await Promise.all([
+        getAllData(device2, setDevice),
+        getAllData(parent, setParent)
+      ]);
+      setIsLoading(true);
       const subscription = realtimeSub(
         "/managedobjects/*",
         (res) => subscribeLogic(res, device2, setDevice, parent, setParent)
@@ -15650,9 +15823,12 @@ const UltivisDeviceProvider = ({ children }) => {
     const totalCount = await getInventoryByFragmentType(target2.type, 1).then(
       (res) => res.paging.totalPages
     );
-    const totalRequestList = Array.from({
-      length: Math.ceil(totalCount / pageSize)
-    });
+    const totalRequestList = Array.from(
+      {
+        length: Math.ceil(totalCount / pageSize)
+      },
+      (_, i2) => i2
+    );
     const totalRequest = await Promise.allSettled(
       totalRequestList.map(
         (_, i2) => getInventoryByFragmentType(target2.type, pageSize, i2 + 1).then(
@@ -15746,7 +15922,7 @@ const UltivisDeviceProvider = ({ children }) => {
         isUltivisParent,
         isParentAssignedGroup
       },
-      children
+      children: isLoading ? children : /* @__PURE__ */ jsxRuntimeExports.jsx(Loading, { fullScreen: true })
     }
   );
 };
@@ -21867,6 +22043,3830 @@ const useWidgetSize = ({ widgetRef }) => {
   }, [widgetRef]);
   return { width, height };
 };
+/**
+   * table-core
+   *
+   * Copyright (c) TanStack
+   *
+   * This source code is licensed under the MIT license found in the
+   * LICENSE.md file in the root directory of this source tree.
+   *
+   * @license MIT
+   */
+function functionalUpdate(updater, input) {
+  return typeof updater === "function" ? updater(input) : updater;
+}
+function makeStateUpdater(key, instance2) {
+  return (updater) => {
+    instance2.setState((old) => {
+      return {
+        ...old,
+        [key]: functionalUpdate(updater, old[key])
+      };
+    });
+  };
+}
+function isFunction(d) {
+  return d instanceof Function;
+}
+function isNumberArray(d) {
+  return Array.isArray(d) && d.every((val) => typeof val === "number");
+}
+function flattenBy(arr, getChildren) {
+  const flat = [];
+  const recurse = (subArr) => {
+    subArr.forEach((item) => {
+      flat.push(item);
+      const children = getChildren(item);
+      if (children != null && children.length) {
+        recurse(children);
+      }
+    });
+  };
+  recurse(arr);
+  return flat;
+}
+function memo$1(getDeps, fn, opts) {
+  let deps = [];
+  let result;
+  return (depArgs) => {
+    let depTime;
+    if (opts.key && opts.debug) depTime = Date.now();
+    const newDeps = getDeps(depArgs);
+    const depsChanged = newDeps.length !== deps.length || newDeps.some((dep, index2) => deps[index2] !== dep);
+    if (!depsChanged) {
+      return result;
+    }
+    deps = newDeps;
+    let resultTime;
+    if (opts.key && opts.debug) resultTime = Date.now();
+    result = fn(...newDeps);
+    opts == null || opts.onChange == null || opts.onChange(result);
+    if (opts.key && opts.debug) {
+      if (opts != null && opts.debug()) {
+        const depEndTime = Math.round((Date.now() - depTime) * 100) / 100;
+        const resultEndTime = Math.round((Date.now() - resultTime) * 100) / 100;
+        const resultFpsPercentage = resultEndTime / 16;
+        const pad = (str, num) => {
+          str = String(str);
+          while (str.length < num) {
+            str = " " + str;
+          }
+          return str;
+        };
+        console.info(`%c⏱ ${pad(resultEndTime, 5)} /${pad(depEndTime, 5)} ms`, `
+            font-size: .6rem;
+            font-weight: bold;
+            color: hsl(${Math.max(0, Math.min(120 - 120 * resultFpsPercentage, 120))}deg 100% 31%);`, opts == null ? void 0 : opts.key);
+      }
+    }
+    return result;
+  };
+}
+function getMemoOptions(tableOptions, debugLevel, key, onChange) {
+  return {
+    debug: () => {
+      var _tableOptions$debugAl;
+      return (_tableOptions$debugAl = tableOptions == null ? void 0 : tableOptions.debugAll) != null ? _tableOptions$debugAl : tableOptions[debugLevel];
+    },
+    key: process.env.NODE_ENV === "development" && key,
+    onChange
+  };
+}
+function createCell(table, row, column, columnId) {
+  const getRenderValue = () => {
+    var _cell$getValue;
+    return (_cell$getValue = cell.getValue()) != null ? _cell$getValue : table.options.renderFallbackValue;
+  };
+  const cell = {
+    id: `${row.id}_${column.id}`,
+    row,
+    column,
+    getValue: () => row.getValue(columnId),
+    renderValue: getRenderValue,
+    getContext: memo$1(() => [table, column, row, cell], (table2, column2, row2, cell2) => ({
+      table: table2,
+      column: column2,
+      row: row2,
+      cell: cell2,
+      getValue: cell2.getValue,
+      renderValue: cell2.renderValue
+    }), getMemoOptions(table.options, "debugCells", "cell.getContext"))
+  };
+  table._features.forEach((feature) => {
+    feature.createCell == null || feature.createCell(cell, column, row, table);
+  }, {});
+  return cell;
+}
+function createColumn(table, columnDef, depth, parent) {
+  var _ref, _resolvedColumnDef$id;
+  const defaultColumn = table._getDefaultColumnDef();
+  const resolvedColumnDef = {
+    ...defaultColumn,
+    ...columnDef
+  };
+  const accessorKey = resolvedColumnDef.accessorKey;
+  let id2 = (_ref = (_resolvedColumnDef$id = resolvedColumnDef.id) != null ? _resolvedColumnDef$id : accessorKey ? typeof String.prototype.replaceAll === "function" ? accessorKey.replaceAll(".", "_") : accessorKey.replace(/\./g, "_") : void 0) != null ? _ref : typeof resolvedColumnDef.header === "string" ? resolvedColumnDef.header : void 0;
+  let accessorFn;
+  if (resolvedColumnDef.accessorFn) {
+    accessorFn = resolvedColumnDef.accessorFn;
+  } else if (accessorKey) {
+    if (accessorKey.includes(".")) {
+      accessorFn = (originalRow) => {
+        let result = originalRow;
+        for (const key of accessorKey.split(".")) {
+          var _result;
+          result = (_result = result) == null ? void 0 : _result[key];
+          if (process.env.NODE_ENV !== "production" && result === void 0) {
+            console.warn(`"${key}" in deeply nested key "${accessorKey}" returned undefined.`);
+          }
+        }
+        return result;
+      };
+    } else {
+      accessorFn = (originalRow) => originalRow[resolvedColumnDef.accessorKey];
+    }
+  }
+  if (!id2) {
+    if (process.env.NODE_ENV !== "production") {
+      throw new Error(resolvedColumnDef.accessorFn ? `Columns require an id when using an accessorFn` : `Columns require an id when using a non-string header`);
+    }
+    throw new Error();
+  }
+  let column = {
+    id: `${String(id2)}`,
+    accessorFn,
+    parent,
+    depth,
+    columnDef: resolvedColumnDef,
+    columns: [],
+    getFlatColumns: memo$1(() => [true], () => {
+      var _column$columns;
+      return [column, ...(_column$columns = column.columns) == null ? void 0 : _column$columns.flatMap((d) => d.getFlatColumns())];
+    }, getMemoOptions(table.options, "debugColumns", "column.getFlatColumns")),
+    getLeafColumns: memo$1(() => [table._getOrderColumnsFn()], (orderColumns2) => {
+      var _column$columns2;
+      if ((_column$columns2 = column.columns) != null && _column$columns2.length) {
+        let leafColumns = column.columns.flatMap((column2) => column2.getLeafColumns());
+        return orderColumns2(leafColumns);
+      }
+      return [column];
+    }, getMemoOptions(table.options, "debugColumns", "column.getLeafColumns"))
+  };
+  for (const feature of table._features) {
+    feature.createColumn == null || feature.createColumn(column, table);
+  }
+  return column;
+}
+const debug = "debugHeaders";
+function createHeader(table, column, options) {
+  var _options$id;
+  const id2 = (_options$id = options.id) != null ? _options$id : column.id;
+  let header = {
+    id: id2,
+    column,
+    index: options.index,
+    isPlaceholder: !!options.isPlaceholder,
+    placeholderId: options.placeholderId,
+    depth: options.depth,
+    subHeaders: [],
+    colSpan: 0,
+    rowSpan: 0,
+    headerGroup: null,
+    getLeafHeaders: () => {
+      const leafHeaders = [];
+      const recurseHeader = (h) => {
+        if (h.subHeaders && h.subHeaders.length) {
+          h.subHeaders.map(recurseHeader);
+        }
+        leafHeaders.push(h);
+      };
+      recurseHeader(header);
+      return leafHeaders;
+    },
+    getContext: () => ({
+      table,
+      header,
+      column
+    })
+  };
+  table._features.forEach((feature) => {
+    feature.createHeader == null || feature.createHeader(header, table);
+  });
+  return header;
+}
+const Headers = {
+  createTable: (table) => {
+    table.getHeaderGroups = memo$1(() => [table.getAllColumns(), table.getVisibleLeafColumns(), table.getState().columnPinning.left, table.getState().columnPinning.right], (allColumns, leafColumns, left2, right2) => {
+      var _left$map$filter, _right$map$filter;
+      const leftColumns = (_left$map$filter = left2 == null ? void 0 : left2.map((columnId) => leafColumns.find((d) => d.id === columnId)).filter(Boolean)) != null ? _left$map$filter : [];
+      const rightColumns = (_right$map$filter = right2 == null ? void 0 : right2.map((columnId) => leafColumns.find((d) => d.id === columnId)).filter(Boolean)) != null ? _right$map$filter : [];
+      const centerColumns = leafColumns.filter((column) => !(left2 != null && left2.includes(column.id)) && !(right2 != null && right2.includes(column.id)));
+      const headerGroups = buildHeaderGroups(allColumns, [...leftColumns, ...centerColumns, ...rightColumns], table);
+      return headerGroups;
+    }, getMemoOptions(table.options, debug, "getHeaderGroups"));
+    table.getCenterHeaderGroups = memo$1(() => [table.getAllColumns(), table.getVisibleLeafColumns(), table.getState().columnPinning.left, table.getState().columnPinning.right], (allColumns, leafColumns, left2, right2) => {
+      leafColumns = leafColumns.filter((column) => !(left2 != null && left2.includes(column.id)) && !(right2 != null && right2.includes(column.id)));
+      return buildHeaderGroups(allColumns, leafColumns, table, "center");
+    }, getMemoOptions(table.options, debug, "getCenterHeaderGroups"));
+    table.getLeftHeaderGroups = memo$1(() => [table.getAllColumns(), table.getVisibleLeafColumns(), table.getState().columnPinning.left], (allColumns, leafColumns, left2) => {
+      var _left$map$filter2;
+      const orderedLeafColumns = (_left$map$filter2 = left2 == null ? void 0 : left2.map((columnId) => leafColumns.find((d) => d.id === columnId)).filter(Boolean)) != null ? _left$map$filter2 : [];
+      return buildHeaderGroups(allColumns, orderedLeafColumns, table, "left");
+    }, getMemoOptions(table.options, debug, "getLeftHeaderGroups"));
+    table.getRightHeaderGroups = memo$1(() => [table.getAllColumns(), table.getVisibleLeafColumns(), table.getState().columnPinning.right], (allColumns, leafColumns, right2) => {
+      var _right$map$filter2;
+      const orderedLeafColumns = (_right$map$filter2 = right2 == null ? void 0 : right2.map((columnId) => leafColumns.find((d) => d.id === columnId)).filter(Boolean)) != null ? _right$map$filter2 : [];
+      return buildHeaderGroups(allColumns, orderedLeafColumns, table, "right");
+    }, getMemoOptions(table.options, debug, "getRightHeaderGroups"));
+    table.getFooterGroups = memo$1(() => [table.getHeaderGroups()], (headerGroups) => {
+      return [...headerGroups].reverse();
+    }, getMemoOptions(table.options, debug, "getFooterGroups"));
+    table.getLeftFooterGroups = memo$1(() => [table.getLeftHeaderGroups()], (headerGroups) => {
+      return [...headerGroups].reverse();
+    }, getMemoOptions(table.options, debug, "getLeftFooterGroups"));
+    table.getCenterFooterGroups = memo$1(() => [table.getCenterHeaderGroups()], (headerGroups) => {
+      return [...headerGroups].reverse();
+    }, getMemoOptions(table.options, debug, "getCenterFooterGroups"));
+    table.getRightFooterGroups = memo$1(() => [table.getRightHeaderGroups()], (headerGroups) => {
+      return [...headerGroups].reverse();
+    }, getMemoOptions(table.options, debug, "getRightFooterGroups"));
+    table.getFlatHeaders = memo$1(() => [table.getHeaderGroups()], (headerGroups) => {
+      return headerGroups.map((headerGroup) => {
+        return headerGroup.headers;
+      }).flat();
+    }, getMemoOptions(table.options, debug, "getFlatHeaders"));
+    table.getLeftFlatHeaders = memo$1(() => [table.getLeftHeaderGroups()], (left2) => {
+      return left2.map((headerGroup) => {
+        return headerGroup.headers;
+      }).flat();
+    }, getMemoOptions(table.options, debug, "getLeftFlatHeaders"));
+    table.getCenterFlatHeaders = memo$1(() => [table.getCenterHeaderGroups()], (left2) => {
+      return left2.map((headerGroup) => {
+        return headerGroup.headers;
+      }).flat();
+    }, getMemoOptions(table.options, debug, "getCenterFlatHeaders"));
+    table.getRightFlatHeaders = memo$1(() => [table.getRightHeaderGroups()], (left2) => {
+      return left2.map((headerGroup) => {
+        return headerGroup.headers;
+      }).flat();
+    }, getMemoOptions(table.options, debug, "getRightFlatHeaders"));
+    table.getCenterLeafHeaders = memo$1(() => [table.getCenterFlatHeaders()], (flatHeaders) => {
+      return flatHeaders.filter((header) => {
+        var _header$subHeaders;
+        return !((_header$subHeaders = header.subHeaders) != null && _header$subHeaders.length);
+      });
+    }, getMemoOptions(table.options, debug, "getCenterLeafHeaders"));
+    table.getLeftLeafHeaders = memo$1(() => [table.getLeftFlatHeaders()], (flatHeaders) => {
+      return flatHeaders.filter((header) => {
+        var _header$subHeaders2;
+        return !((_header$subHeaders2 = header.subHeaders) != null && _header$subHeaders2.length);
+      });
+    }, getMemoOptions(table.options, debug, "getLeftLeafHeaders"));
+    table.getRightLeafHeaders = memo$1(() => [table.getRightFlatHeaders()], (flatHeaders) => {
+      return flatHeaders.filter((header) => {
+        var _header$subHeaders3;
+        return !((_header$subHeaders3 = header.subHeaders) != null && _header$subHeaders3.length);
+      });
+    }, getMemoOptions(table.options, debug, "getRightLeafHeaders"));
+    table.getLeafHeaders = memo$1(() => [table.getLeftHeaderGroups(), table.getCenterHeaderGroups(), table.getRightHeaderGroups()], (left2, center2, right2) => {
+      var _left$0$headers, _left$, _center$0$headers, _center$, _right$0$headers, _right$;
+      return [...(_left$0$headers = (_left$ = left2[0]) == null ? void 0 : _left$.headers) != null ? _left$0$headers : [], ...(_center$0$headers = (_center$ = center2[0]) == null ? void 0 : _center$.headers) != null ? _center$0$headers : [], ...(_right$0$headers = (_right$ = right2[0]) == null ? void 0 : _right$.headers) != null ? _right$0$headers : []].map((header) => {
+        return header.getLeafHeaders();
+      }).flat();
+    }, getMemoOptions(table.options, debug, "getLeafHeaders"));
+  }
+};
+function buildHeaderGroups(allColumns, columnsToGroup, table, headerFamily) {
+  var _headerGroups$0$heade, _headerGroups$;
+  let maxDepth = 0;
+  const findMaxDepth = function(columns, depth) {
+    if (depth === void 0) {
+      depth = 1;
+    }
+    maxDepth = Math.max(maxDepth, depth);
+    columns.filter((column) => column.getIsVisible()).forEach((column) => {
+      var _column$columns;
+      if ((_column$columns = column.columns) != null && _column$columns.length) {
+        findMaxDepth(column.columns, depth + 1);
+      }
+    }, 0);
+  };
+  findMaxDepth(allColumns);
+  let headerGroups = [];
+  const createHeaderGroup = (headersToGroup, depth) => {
+    const headerGroup = {
+      depth,
+      id: [headerFamily, `${depth}`].filter(Boolean).join("_"),
+      headers: []
+    };
+    const pendingParentHeaders = [];
+    headersToGroup.forEach((headerToGroup) => {
+      const latestPendingParentHeader = [...pendingParentHeaders].reverse()[0];
+      const isLeafHeader = headerToGroup.column.depth === headerGroup.depth;
+      let column;
+      let isPlaceholder = false;
+      if (isLeafHeader && headerToGroup.column.parent) {
+        column = headerToGroup.column.parent;
+      } else {
+        column = headerToGroup.column;
+        isPlaceholder = true;
+      }
+      if (latestPendingParentHeader && (latestPendingParentHeader == null ? void 0 : latestPendingParentHeader.column) === column) {
+        latestPendingParentHeader.subHeaders.push(headerToGroup);
+      } else {
+        const header = createHeader(table, column, {
+          id: [headerFamily, depth, column.id, headerToGroup == null ? void 0 : headerToGroup.id].filter(Boolean).join("_"),
+          isPlaceholder,
+          placeholderId: isPlaceholder ? `${pendingParentHeaders.filter((d) => d.column === column).length}` : void 0,
+          depth,
+          index: pendingParentHeaders.length
+        });
+        header.subHeaders.push(headerToGroup);
+        pendingParentHeaders.push(header);
+      }
+      headerGroup.headers.push(headerToGroup);
+      headerToGroup.headerGroup = headerGroup;
+    });
+    headerGroups.push(headerGroup);
+    if (depth > 0) {
+      createHeaderGroup(pendingParentHeaders, depth - 1);
+    }
+  };
+  const bottomHeaders = columnsToGroup.map((column, index2) => createHeader(table, column, {
+    depth: maxDepth,
+    index: index2
+  }));
+  createHeaderGroup(bottomHeaders, maxDepth - 1);
+  headerGroups.reverse();
+  const recurseHeadersForSpans = (headers) => {
+    const filteredHeaders = headers.filter((header) => header.column.getIsVisible());
+    return filteredHeaders.map((header) => {
+      let colSpan = 0;
+      let rowSpan = 0;
+      let childRowSpans = [0];
+      if (header.subHeaders && header.subHeaders.length) {
+        childRowSpans = [];
+        recurseHeadersForSpans(header.subHeaders).forEach((_ref) => {
+          let {
+            colSpan: childColSpan,
+            rowSpan: childRowSpan
+          } = _ref;
+          colSpan += childColSpan;
+          childRowSpans.push(childRowSpan);
+        });
+      } else {
+        colSpan = 1;
+      }
+      const minChildRowSpan = Math.min(...childRowSpans);
+      rowSpan = rowSpan + minChildRowSpan;
+      header.colSpan = colSpan;
+      header.rowSpan = rowSpan;
+      return {
+        colSpan,
+        rowSpan
+      };
+    });
+  };
+  recurseHeadersForSpans((_headerGroups$0$heade = (_headerGroups$ = headerGroups[0]) == null ? void 0 : _headerGroups$.headers) != null ? _headerGroups$0$heade : []);
+  return headerGroups;
+}
+const createRow = (table, id2, original, rowIndex, depth, subRows, parentId) => {
+  let row = {
+    id: id2,
+    index: rowIndex,
+    original,
+    depth,
+    parentId,
+    _valuesCache: {},
+    _uniqueValuesCache: {},
+    getValue: (columnId) => {
+      if (row._valuesCache.hasOwnProperty(columnId)) {
+        return row._valuesCache[columnId];
+      }
+      const column = table.getColumn(columnId);
+      if (!(column != null && column.accessorFn)) {
+        return void 0;
+      }
+      row._valuesCache[columnId] = column.accessorFn(row.original, rowIndex);
+      return row._valuesCache[columnId];
+    },
+    getUniqueValues: (columnId) => {
+      if (row._uniqueValuesCache.hasOwnProperty(columnId)) {
+        return row._uniqueValuesCache[columnId];
+      }
+      const column = table.getColumn(columnId);
+      if (!(column != null && column.accessorFn)) {
+        return void 0;
+      }
+      if (!column.columnDef.getUniqueValues) {
+        row._uniqueValuesCache[columnId] = [row.getValue(columnId)];
+        return row._uniqueValuesCache[columnId];
+      }
+      row._uniqueValuesCache[columnId] = column.columnDef.getUniqueValues(row.original, rowIndex);
+      return row._uniqueValuesCache[columnId];
+    },
+    renderValue: (columnId) => {
+      var _row$getValue;
+      return (_row$getValue = row.getValue(columnId)) != null ? _row$getValue : table.options.renderFallbackValue;
+    },
+    subRows: [],
+    getLeafRows: () => flattenBy(row.subRows, (d) => d.subRows),
+    getParentRow: () => row.parentId ? table.getRow(row.parentId, true) : void 0,
+    getParentRows: () => {
+      let parentRows = [];
+      let currentRow = row;
+      while (true) {
+        const parentRow = currentRow.getParentRow();
+        if (!parentRow) break;
+        parentRows.push(parentRow);
+        currentRow = parentRow;
+      }
+      return parentRows.reverse();
+    },
+    getAllCells: memo$1(() => [table.getAllLeafColumns()], (leafColumns) => {
+      return leafColumns.map((column) => {
+        return createCell(table, row, column, column.id);
+      });
+    }, getMemoOptions(table.options, "debugRows", "getAllCells")),
+    _getAllCellsByColumnId: memo$1(() => [row.getAllCells()], (allCells) => {
+      return allCells.reduce((acc, cell) => {
+        acc[cell.column.id] = cell;
+        return acc;
+      }, {});
+    }, getMemoOptions(table.options, "debugRows", "getAllCellsByColumnId"))
+  };
+  for (let i2 = 0; i2 < table._features.length; i2++) {
+    const feature = table._features[i2];
+    feature == null || feature.createRow == null || feature.createRow(row, table);
+  }
+  return row;
+};
+const ColumnFaceting = {
+  createColumn: (column, table) => {
+    column._getFacetedRowModel = table.options.getFacetedRowModel && table.options.getFacetedRowModel(table, column.id);
+    column.getFacetedRowModel = () => {
+      if (!column._getFacetedRowModel) {
+        return table.getPreFilteredRowModel();
+      }
+      return column._getFacetedRowModel();
+    };
+    column._getFacetedUniqueValues = table.options.getFacetedUniqueValues && table.options.getFacetedUniqueValues(table, column.id);
+    column.getFacetedUniqueValues = () => {
+      if (!column._getFacetedUniqueValues) {
+        return /* @__PURE__ */ new Map();
+      }
+      return column._getFacetedUniqueValues();
+    };
+    column._getFacetedMinMaxValues = table.options.getFacetedMinMaxValues && table.options.getFacetedMinMaxValues(table, column.id);
+    column.getFacetedMinMaxValues = () => {
+      if (!column._getFacetedMinMaxValues) {
+        return void 0;
+      }
+      return column._getFacetedMinMaxValues();
+    };
+  }
+};
+const includesString = (row, columnId, filterValue) => {
+  var _filterValue$toString, _row$getValue;
+  const search = filterValue == null || (_filterValue$toString = filterValue.toString()) == null ? void 0 : _filterValue$toString.toLowerCase();
+  return Boolean((_row$getValue = row.getValue(columnId)) == null || (_row$getValue = _row$getValue.toString()) == null || (_row$getValue = _row$getValue.toLowerCase()) == null ? void 0 : _row$getValue.includes(search));
+};
+includesString.autoRemove = (val) => testFalsey(val);
+const includesStringSensitive = (row, columnId, filterValue) => {
+  var _row$getValue2;
+  return Boolean((_row$getValue2 = row.getValue(columnId)) == null || (_row$getValue2 = _row$getValue2.toString()) == null ? void 0 : _row$getValue2.includes(filterValue));
+};
+includesStringSensitive.autoRemove = (val) => testFalsey(val);
+const equalsString = (row, columnId, filterValue) => {
+  var _row$getValue3;
+  return ((_row$getValue3 = row.getValue(columnId)) == null || (_row$getValue3 = _row$getValue3.toString()) == null ? void 0 : _row$getValue3.toLowerCase()) === (filterValue == null ? void 0 : filterValue.toLowerCase());
+};
+equalsString.autoRemove = (val) => testFalsey(val);
+const arrIncludes = (row, columnId, filterValue) => {
+  var _row$getValue4;
+  return (_row$getValue4 = row.getValue(columnId)) == null ? void 0 : _row$getValue4.includes(filterValue);
+};
+arrIncludes.autoRemove = (val) => testFalsey(val) || !(val != null && val.length);
+const arrIncludesAll = (row, columnId, filterValue) => {
+  return !filterValue.some((val) => {
+    var _row$getValue5;
+    return !((_row$getValue5 = row.getValue(columnId)) != null && _row$getValue5.includes(val));
+  });
+};
+arrIncludesAll.autoRemove = (val) => testFalsey(val) || !(val != null && val.length);
+const arrIncludesSome = (row, columnId, filterValue) => {
+  return filterValue.some((val) => {
+    var _row$getValue6;
+    return (_row$getValue6 = row.getValue(columnId)) == null ? void 0 : _row$getValue6.includes(val);
+  });
+};
+arrIncludesSome.autoRemove = (val) => testFalsey(val) || !(val != null && val.length);
+const equals = (row, columnId, filterValue) => {
+  return row.getValue(columnId) === filterValue;
+};
+equals.autoRemove = (val) => testFalsey(val);
+const weakEquals = (row, columnId, filterValue) => {
+  return row.getValue(columnId) == filterValue;
+};
+weakEquals.autoRemove = (val) => testFalsey(val);
+const inNumberRange = (row, columnId, filterValue) => {
+  let [min2, max2] = filterValue;
+  const rowValue = row.getValue(columnId);
+  return rowValue >= min2 && rowValue <= max2;
+};
+inNumberRange.resolveFilterValue = (val) => {
+  let [unsafeMin, unsafeMax] = val;
+  let parsedMin = typeof unsafeMin !== "number" ? parseFloat(unsafeMin) : unsafeMin;
+  let parsedMax = typeof unsafeMax !== "number" ? parseFloat(unsafeMax) : unsafeMax;
+  let min2 = unsafeMin === null || Number.isNaN(parsedMin) ? -Infinity : parsedMin;
+  let max2 = unsafeMax === null || Number.isNaN(parsedMax) ? Infinity : parsedMax;
+  if (min2 > max2) {
+    const temp = min2;
+    min2 = max2;
+    max2 = temp;
+  }
+  return [min2, max2];
+};
+inNumberRange.autoRemove = (val) => testFalsey(val) || testFalsey(val[0]) && testFalsey(val[1]);
+const filterFns = {
+  includesString,
+  includesStringSensitive,
+  equalsString,
+  arrIncludes,
+  arrIncludesAll,
+  arrIncludesSome,
+  equals,
+  weakEquals,
+  inNumberRange
+};
+function testFalsey(val) {
+  return val === void 0 || val === null || val === "";
+}
+const ColumnFiltering = {
+  getDefaultColumnDef: () => {
+    return {
+      filterFn: "auto"
+    };
+  },
+  getInitialState: (state) => {
+    return {
+      columnFilters: [],
+      ...state
+    };
+  },
+  getDefaultOptions: (table) => {
+    return {
+      onColumnFiltersChange: makeStateUpdater("columnFilters", table),
+      filterFromLeafRows: false,
+      maxLeafRowFilterDepth: 100
+    };
+  },
+  createColumn: (column, table) => {
+    column.getAutoFilterFn = () => {
+      const firstRow = table.getCoreRowModel().flatRows[0];
+      const value2 = firstRow == null ? void 0 : firstRow.getValue(column.id);
+      if (typeof value2 === "string") {
+        return filterFns.includesString;
+      }
+      if (typeof value2 === "number") {
+        return filterFns.inNumberRange;
+      }
+      if (typeof value2 === "boolean") {
+        return filterFns.equals;
+      }
+      if (value2 !== null && typeof value2 === "object") {
+        return filterFns.equals;
+      }
+      if (Array.isArray(value2)) {
+        return filterFns.arrIncludes;
+      }
+      return filterFns.weakEquals;
+    };
+    column.getFilterFn = () => {
+      var _table$options$filter, _table$options$filter2;
+      return isFunction(column.columnDef.filterFn) ? column.columnDef.filterFn : column.columnDef.filterFn === "auto" ? column.getAutoFilterFn() : (
+        // @ts-ignore
+        (_table$options$filter = (_table$options$filter2 = table.options.filterFns) == null ? void 0 : _table$options$filter2[column.columnDef.filterFn]) != null ? _table$options$filter : filterFns[column.columnDef.filterFn]
+      );
+    };
+    column.getCanFilter = () => {
+      var _column$columnDef$ena, _table$options$enable, _table$options$enable2;
+      return ((_column$columnDef$ena = column.columnDef.enableColumnFilter) != null ? _column$columnDef$ena : true) && ((_table$options$enable = table.options.enableColumnFilters) != null ? _table$options$enable : true) && ((_table$options$enable2 = table.options.enableFilters) != null ? _table$options$enable2 : true) && !!column.accessorFn;
+    };
+    column.getIsFiltered = () => column.getFilterIndex() > -1;
+    column.getFilterValue = () => {
+      var _table$getState$colum;
+      return (_table$getState$colum = table.getState().columnFilters) == null || (_table$getState$colum = _table$getState$colum.find((d) => d.id === column.id)) == null ? void 0 : _table$getState$colum.value;
+    };
+    column.getFilterIndex = () => {
+      var _table$getState$colum2, _table$getState$colum3;
+      return (_table$getState$colum2 = (_table$getState$colum3 = table.getState().columnFilters) == null ? void 0 : _table$getState$colum3.findIndex((d) => d.id === column.id)) != null ? _table$getState$colum2 : -1;
+    };
+    column.setFilterValue = (value2) => {
+      table.setColumnFilters((old) => {
+        const filterFn = column.getFilterFn();
+        const previousFilter = old == null ? void 0 : old.find((d) => d.id === column.id);
+        const newFilter = functionalUpdate(value2, previousFilter ? previousFilter.value : void 0);
+        if (shouldAutoRemoveFilter(filterFn, newFilter, column)) {
+          var _old$filter;
+          return (_old$filter = old == null ? void 0 : old.filter((d) => d.id !== column.id)) != null ? _old$filter : [];
+        }
+        const newFilterObj = {
+          id: column.id,
+          value: newFilter
+        };
+        if (previousFilter) {
+          var _old$map;
+          return (_old$map = old == null ? void 0 : old.map((d) => {
+            if (d.id === column.id) {
+              return newFilterObj;
+            }
+            return d;
+          })) != null ? _old$map : [];
+        }
+        if (old != null && old.length) {
+          return [...old, newFilterObj];
+        }
+        return [newFilterObj];
+      });
+    };
+  },
+  createRow: (row, _table) => {
+    row.columnFilters = {};
+    row.columnFiltersMeta = {};
+  },
+  createTable: (table) => {
+    table.setColumnFilters = (updater) => {
+      const leafColumns = table.getAllLeafColumns();
+      const updateFn = (old) => {
+        var _functionalUpdate;
+        return (_functionalUpdate = functionalUpdate(updater, old)) == null ? void 0 : _functionalUpdate.filter((filter2) => {
+          const column = leafColumns.find((d) => d.id === filter2.id);
+          if (column) {
+            const filterFn = column.getFilterFn();
+            if (shouldAutoRemoveFilter(filterFn, filter2.value, column)) {
+              return false;
+            }
+          }
+          return true;
+        });
+      };
+      table.options.onColumnFiltersChange == null || table.options.onColumnFiltersChange(updateFn);
+    };
+    table.resetColumnFilters = (defaultState) => {
+      var _table$initialState$c, _table$initialState;
+      table.setColumnFilters(defaultState ? [] : (_table$initialState$c = (_table$initialState = table.initialState) == null ? void 0 : _table$initialState.columnFilters) != null ? _table$initialState$c : []);
+    };
+    table.getPreFilteredRowModel = () => table.getCoreRowModel();
+    table.getFilteredRowModel = () => {
+      if (!table._getFilteredRowModel && table.options.getFilteredRowModel) {
+        table._getFilteredRowModel = table.options.getFilteredRowModel(table);
+      }
+      if (table.options.manualFiltering || !table._getFilteredRowModel) {
+        return table.getPreFilteredRowModel();
+      }
+      return table._getFilteredRowModel();
+    };
+  }
+};
+function shouldAutoRemoveFilter(filterFn, value2, column) {
+  return (filterFn && filterFn.autoRemove ? filterFn.autoRemove(value2, column) : false) || typeof value2 === "undefined" || typeof value2 === "string" && !value2;
+}
+const sum = (columnId, _leafRows, childRows) => {
+  return childRows.reduce((sum2, next) => {
+    const nextValue = next.getValue(columnId);
+    return sum2 + (typeof nextValue === "number" ? nextValue : 0);
+  }, 0);
+};
+const min$3 = (columnId, _leafRows, childRows) => {
+  let min2;
+  childRows.forEach((row) => {
+    const value2 = row.getValue(columnId);
+    if (value2 != null && (min2 > value2 || min2 === void 0 && value2 >= value2)) {
+      min2 = value2;
+    }
+  });
+  return min2;
+};
+const max$3 = (columnId, _leafRows, childRows) => {
+  let max2;
+  childRows.forEach((row) => {
+    const value2 = row.getValue(columnId);
+    if (value2 != null && (max2 < value2 || max2 === void 0 && value2 >= value2)) {
+      max2 = value2;
+    }
+  });
+  return max2;
+};
+const extent = (columnId, _leafRows, childRows) => {
+  let min2;
+  let max2;
+  childRows.forEach((row) => {
+    const value2 = row.getValue(columnId);
+    if (value2 != null) {
+      if (min2 === void 0) {
+        if (value2 >= value2) min2 = max2 = value2;
+      } else {
+        if (min2 > value2) min2 = value2;
+        if (max2 < value2) max2 = value2;
+      }
+    }
+  });
+  return [min2, max2];
+};
+const mean = (columnId, leafRows) => {
+  let count2 = 0;
+  let sum2 = 0;
+  leafRows.forEach((row) => {
+    let value2 = row.getValue(columnId);
+    if (value2 != null && (value2 = +value2) >= value2) {
+      ++count2, sum2 += value2;
+    }
+  });
+  if (count2) return sum2 / count2;
+  return;
+};
+const median = (columnId, leafRows) => {
+  if (!leafRows.length) {
+    return;
+  }
+  const values = leafRows.map((row) => row.getValue(columnId));
+  if (!isNumberArray(values)) {
+    return;
+  }
+  if (values.length === 1) {
+    return values[0];
+  }
+  const mid = Math.floor(values.length / 2);
+  const nums = values.sort((a, b) => a - b);
+  return values.length % 2 !== 0 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
+};
+const unique = (columnId, leafRows) => {
+  return Array.from(new Set(leafRows.map((d) => d.getValue(columnId))).values());
+};
+const uniqueCount = (columnId, leafRows) => {
+  return new Set(leafRows.map((d) => d.getValue(columnId))).size;
+};
+const count$4 = (_columnId, leafRows) => {
+  return leafRows.length;
+};
+const aggregationFns = {
+  sum,
+  min: min$3,
+  max: max$3,
+  extent,
+  mean,
+  median,
+  unique,
+  uniqueCount,
+  count: count$4
+};
+const ColumnGrouping = {
+  getDefaultColumnDef: () => {
+    return {
+      aggregatedCell: (props) => {
+        var _toString, _props$getValue;
+        return (_toString = (_props$getValue = props.getValue()) == null || _props$getValue.toString == null ? void 0 : _props$getValue.toString()) != null ? _toString : null;
+      },
+      aggregationFn: "auto"
+    };
+  },
+  getInitialState: (state) => {
+    return {
+      grouping: [],
+      ...state
+    };
+  },
+  getDefaultOptions: (table) => {
+    return {
+      onGroupingChange: makeStateUpdater("grouping", table),
+      groupedColumnMode: "reorder"
+    };
+  },
+  createColumn: (column, table) => {
+    column.toggleGrouping = () => {
+      table.setGrouping((old) => {
+        if (old != null && old.includes(column.id)) {
+          return old.filter((d) => d !== column.id);
+        }
+        return [...old != null ? old : [], column.id];
+      });
+    };
+    column.getCanGroup = () => {
+      var _column$columnDef$ena, _table$options$enable;
+      return ((_column$columnDef$ena = column.columnDef.enableGrouping) != null ? _column$columnDef$ena : true) && ((_table$options$enable = table.options.enableGrouping) != null ? _table$options$enable : true) && (!!column.accessorFn || !!column.columnDef.getGroupingValue);
+    };
+    column.getIsGrouped = () => {
+      var _table$getState$group;
+      return (_table$getState$group = table.getState().grouping) == null ? void 0 : _table$getState$group.includes(column.id);
+    };
+    column.getGroupedIndex = () => {
+      var _table$getState$group2;
+      return (_table$getState$group2 = table.getState().grouping) == null ? void 0 : _table$getState$group2.indexOf(column.id);
+    };
+    column.getToggleGroupingHandler = () => {
+      const canGroup = column.getCanGroup();
+      return () => {
+        if (!canGroup) return;
+        column.toggleGrouping();
+      };
+    };
+    column.getAutoAggregationFn = () => {
+      const firstRow = table.getCoreRowModel().flatRows[0];
+      const value2 = firstRow == null ? void 0 : firstRow.getValue(column.id);
+      if (typeof value2 === "number") {
+        return aggregationFns.sum;
+      }
+      if (Object.prototype.toString.call(value2) === "[object Date]") {
+        return aggregationFns.extent;
+      }
+    };
+    column.getAggregationFn = () => {
+      var _table$options$aggreg, _table$options$aggreg2;
+      if (!column) {
+        throw new Error();
+      }
+      return isFunction(column.columnDef.aggregationFn) ? column.columnDef.aggregationFn : column.columnDef.aggregationFn === "auto" ? column.getAutoAggregationFn() : (_table$options$aggreg = (_table$options$aggreg2 = table.options.aggregationFns) == null ? void 0 : _table$options$aggreg2[column.columnDef.aggregationFn]) != null ? _table$options$aggreg : aggregationFns[column.columnDef.aggregationFn];
+    };
+  },
+  createTable: (table) => {
+    table.setGrouping = (updater) => table.options.onGroupingChange == null ? void 0 : table.options.onGroupingChange(updater);
+    table.resetGrouping = (defaultState) => {
+      var _table$initialState$g, _table$initialState;
+      table.setGrouping(defaultState ? [] : (_table$initialState$g = (_table$initialState = table.initialState) == null ? void 0 : _table$initialState.grouping) != null ? _table$initialState$g : []);
+    };
+    table.getPreGroupedRowModel = () => table.getFilteredRowModel();
+    table.getGroupedRowModel = () => {
+      if (!table._getGroupedRowModel && table.options.getGroupedRowModel) {
+        table._getGroupedRowModel = table.options.getGroupedRowModel(table);
+      }
+      if (table.options.manualGrouping || !table._getGroupedRowModel) {
+        return table.getPreGroupedRowModel();
+      }
+      return table._getGroupedRowModel();
+    };
+  },
+  createRow: (row, table) => {
+    row.getIsGrouped = () => !!row.groupingColumnId;
+    row.getGroupingValue = (columnId) => {
+      if (row._groupingValuesCache.hasOwnProperty(columnId)) {
+        return row._groupingValuesCache[columnId];
+      }
+      const column = table.getColumn(columnId);
+      if (!(column != null && column.columnDef.getGroupingValue)) {
+        return row.getValue(columnId);
+      }
+      row._groupingValuesCache[columnId] = column.columnDef.getGroupingValue(row.original);
+      return row._groupingValuesCache[columnId];
+    };
+    row._groupingValuesCache = {};
+  },
+  createCell: (cell, column, row, table) => {
+    cell.getIsGrouped = () => column.getIsGrouped() && column.id === row.groupingColumnId;
+    cell.getIsPlaceholder = () => !cell.getIsGrouped() && column.getIsGrouped();
+    cell.getIsAggregated = () => {
+      var _row$subRows;
+      return !cell.getIsGrouped() && !cell.getIsPlaceholder() && !!((_row$subRows = row.subRows) != null && _row$subRows.length);
+    };
+  }
+};
+function orderColumns(leafColumns, grouping, groupedColumnMode) {
+  if (!(grouping != null && grouping.length) || !groupedColumnMode) {
+    return leafColumns;
+  }
+  const nonGroupingColumns = leafColumns.filter((col) => !grouping.includes(col.id));
+  if (groupedColumnMode === "remove") {
+    return nonGroupingColumns;
+  }
+  const groupingColumns = grouping.map((g) => leafColumns.find((col) => col.id === g)).filter(Boolean);
+  return [...groupingColumns, ...nonGroupingColumns];
+}
+const ColumnOrdering = {
+  getInitialState: (state) => {
+    return {
+      columnOrder: [],
+      ...state
+    };
+  },
+  getDefaultOptions: (table) => {
+    return {
+      onColumnOrderChange: makeStateUpdater("columnOrder", table)
+    };
+  },
+  createColumn: (column, table) => {
+    column.getIndex = memo$1((position2) => [_getVisibleLeafColumns(table, position2)], (columns) => columns.findIndex((d) => d.id === column.id), getMemoOptions(table.options, "debugColumns", "getIndex"));
+    column.getIsFirstColumn = (position2) => {
+      var _columns$;
+      const columns = _getVisibleLeafColumns(table, position2);
+      return ((_columns$ = columns[0]) == null ? void 0 : _columns$.id) === column.id;
+    };
+    column.getIsLastColumn = (position2) => {
+      var _columns;
+      const columns = _getVisibleLeafColumns(table, position2);
+      return ((_columns = columns[columns.length - 1]) == null ? void 0 : _columns.id) === column.id;
+    };
+  },
+  createTable: (table) => {
+    table.setColumnOrder = (updater) => table.options.onColumnOrderChange == null ? void 0 : table.options.onColumnOrderChange(updater);
+    table.resetColumnOrder = (defaultState) => {
+      var _table$initialState$c;
+      table.setColumnOrder(defaultState ? [] : (_table$initialState$c = table.initialState.columnOrder) != null ? _table$initialState$c : []);
+    };
+    table._getOrderColumnsFn = memo$1(() => [table.getState().columnOrder, table.getState().grouping, table.options.groupedColumnMode], (columnOrder, grouping, groupedColumnMode) => (columns) => {
+      let orderedColumns = [];
+      if (!(columnOrder != null && columnOrder.length)) {
+        orderedColumns = columns;
+      } else {
+        const columnOrderCopy = [...columnOrder];
+        const columnsCopy = [...columns];
+        while (columnsCopy.length && columnOrderCopy.length) {
+          const targetColumnId = columnOrderCopy.shift();
+          const foundIndex = columnsCopy.findIndex((d) => d.id === targetColumnId);
+          if (foundIndex > -1) {
+            orderedColumns.push(columnsCopy.splice(foundIndex, 1)[0]);
+          }
+        }
+        orderedColumns = [...orderedColumns, ...columnsCopy];
+      }
+      return orderColumns(orderedColumns, grouping, groupedColumnMode);
+    }, getMemoOptions(table.options, "debugTable", "_getOrderColumnsFn"));
+  }
+};
+const getDefaultColumnPinningState = () => ({
+  left: [],
+  right: []
+});
+const ColumnPinning = {
+  getInitialState: (state) => {
+    return {
+      columnPinning: getDefaultColumnPinningState(),
+      ...state
+    };
+  },
+  getDefaultOptions: (table) => {
+    return {
+      onColumnPinningChange: makeStateUpdater("columnPinning", table)
+    };
+  },
+  createColumn: (column, table) => {
+    column.pin = (position2) => {
+      const columnIds = column.getLeafColumns().map((d) => d.id).filter(Boolean);
+      table.setColumnPinning((old) => {
+        var _old$left3, _old$right3;
+        if (position2 === "right") {
+          var _old$left, _old$right;
+          return {
+            left: ((_old$left = old == null ? void 0 : old.left) != null ? _old$left : []).filter((d) => !(columnIds != null && columnIds.includes(d))),
+            right: [...((_old$right = old == null ? void 0 : old.right) != null ? _old$right : []).filter((d) => !(columnIds != null && columnIds.includes(d))), ...columnIds]
+          };
+        }
+        if (position2 === "left") {
+          var _old$left2, _old$right2;
+          return {
+            left: [...((_old$left2 = old == null ? void 0 : old.left) != null ? _old$left2 : []).filter((d) => !(columnIds != null && columnIds.includes(d))), ...columnIds],
+            right: ((_old$right2 = old == null ? void 0 : old.right) != null ? _old$right2 : []).filter((d) => !(columnIds != null && columnIds.includes(d)))
+          };
+        }
+        return {
+          left: ((_old$left3 = old == null ? void 0 : old.left) != null ? _old$left3 : []).filter((d) => !(columnIds != null && columnIds.includes(d))),
+          right: ((_old$right3 = old == null ? void 0 : old.right) != null ? _old$right3 : []).filter((d) => !(columnIds != null && columnIds.includes(d)))
+        };
+      });
+    };
+    column.getCanPin = () => {
+      const leafColumns = column.getLeafColumns();
+      return leafColumns.some((d) => {
+        var _d$columnDef$enablePi, _ref, _table$options$enable;
+        return ((_d$columnDef$enablePi = d.columnDef.enablePinning) != null ? _d$columnDef$enablePi : true) && ((_ref = (_table$options$enable = table.options.enableColumnPinning) != null ? _table$options$enable : table.options.enablePinning) != null ? _ref : true);
+      });
+    };
+    column.getIsPinned = () => {
+      const leafColumnIds = column.getLeafColumns().map((d) => d.id);
+      const {
+        left: left2,
+        right: right2
+      } = table.getState().columnPinning;
+      const isLeft = leafColumnIds.some((d) => left2 == null ? void 0 : left2.includes(d));
+      const isRight = leafColumnIds.some((d) => right2 == null ? void 0 : right2.includes(d));
+      return isLeft ? "left" : isRight ? "right" : false;
+    };
+    column.getPinnedIndex = () => {
+      var _table$getState$colum, _table$getState$colum2;
+      const position2 = column.getIsPinned();
+      return position2 ? (_table$getState$colum = (_table$getState$colum2 = table.getState().columnPinning) == null || (_table$getState$colum2 = _table$getState$colum2[position2]) == null ? void 0 : _table$getState$colum2.indexOf(column.id)) != null ? _table$getState$colum : -1 : 0;
+    };
+  },
+  createRow: (row, table) => {
+    row.getCenterVisibleCells = memo$1(() => [row._getAllVisibleCells(), table.getState().columnPinning.left, table.getState().columnPinning.right], (allCells, left2, right2) => {
+      const leftAndRight = [...left2 != null ? left2 : [], ...right2 != null ? right2 : []];
+      return allCells.filter((d) => !leftAndRight.includes(d.column.id));
+    }, getMemoOptions(table.options, "debugRows", "getCenterVisibleCells"));
+    row.getLeftVisibleCells = memo$1(() => [row._getAllVisibleCells(), table.getState().columnPinning.left], (allCells, left2) => {
+      const cells = (left2 != null ? left2 : []).map((columnId) => allCells.find((cell) => cell.column.id === columnId)).filter(Boolean).map((d) => ({
+        ...d,
+        position: "left"
+      }));
+      return cells;
+    }, getMemoOptions(table.options, "debugRows", "getLeftVisibleCells"));
+    row.getRightVisibleCells = memo$1(() => [row._getAllVisibleCells(), table.getState().columnPinning.right], (allCells, right2) => {
+      const cells = (right2 != null ? right2 : []).map((columnId) => allCells.find((cell) => cell.column.id === columnId)).filter(Boolean).map((d) => ({
+        ...d,
+        position: "right"
+      }));
+      return cells;
+    }, getMemoOptions(table.options, "debugRows", "getRightVisibleCells"));
+  },
+  createTable: (table) => {
+    table.setColumnPinning = (updater) => table.options.onColumnPinningChange == null ? void 0 : table.options.onColumnPinningChange(updater);
+    table.resetColumnPinning = (defaultState) => {
+      var _table$initialState$c, _table$initialState;
+      return table.setColumnPinning(defaultState ? getDefaultColumnPinningState() : (_table$initialState$c = (_table$initialState = table.initialState) == null ? void 0 : _table$initialState.columnPinning) != null ? _table$initialState$c : getDefaultColumnPinningState());
+    };
+    table.getIsSomeColumnsPinned = (position2) => {
+      var _pinningState$positio;
+      const pinningState = table.getState().columnPinning;
+      if (!position2) {
+        var _pinningState$left, _pinningState$right;
+        return Boolean(((_pinningState$left = pinningState.left) == null ? void 0 : _pinningState$left.length) || ((_pinningState$right = pinningState.right) == null ? void 0 : _pinningState$right.length));
+      }
+      return Boolean((_pinningState$positio = pinningState[position2]) == null ? void 0 : _pinningState$positio.length);
+    };
+    table.getLeftLeafColumns = memo$1(() => [table.getAllLeafColumns(), table.getState().columnPinning.left], (allColumns, left2) => {
+      return (left2 != null ? left2 : []).map((columnId) => allColumns.find((column) => column.id === columnId)).filter(Boolean);
+    }, getMemoOptions(table.options, "debugColumns", "getLeftLeafColumns"));
+    table.getRightLeafColumns = memo$1(() => [table.getAllLeafColumns(), table.getState().columnPinning.right], (allColumns, right2) => {
+      return (right2 != null ? right2 : []).map((columnId) => allColumns.find((column) => column.id === columnId)).filter(Boolean);
+    }, getMemoOptions(table.options, "debugColumns", "getRightLeafColumns"));
+    table.getCenterLeafColumns = memo$1(() => [table.getAllLeafColumns(), table.getState().columnPinning.left, table.getState().columnPinning.right], (allColumns, left2, right2) => {
+      const leftAndRight = [...left2 != null ? left2 : [], ...right2 != null ? right2 : []];
+      return allColumns.filter((d) => !leftAndRight.includes(d.id));
+    }, getMemoOptions(table.options, "debugColumns", "getCenterLeafColumns"));
+  }
+};
+const defaultColumnSizing = {
+  size: 150,
+  minSize: 20,
+  maxSize: Number.MAX_SAFE_INTEGER
+};
+const getDefaultColumnSizingInfoState = () => ({
+  startOffset: null,
+  startSize: null,
+  deltaOffset: null,
+  deltaPercentage: null,
+  isResizingColumn: false,
+  columnSizingStart: []
+});
+const ColumnSizing = {
+  getDefaultColumnDef: () => {
+    return defaultColumnSizing;
+  },
+  getInitialState: (state) => {
+    return {
+      columnSizing: {},
+      columnSizingInfo: getDefaultColumnSizingInfoState(),
+      ...state
+    };
+  },
+  getDefaultOptions: (table) => {
+    return {
+      columnResizeMode: "onEnd",
+      columnResizeDirection: "ltr",
+      onColumnSizingChange: makeStateUpdater("columnSizing", table),
+      onColumnSizingInfoChange: makeStateUpdater("columnSizingInfo", table)
+    };
+  },
+  createColumn: (column, table) => {
+    column.getSize = () => {
+      var _column$columnDef$min, _ref, _column$columnDef$max;
+      const columnSize = table.getState().columnSizing[column.id];
+      return Math.min(Math.max((_column$columnDef$min = column.columnDef.minSize) != null ? _column$columnDef$min : defaultColumnSizing.minSize, (_ref = columnSize != null ? columnSize : column.columnDef.size) != null ? _ref : defaultColumnSizing.size), (_column$columnDef$max = column.columnDef.maxSize) != null ? _column$columnDef$max : defaultColumnSizing.maxSize);
+    };
+    column.getStart = memo$1((position2) => [position2, _getVisibleLeafColumns(table, position2), table.getState().columnSizing], (position2, columns) => columns.slice(0, column.getIndex(position2)).reduce((sum2, column2) => sum2 + column2.getSize(), 0), getMemoOptions(table.options, "debugColumns", "getStart"));
+    column.getAfter = memo$1((position2) => [position2, _getVisibleLeafColumns(table, position2), table.getState().columnSizing], (position2, columns) => columns.slice(column.getIndex(position2) + 1).reduce((sum2, column2) => sum2 + column2.getSize(), 0), getMemoOptions(table.options, "debugColumns", "getAfter"));
+    column.resetSize = () => {
+      table.setColumnSizing((_ref2) => {
+        let {
+          [column.id]: _,
+          ...rest
+        } = _ref2;
+        return rest;
+      });
+    };
+    column.getCanResize = () => {
+      var _column$columnDef$ena, _table$options$enable;
+      return ((_column$columnDef$ena = column.columnDef.enableResizing) != null ? _column$columnDef$ena : true) && ((_table$options$enable = table.options.enableColumnResizing) != null ? _table$options$enable : true);
+    };
+    column.getIsResizing = () => {
+      return table.getState().columnSizingInfo.isResizingColumn === column.id;
+    };
+  },
+  createHeader: (header, table) => {
+    header.getSize = () => {
+      let sum2 = 0;
+      const recurse = (header2) => {
+        if (header2.subHeaders.length) {
+          header2.subHeaders.forEach(recurse);
+        } else {
+          var _header$column$getSiz;
+          sum2 += (_header$column$getSiz = header2.column.getSize()) != null ? _header$column$getSiz : 0;
+        }
+      };
+      recurse(header);
+      return sum2;
+    };
+    header.getStart = () => {
+      if (header.index > 0) {
+        const prevSiblingHeader = header.headerGroup.headers[header.index - 1];
+        return prevSiblingHeader.getStart() + prevSiblingHeader.getSize();
+      }
+      return 0;
+    };
+    header.getResizeHandler = (_contextDocument) => {
+      const column = table.getColumn(header.column.id);
+      const canResize = column == null ? void 0 : column.getCanResize();
+      return (e) => {
+        if (!column || !canResize) {
+          return;
+        }
+        e.persist == null || e.persist();
+        if (isTouchStartEvent(e)) {
+          if (e.touches && e.touches.length > 1) {
+            return;
+          }
+        }
+        const startSize = header.getSize();
+        const columnSizingStart = header ? header.getLeafHeaders().map((d) => [d.column.id, d.column.getSize()]) : [[column.id, column.getSize()]];
+        const clientX = isTouchStartEvent(e) ? Math.round(e.touches[0].clientX) : e.clientX;
+        const newColumnSizing = {};
+        const updateOffset = (eventType, clientXPos) => {
+          if (typeof clientXPos !== "number") {
+            return;
+          }
+          table.setColumnSizingInfo((old) => {
+            var _old$startOffset, _old$startSize;
+            const deltaDirection = table.options.columnResizeDirection === "rtl" ? -1 : 1;
+            const deltaOffset = (clientXPos - ((_old$startOffset = old == null ? void 0 : old.startOffset) != null ? _old$startOffset : 0)) * deltaDirection;
+            const deltaPercentage = Math.max(deltaOffset / ((_old$startSize = old == null ? void 0 : old.startSize) != null ? _old$startSize : 0), -0.999999);
+            old.columnSizingStart.forEach((_ref3) => {
+              let [columnId, headerSize] = _ref3;
+              newColumnSizing[columnId] = Math.round(Math.max(headerSize + headerSize * deltaPercentage, 0) * 100) / 100;
+            });
+            return {
+              ...old,
+              deltaOffset,
+              deltaPercentage
+            };
+          });
+          if (table.options.columnResizeMode === "onChange" || eventType === "end") {
+            table.setColumnSizing((old) => ({
+              ...old,
+              ...newColumnSizing
+            }));
+          }
+        };
+        const onMove = (clientXPos) => updateOffset("move", clientXPos);
+        const onEnd = (clientXPos) => {
+          updateOffset("end", clientXPos);
+          table.setColumnSizingInfo((old) => ({
+            ...old,
+            isResizingColumn: false,
+            startOffset: null,
+            startSize: null,
+            deltaOffset: null,
+            deltaPercentage: null,
+            columnSizingStart: []
+          }));
+        };
+        const contextDocument = _contextDocument || typeof document !== "undefined" ? document : null;
+        const mouseEvents = {
+          moveHandler: (e2) => onMove(e2.clientX),
+          upHandler: (e2) => {
+            contextDocument == null || contextDocument.removeEventListener("mousemove", mouseEvents.moveHandler);
+            contextDocument == null || contextDocument.removeEventListener("mouseup", mouseEvents.upHandler);
+            onEnd(e2.clientX);
+          }
+        };
+        const touchEvents = {
+          moveHandler: (e2) => {
+            if (e2.cancelable) {
+              e2.preventDefault();
+              e2.stopPropagation();
+            }
+            onMove(e2.touches[0].clientX);
+            return false;
+          },
+          upHandler: (e2) => {
+            var _e$touches$;
+            contextDocument == null || contextDocument.removeEventListener("touchmove", touchEvents.moveHandler);
+            contextDocument == null || contextDocument.removeEventListener("touchend", touchEvents.upHandler);
+            if (e2.cancelable) {
+              e2.preventDefault();
+              e2.stopPropagation();
+            }
+            onEnd((_e$touches$ = e2.touches[0]) == null ? void 0 : _e$touches$.clientX);
+          }
+        };
+        const passiveIfSupported = passiveEventSupported() ? {
+          passive: false
+        } : false;
+        if (isTouchStartEvent(e)) {
+          contextDocument == null || contextDocument.addEventListener("touchmove", touchEvents.moveHandler, passiveIfSupported);
+          contextDocument == null || contextDocument.addEventListener("touchend", touchEvents.upHandler, passiveIfSupported);
+        } else {
+          contextDocument == null || contextDocument.addEventListener("mousemove", mouseEvents.moveHandler, passiveIfSupported);
+          contextDocument == null || contextDocument.addEventListener("mouseup", mouseEvents.upHandler, passiveIfSupported);
+        }
+        table.setColumnSizingInfo((old) => ({
+          ...old,
+          startOffset: clientX,
+          startSize,
+          deltaOffset: 0,
+          deltaPercentage: 0,
+          columnSizingStart,
+          isResizingColumn: column.id
+        }));
+      };
+    };
+  },
+  createTable: (table) => {
+    table.setColumnSizing = (updater) => table.options.onColumnSizingChange == null ? void 0 : table.options.onColumnSizingChange(updater);
+    table.setColumnSizingInfo = (updater) => table.options.onColumnSizingInfoChange == null ? void 0 : table.options.onColumnSizingInfoChange(updater);
+    table.resetColumnSizing = (defaultState) => {
+      var _table$initialState$c;
+      table.setColumnSizing(defaultState ? {} : (_table$initialState$c = table.initialState.columnSizing) != null ? _table$initialState$c : {});
+    };
+    table.resetHeaderSizeInfo = (defaultState) => {
+      var _table$initialState$c2;
+      table.setColumnSizingInfo(defaultState ? getDefaultColumnSizingInfoState() : (_table$initialState$c2 = table.initialState.columnSizingInfo) != null ? _table$initialState$c2 : getDefaultColumnSizingInfoState());
+    };
+    table.getTotalSize = () => {
+      var _table$getHeaderGroup, _table$getHeaderGroup2;
+      return (_table$getHeaderGroup = (_table$getHeaderGroup2 = table.getHeaderGroups()[0]) == null ? void 0 : _table$getHeaderGroup2.headers.reduce((sum2, header) => {
+        return sum2 + header.getSize();
+      }, 0)) != null ? _table$getHeaderGroup : 0;
+    };
+    table.getLeftTotalSize = () => {
+      var _table$getLeftHeaderG, _table$getLeftHeaderG2;
+      return (_table$getLeftHeaderG = (_table$getLeftHeaderG2 = table.getLeftHeaderGroups()[0]) == null ? void 0 : _table$getLeftHeaderG2.headers.reduce((sum2, header) => {
+        return sum2 + header.getSize();
+      }, 0)) != null ? _table$getLeftHeaderG : 0;
+    };
+    table.getCenterTotalSize = () => {
+      var _table$getCenterHeade, _table$getCenterHeade2;
+      return (_table$getCenterHeade = (_table$getCenterHeade2 = table.getCenterHeaderGroups()[0]) == null ? void 0 : _table$getCenterHeade2.headers.reduce((sum2, header) => {
+        return sum2 + header.getSize();
+      }, 0)) != null ? _table$getCenterHeade : 0;
+    };
+    table.getRightTotalSize = () => {
+      var _table$getRightHeader, _table$getRightHeader2;
+      return (_table$getRightHeader = (_table$getRightHeader2 = table.getRightHeaderGroups()[0]) == null ? void 0 : _table$getRightHeader2.headers.reduce((sum2, header) => {
+        return sum2 + header.getSize();
+      }, 0)) != null ? _table$getRightHeader : 0;
+    };
+  }
+};
+let passiveSupported$1 = null;
+function passiveEventSupported() {
+  if (typeof passiveSupported$1 === "boolean") return passiveSupported$1;
+  let supported = false;
+  try {
+    const options = {
+      get passive() {
+        supported = true;
+        return false;
+      }
+    };
+    const noop2 = () => {
+    };
+    window.addEventListener("test", noop2, options);
+    window.removeEventListener("test", noop2);
+  } catch (err) {
+    supported = false;
+  }
+  passiveSupported$1 = supported;
+  return passiveSupported$1;
+}
+function isTouchStartEvent(e) {
+  return e.type === "touchstart";
+}
+const ColumnVisibility = {
+  getInitialState: (state) => {
+    return {
+      columnVisibility: {},
+      ...state
+    };
+  },
+  getDefaultOptions: (table) => {
+    return {
+      onColumnVisibilityChange: makeStateUpdater("columnVisibility", table)
+    };
+  },
+  createColumn: (column, table) => {
+    column.toggleVisibility = (value2) => {
+      if (column.getCanHide()) {
+        table.setColumnVisibility((old) => ({
+          ...old,
+          [column.id]: value2 != null ? value2 : !column.getIsVisible()
+        }));
+      }
+    };
+    column.getIsVisible = () => {
+      var _ref, _table$getState$colum;
+      const childColumns = column.columns;
+      return (_ref = childColumns.length ? childColumns.some((c) => c.getIsVisible()) : (_table$getState$colum = table.getState().columnVisibility) == null ? void 0 : _table$getState$colum[column.id]) != null ? _ref : true;
+    };
+    column.getCanHide = () => {
+      var _column$columnDef$ena, _table$options$enable;
+      return ((_column$columnDef$ena = column.columnDef.enableHiding) != null ? _column$columnDef$ena : true) && ((_table$options$enable = table.options.enableHiding) != null ? _table$options$enable : true);
+    };
+    column.getToggleVisibilityHandler = () => {
+      return (e) => {
+        column.toggleVisibility == null || column.toggleVisibility(e.target.checked);
+      };
+    };
+  },
+  createRow: (row, table) => {
+    row._getAllVisibleCells = memo$1(() => [row.getAllCells(), table.getState().columnVisibility], (cells) => {
+      return cells.filter((cell) => cell.column.getIsVisible());
+    }, getMemoOptions(table.options, "debugRows", "_getAllVisibleCells"));
+    row.getVisibleCells = memo$1(() => [row.getLeftVisibleCells(), row.getCenterVisibleCells(), row.getRightVisibleCells()], (left2, center2, right2) => [...left2, ...center2, ...right2], getMemoOptions(table.options, "debugRows", "getVisibleCells"));
+  },
+  createTable: (table) => {
+    const makeVisibleColumnsMethod = (key, getColumns) => {
+      return memo$1(() => [getColumns(), getColumns().filter((d) => d.getIsVisible()).map((d) => d.id).join("_")], (columns) => {
+        return columns.filter((d) => d.getIsVisible == null ? void 0 : d.getIsVisible());
+      }, getMemoOptions(table.options, "debugColumns", key));
+    };
+    table.getVisibleFlatColumns = makeVisibleColumnsMethod("getVisibleFlatColumns", () => table.getAllFlatColumns());
+    table.getVisibleLeafColumns = makeVisibleColumnsMethod("getVisibleLeafColumns", () => table.getAllLeafColumns());
+    table.getLeftVisibleLeafColumns = makeVisibleColumnsMethod("getLeftVisibleLeafColumns", () => table.getLeftLeafColumns());
+    table.getRightVisibleLeafColumns = makeVisibleColumnsMethod("getRightVisibleLeafColumns", () => table.getRightLeafColumns());
+    table.getCenterVisibleLeafColumns = makeVisibleColumnsMethod("getCenterVisibleLeafColumns", () => table.getCenterLeafColumns());
+    table.setColumnVisibility = (updater) => table.options.onColumnVisibilityChange == null ? void 0 : table.options.onColumnVisibilityChange(updater);
+    table.resetColumnVisibility = (defaultState) => {
+      var _table$initialState$c;
+      table.setColumnVisibility(defaultState ? {} : (_table$initialState$c = table.initialState.columnVisibility) != null ? _table$initialState$c : {});
+    };
+    table.toggleAllColumnsVisible = (value2) => {
+      var _value;
+      value2 = (_value = value2) != null ? _value : !table.getIsAllColumnsVisible();
+      table.setColumnVisibility(table.getAllLeafColumns().reduce((obj, column) => ({
+        ...obj,
+        [column.id]: !value2 ? !(column.getCanHide != null && column.getCanHide()) : value2
+      }), {}));
+    };
+    table.getIsAllColumnsVisible = () => !table.getAllLeafColumns().some((column) => !(column.getIsVisible != null && column.getIsVisible()));
+    table.getIsSomeColumnsVisible = () => table.getAllLeafColumns().some((column) => column.getIsVisible == null ? void 0 : column.getIsVisible());
+    table.getToggleAllColumnsVisibilityHandler = () => {
+      return (e) => {
+        var _target;
+        table.toggleAllColumnsVisible((_target = e.target) == null ? void 0 : _target.checked);
+      };
+    };
+  }
+};
+function _getVisibleLeafColumns(table, position2) {
+  return !position2 ? table.getVisibleLeafColumns() : position2 === "center" ? table.getCenterVisibleLeafColumns() : position2 === "left" ? table.getLeftVisibleLeafColumns() : table.getRightVisibleLeafColumns();
+}
+const GlobalFaceting = {
+  createTable: (table) => {
+    table._getGlobalFacetedRowModel = table.options.getFacetedRowModel && table.options.getFacetedRowModel(table, "__global__");
+    table.getGlobalFacetedRowModel = () => {
+      if (table.options.manualFiltering || !table._getGlobalFacetedRowModel) {
+        return table.getPreFilteredRowModel();
+      }
+      return table._getGlobalFacetedRowModel();
+    };
+    table._getGlobalFacetedUniqueValues = table.options.getFacetedUniqueValues && table.options.getFacetedUniqueValues(table, "__global__");
+    table.getGlobalFacetedUniqueValues = () => {
+      if (!table._getGlobalFacetedUniqueValues) {
+        return /* @__PURE__ */ new Map();
+      }
+      return table._getGlobalFacetedUniqueValues();
+    };
+    table._getGlobalFacetedMinMaxValues = table.options.getFacetedMinMaxValues && table.options.getFacetedMinMaxValues(table, "__global__");
+    table.getGlobalFacetedMinMaxValues = () => {
+      if (!table._getGlobalFacetedMinMaxValues) {
+        return;
+      }
+      return table._getGlobalFacetedMinMaxValues();
+    };
+  }
+};
+const GlobalFiltering = {
+  getInitialState: (state) => {
+    return {
+      globalFilter: void 0,
+      ...state
+    };
+  },
+  getDefaultOptions: (table) => {
+    return {
+      onGlobalFilterChange: makeStateUpdater("globalFilter", table),
+      globalFilterFn: "auto",
+      getColumnCanGlobalFilter: (column) => {
+        var _table$getCoreRowMode;
+        const value2 = (_table$getCoreRowMode = table.getCoreRowModel().flatRows[0]) == null || (_table$getCoreRowMode = _table$getCoreRowMode._getAllCellsByColumnId()[column.id]) == null ? void 0 : _table$getCoreRowMode.getValue();
+        return typeof value2 === "string" || typeof value2 === "number";
+      }
+    };
+  },
+  createColumn: (column, table) => {
+    column.getCanGlobalFilter = () => {
+      var _column$columnDef$ena, _table$options$enable, _table$options$enable2, _table$options$getCol;
+      return ((_column$columnDef$ena = column.columnDef.enableGlobalFilter) != null ? _column$columnDef$ena : true) && ((_table$options$enable = table.options.enableGlobalFilter) != null ? _table$options$enable : true) && ((_table$options$enable2 = table.options.enableFilters) != null ? _table$options$enable2 : true) && ((_table$options$getCol = table.options.getColumnCanGlobalFilter == null ? void 0 : table.options.getColumnCanGlobalFilter(column)) != null ? _table$options$getCol : true) && !!column.accessorFn;
+    };
+  },
+  createTable: (table) => {
+    table.getGlobalAutoFilterFn = () => {
+      return filterFns.includesString;
+    };
+    table.getGlobalFilterFn = () => {
+      var _table$options$filter, _table$options$filter2;
+      const {
+        globalFilterFn
+      } = table.options;
+      return isFunction(globalFilterFn) ? globalFilterFn : globalFilterFn === "auto" ? table.getGlobalAutoFilterFn() : (_table$options$filter = (_table$options$filter2 = table.options.filterFns) == null ? void 0 : _table$options$filter2[globalFilterFn]) != null ? _table$options$filter : filterFns[globalFilterFn];
+    };
+    table.setGlobalFilter = (updater) => {
+      table.options.onGlobalFilterChange == null || table.options.onGlobalFilterChange(updater);
+    };
+    table.resetGlobalFilter = (defaultState) => {
+      table.setGlobalFilter(defaultState ? void 0 : table.initialState.globalFilter);
+    };
+  }
+};
+const RowExpanding = {
+  getInitialState: (state) => {
+    return {
+      expanded: {},
+      ...state
+    };
+  },
+  getDefaultOptions: (table) => {
+    return {
+      onExpandedChange: makeStateUpdater("expanded", table),
+      paginateExpandedRows: true
+    };
+  },
+  createTable: (table) => {
+    let registered = false;
+    let queued = false;
+    table._autoResetExpanded = () => {
+      var _ref, _table$options$autoRe;
+      if (!registered) {
+        table._queue(() => {
+          registered = true;
+        });
+        return;
+      }
+      if ((_ref = (_table$options$autoRe = table.options.autoResetAll) != null ? _table$options$autoRe : table.options.autoResetExpanded) != null ? _ref : !table.options.manualExpanding) {
+        if (queued) return;
+        queued = true;
+        table._queue(() => {
+          table.resetExpanded();
+          queued = false;
+        });
+      }
+    };
+    table.setExpanded = (updater) => table.options.onExpandedChange == null ? void 0 : table.options.onExpandedChange(updater);
+    table.toggleAllRowsExpanded = (expanded) => {
+      if (expanded != null ? expanded : !table.getIsAllRowsExpanded()) {
+        table.setExpanded(true);
+      } else {
+        table.setExpanded({});
+      }
+    };
+    table.resetExpanded = (defaultState) => {
+      var _table$initialState$e, _table$initialState;
+      table.setExpanded(defaultState ? {} : (_table$initialState$e = (_table$initialState = table.initialState) == null ? void 0 : _table$initialState.expanded) != null ? _table$initialState$e : {});
+    };
+    table.getCanSomeRowsExpand = () => {
+      return table.getPrePaginationRowModel().flatRows.some((row) => row.getCanExpand());
+    };
+    table.getToggleAllRowsExpandedHandler = () => {
+      return (e) => {
+        e.persist == null || e.persist();
+        table.toggleAllRowsExpanded();
+      };
+    };
+    table.getIsSomeRowsExpanded = () => {
+      const expanded = table.getState().expanded;
+      return expanded === true || Object.values(expanded).some(Boolean);
+    };
+    table.getIsAllRowsExpanded = () => {
+      const expanded = table.getState().expanded;
+      if (typeof expanded === "boolean") {
+        return expanded === true;
+      }
+      if (!Object.keys(expanded).length) {
+        return false;
+      }
+      if (table.getRowModel().flatRows.some((row) => !row.getIsExpanded())) {
+        return false;
+      }
+      return true;
+    };
+    table.getExpandedDepth = () => {
+      let maxDepth = 0;
+      const rowIds = table.getState().expanded === true ? Object.keys(table.getRowModel().rowsById) : Object.keys(table.getState().expanded);
+      rowIds.forEach((id2) => {
+        const splitId = id2.split(".");
+        maxDepth = Math.max(maxDepth, splitId.length);
+      });
+      return maxDepth;
+    };
+    table.getPreExpandedRowModel = () => table.getSortedRowModel();
+    table.getExpandedRowModel = () => {
+      if (!table._getExpandedRowModel && table.options.getExpandedRowModel) {
+        table._getExpandedRowModel = table.options.getExpandedRowModel(table);
+      }
+      if (table.options.manualExpanding || !table._getExpandedRowModel) {
+        return table.getPreExpandedRowModel();
+      }
+      return table._getExpandedRowModel();
+    };
+  },
+  createRow: (row, table) => {
+    row.toggleExpanded = (expanded) => {
+      table.setExpanded((old) => {
+        var _expanded;
+        const exists = old === true ? true : !!(old != null && old[row.id]);
+        let oldExpanded = {};
+        if (old === true) {
+          Object.keys(table.getRowModel().rowsById).forEach((rowId) => {
+            oldExpanded[rowId] = true;
+          });
+        } else {
+          oldExpanded = old;
+        }
+        expanded = (_expanded = expanded) != null ? _expanded : !exists;
+        if (!exists && expanded) {
+          return {
+            ...oldExpanded,
+            [row.id]: true
+          };
+        }
+        if (exists && !expanded) {
+          const {
+            [row.id]: _,
+            ...rest
+          } = oldExpanded;
+          return rest;
+        }
+        return old;
+      });
+    };
+    row.getIsExpanded = () => {
+      var _table$options$getIsR;
+      const expanded = table.getState().expanded;
+      return !!((_table$options$getIsR = table.options.getIsRowExpanded == null ? void 0 : table.options.getIsRowExpanded(row)) != null ? _table$options$getIsR : expanded === true || (expanded == null ? void 0 : expanded[row.id]));
+    };
+    row.getCanExpand = () => {
+      var _table$options$getRow, _table$options$enable, _row$subRows;
+      return (_table$options$getRow = table.options.getRowCanExpand == null ? void 0 : table.options.getRowCanExpand(row)) != null ? _table$options$getRow : ((_table$options$enable = table.options.enableExpanding) != null ? _table$options$enable : true) && !!((_row$subRows = row.subRows) != null && _row$subRows.length);
+    };
+    row.getIsAllParentsExpanded = () => {
+      let isFullyExpanded = true;
+      let currentRow = row;
+      while (isFullyExpanded && currentRow.parentId) {
+        currentRow = table.getRow(currentRow.parentId, true);
+        isFullyExpanded = currentRow.getIsExpanded();
+      }
+      return isFullyExpanded;
+    };
+    row.getToggleExpandedHandler = () => {
+      const canExpand = row.getCanExpand();
+      return () => {
+        if (!canExpand) return;
+        row.toggleExpanded();
+      };
+    };
+  }
+};
+const defaultPageIndex = 0;
+const defaultPageSize = 10;
+const getDefaultPaginationState = () => ({
+  pageIndex: defaultPageIndex,
+  pageSize: defaultPageSize
+});
+const RowPagination = {
+  getInitialState: (state) => {
+    return {
+      ...state,
+      pagination: {
+        ...getDefaultPaginationState(),
+        ...state == null ? void 0 : state.pagination
+      }
+    };
+  },
+  getDefaultOptions: (table) => {
+    return {
+      onPaginationChange: makeStateUpdater("pagination", table)
+    };
+  },
+  createTable: (table) => {
+    let registered = false;
+    let queued = false;
+    table._autoResetPageIndex = () => {
+      var _ref, _table$options$autoRe;
+      if (!registered) {
+        table._queue(() => {
+          registered = true;
+        });
+        return;
+      }
+      if ((_ref = (_table$options$autoRe = table.options.autoResetAll) != null ? _table$options$autoRe : table.options.autoResetPageIndex) != null ? _ref : !table.options.manualPagination) {
+        if (queued) return;
+        queued = true;
+        table._queue(() => {
+          table.resetPageIndex();
+          queued = false;
+        });
+      }
+    };
+    table.setPagination = (updater) => {
+      const safeUpdater = (old) => {
+        let newState = functionalUpdate(updater, old);
+        return newState;
+      };
+      return table.options.onPaginationChange == null ? void 0 : table.options.onPaginationChange(safeUpdater);
+    };
+    table.resetPagination = (defaultState) => {
+      var _table$initialState$p;
+      table.setPagination(defaultState ? getDefaultPaginationState() : (_table$initialState$p = table.initialState.pagination) != null ? _table$initialState$p : getDefaultPaginationState());
+    };
+    table.setPageIndex = (updater) => {
+      table.setPagination((old) => {
+        let pageIndex = functionalUpdate(updater, old.pageIndex);
+        const maxPageIndex = typeof table.options.pageCount === "undefined" || table.options.pageCount === -1 ? Number.MAX_SAFE_INTEGER : table.options.pageCount - 1;
+        pageIndex = Math.max(0, Math.min(pageIndex, maxPageIndex));
+        return {
+          ...old,
+          pageIndex
+        };
+      });
+    };
+    table.resetPageIndex = (defaultState) => {
+      var _table$initialState$p2, _table$initialState;
+      table.setPageIndex(defaultState ? defaultPageIndex : (_table$initialState$p2 = (_table$initialState = table.initialState) == null || (_table$initialState = _table$initialState.pagination) == null ? void 0 : _table$initialState.pageIndex) != null ? _table$initialState$p2 : defaultPageIndex);
+    };
+    table.resetPageSize = (defaultState) => {
+      var _table$initialState$p3, _table$initialState2;
+      table.setPageSize(defaultState ? defaultPageSize : (_table$initialState$p3 = (_table$initialState2 = table.initialState) == null || (_table$initialState2 = _table$initialState2.pagination) == null ? void 0 : _table$initialState2.pageSize) != null ? _table$initialState$p3 : defaultPageSize);
+    };
+    table.setPageSize = (updater) => {
+      table.setPagination((old) => {
+        const pageSize = Math.max(1, functionalUpdate(updater, old.pageSize));
+        const topRowIndex = old.pageSize * old.pageIndex;
+        const pageIndex = Math.floor(topRowIndex / pageSize);
+        return {
+          ...old,
+          pageIndex,
+          pageSize
+        };
+      });
+    };
+    table.setPageCount = (updater) => table.setPagination((old) => {
+      var _table$options$pageCo;
+      let newPageCount = functionalUpdate(updater, (_table$options$pageCo = table.options.pageCount) != null ? _table$options$pageCo : -1);
+      if (typeof newPageCount === "number") {
+        newPageCount = Math.max(-1, newPageCount);
+      }
+      return {
+        ...old,
+        pageCount: newPageCount
+      };
+    });
+    table.getPageOptions = memo$1(() => [table.getPageCount()], (pageCount) => {
+      let pageOptions = [];
+      if (pageCount && pageCount > 0) {
+        pageOptions = [...new Array(pageCount)].fill(null).map((_, i2) => i2);
+      }
+      return pageOptions;
+    }, getMemoOptions(table.options, "debugTable", "getPageOptions"));
+    table.getCanPreviousPage = () => table.getState().pagination.pageIndex > 0;
+    table.getCanNextPage = () => {
+      const {
+        pageIndex
+      } = table.getState().pagination;
+      const pageCount = table.getPageCount();
+      if (pageCount === -1) {
+        return true;
+      }
+      if (pageCount === 0) {
+        return false;
+      }
+      return pageIndex < pageCount - 1;
+    };
+    table.previousPage = () => {
+      return table.setPageIndex((old) => old - 1);
+    };
+    table.nextPage = () => {
+      return table.setPageIndex((old) => {
+        return old + 1;
+      });
+    };
+    table.firstPage = () => {
+      return table.setPageIndex(0);
+    };
+    table.lastPage = () => {
+      return table.setPageIndex(table.getPageCount() - 1);
+    };
+    table.getPrePaginationRowModel = () => table.getExpandedRowModel();
+    table.getPaginationRowModel = () => {
+      if (!table._getPaginationRowModel && table.options.getPaginationRowModel) {
+        table._getPaginationRowModel = table.options.getPaginationRowModel(table);
+      }
+      if (table.options.manualPagination || !table._getPaginationRowModel) {
+        return table.getPrePaginationRowModel();
+      }
+      return table._getPaginationRowModel();
+    };
+    table.getPageCount = () => {
+      var _table$options$pageCo2;
+      return (_table$options$pageCo2 = table.options.pageCount) != null ? _table$options$pageCo2 : Math.ceil(table.getRowCount() / table.getState().pagination.pageSize);
+    };
+    table.getRowCount = () => {
+      var _table$options$rowCou;
+      return (_table$options$rowCou = table.options.rowCount) != null ? _table$options$rowCou : table.getPrePaginationRowModel().rows.length;
+    };
+  }
+};
+const getDefaultRowPinningState = () => ({
+  top: [],
+  bottom: []
+});
+const RowPinning = {
+  getInitialState: (state) => {
+    return {
+      rowPinning: getDefaultRowPinningState(),
+      ...state
+    };
+  },
+  getDefaultOptions: (table) => {
+    return {
+      onRowPinningChange: makeStateUpdater("rowPinning", table)
+    };
+  },
+  createRow: (row, table) => {
+    row.pin = (position2, includeLeafRows, includeParentRows) => {
+      const leafRowIds = includeLeafRows ? row.getLeafRows().map((_ref) => {
+        let {
+          id: id2
+        } = _ref;
+        return id2;
+      }) : [];
+      const parentRowIds = includeParentRows ? row.getParentRows().map((_ref2) => {
+        let {
+          id: id2
+        } = _ref2;
+        return id2;
+      }) : [];
+      const rowIds = /* @__PURE__ */ new Set([...parentRowIds, row.id, ...leafRowIds]);
+      table.setRowPinning((old) => {
+        var _old$top3, _old$bottom3;
+        if (position2 === "bottom") {
+          var _old$top, _old$bottom;
+          return {
+            top: ((_old$top = old == null ? void 0 : old.top) != null ? _old$top : []).filter((d) => !(rowIds != null && rowIds.has(d))),
+            bottom: [...((_old$bottom = old == null ? void 0 : old.bottom) != null ? _old$bottom : []).filter((d) => !(rowIds != null && rowIds.has(d))), ...Array.from(rowIds)]
+          };
+        }
+        if (position2 === "top") {
+          var _old$top2, _old$bottom2;
+          return {
+            top: [...((_old$top2 = old == null ? void 0 : old.top) != null ? _old$top2 : []).filter((d) => !(rowIds != null && rowIds.has(d))), ...Array.from(rowIds)],
+            bottom: ((_old$bottom2 = old == null ? void 0 : old.bottom) != null ? _old$bottom2 : []).filter((d) => !(rowIds != null && rowIds.has(d)))
+          };
+        }
+        return {
+          top: ((_old$top3 = old == null ? void 0 : old.top) != null ? _old$top3 : []).filter((d) => !(rowIds != null && rowIds.has(d))),
+          bottom: ((_old$bottom3 = old == null ? void 0 : old.bottom) != null ? _old$bottom3 : []).filter((d) => !(rowIds != null && rowIds.has(d)))
+        };
+      });
+    };
+    row.getCanPin = () => {
+      var _ref3;
+      const {
+        enableRowPinning,
+        enablePinning
+      } = table.options;
+      if (typeof enableRowPinning === "function") {
+        return enableRowPinning(row);
+      }
+      return (_ref3 = enableRowPinning != null ? enableRowPinning : enablePinning) != null ? _ref3 : true;
+    };
+    row.getIsPinned = () => {
+      const rowIds = [row.id];
+      const {
+        top,
+        bottom
+      } = table.getState().rowPinning;
+      const isTop = rowIds.some((d) => top == null ? void 0 : top.includes(d));
+      const isBottom = rowIds.some((d) => bottom == null ? void 0 : bottom.includes(d));
+      return isTop ? "top" : isBottom ? "bottom" : false;
+    };
+    row.getPinnedIndex = () => {
+      var _ref4, _visiblePinnedRowIds$;
+      const position2 = row.getIsPinned();
+      if (!position2) return -1;
+      const visiblePinnedRowIds = (_ref4 = position2 === "top" ? table.getTopRows() : table.getBottomRows()) == null ? void 0 : _ref4.map((_ref5) => {
+        let {
+          id: id2
+        } = _ref5;
+        return id2;
+      });
+      return (_visiblePinnedRowIds$ = visiblePinnedRowIds == null ? void 0 : visiblePinnedRowIds.indexOf(row.id)) != null ? _visiblePinnedRowIds$ : -1;
+    };
+  },
+  createTable: (table) => {
+    table.setRowPinning = (updater) => table.options.onRowPinningChange == null ? void 0 : table.options.onRowPinningChange(updater);
+    table.resetRowPinning = (defaultState) => {
+      var _table$initialState$r, _table$initialState;
+      return table.setRowPinning(defaultState ? getDefaultRowPinningState() : (_table$initialState$r = (_table$initialState = table.initialState) == null ? void 0 : _table$initialState.rowPinning) != null ? _table$initialState$r : getDefaultRowPinningState());
+    };
+    table.getIsSomeRowsPinned = (position2) => {
+      var _pinningState$positio;
+      const pinningState = table.getState().rowPinning;
+      if (!position2) {
+        var _pinningState$top, _pinningState$bottom;
+        return Boolean(((_pinningState$top = pinningState.top) == null ? void 0 : _pinningState$top.length) || ((_pinningState$bottom = pinningState.bottom) == null ? void 0 : _pinningState$bottom.length));
+      }
+      return Boolean((_pinningState$positio = pinningState[position2]) == null ? void 0 : _pinningState$positio.length);
+    };
+    table._getPinnedRows = (visibleRows, pinnedRowIds, position2) => {
+      var _table$options$keepPi;
+      const rows = ((_table$options$keepPi = table.options.keepPinnedRows) != null ? _table$options$keepPi : true) ? (
+        //get all rows that are pinned even if they would not be otherwise visible
+        //account for expanded parent rows, but not pagination or filtering
+        (pinnedRowIds != null ? pinnedRowIds : []).map((rowId) => {
+          const row = table.getRow(rowId, true);
+          return row.getIsAllParentsExpanded() ? row : null;
+        })
+      ) : (
+        //else get only visible rows that are pinned
+        (pinnedRowIds != null ? pinnedRowIds : []).map((rowId) => visibleRows.find((row) => row.id === rowId))
+      );
+      return rows.filter(Boolean).map((d) => ({
+        ...d,
+        position: position2
+      }));
+    };
+    table.getTopRows = memo$1(() => [table.getRowModel().rows, table.getState().rowPinning.top], (allRows, topPinnedRowIds) => table._getPinnedRows(allRows, topPinnedRowIds, "top"), getMemoOptions(table.options, "debugRows", "getTopRows"));
+    table.getBottomRows = memo$1(() => [table.getRowModel().rows, table.getState().rowPinning.bottom], (allRows, bottomPinnedRowIds) => table._getPinnedRows(allRows, bottomPinnedRowIds, "bottom"), getMemoOptions(table.options, "debugRows", "getBottomRows"));
+    table.getCenterRows = memo$1(() => [table.getRowModel().rows, table.getState().rowPinning.top, table.getState().rowPinning.bottom], (allRows, top, bottom) => {
+      const topAndBottom = /* @__PURE__ */ new Set([...top != null ? top : [], ...bottom != null ? bottom : []]);
+      return allRows.filter((d) => !topAndBottom.has(d.id));
+    }, getMemoOptions(table.options, "debugRows", "getCenterRows"));
+  }
+};
+const RowSelection = {
+  getInitialState: (state) => {
+    return {
+      rowSelection: {},
+      ...state
+    };
+  },
+  getDefaultOptions: (table) => {
+    return {
+      onRowSelectionChange: makeStateUpdater("rowSelection", table),
+      enableRowSelection: true,
+      enableMultiRowSelection: true,
+      enableSubRowSelection: true
+      // enableGroupingRowSelection: false,
+      // isAdditiveSelectEvent: (e: unknown) => !!e.metaKey,
+      // isInclusiveSelectEvent: (e: unknown) => !!e.shiftKey,
+    };
+  },
+  createTable: (table) => {
+    table.setRowSelection = (updater) => table.options.onRowSelectionChange == null ? void 0 : table.options.onRowSelectionChange(updater);
+    table.resetRowSelection = (defaultState) => {
+      var _table$initialState$r;
+      return table.setRowSelection(defaultState ? {} : (_table$initialState$r = table.initialState.rowSelection) != null ? _table$initialState$r : {});
+    };
+    table.toggleAllRowsSelected = (value2) => {
+      table.setRowSelection((old) => {
+        value2 = typeof value2 !== "undefined" ? value2 : !table.getIsAllRowsSelected();
+        const rowSelection = {
+          ...old
+        };
+        const preGroupedFlatRows = table.getPreGroupedRowModel().flatRows;
+        if (value2) {
+          preGroupedFlatRows.forEach((row) => {
+            if (!row.getCanSelect()) {
+              return;
+            }
+            rowSelection[row.id] = true;
+          });
+        } else {
+          preGroupedFlatRows.forEach((row) => {
+            delete rowSelection[row.id];
+          });
+        }
+        return rowSelection;
+      });
+    };
+    table.toggleAllPageRowsSelected = (value2) => table.setRowSelection((old) => {
+      const resolvedValue = typeof value2 !== "undefined" ? value2 : !table.getIsAllPageRowsSelected();
+      const rowSelection = {
+        ...old
+      };
+      table.getRowModel().rows.forEach((row) => {
+        mutateRowIsSelected(rowSelection, row.id, resolvedValue, true, table);
+      });
+      return rowSelection;
+    });
+    table.getPreSelectedRowModel = () => table.getCoreRowModel();
+    table.getSelectedRowModel = memo$1(() => [table.getState().rowSelection, table.getCoreRowModel()], (rowSelection, rowModel) => {
+      if (!Object.keys(rowSelection).length) {
+        return {
+          rows: [],
+          flatRows: [],
+          rowsById: {}
+        };
+      }
+      return selectRowsFn(table, rowModel);
+    }, getMemoOptions(table.options, "debugTable", "getSelectedRowModel"));
+    table.getFilteredSelectedRowModel = memo$1(() => [table.getState().rowSelection, table.getFilteredRowModel()], (rowSelection, rowModel) => {
+      if (!Object.keys(rowSelection).length) {
+        return {
+          rows: [],
+          flatRows: [],
+          rowsById: {}
+        };
+      }
+      return selectRowsFn(table, rowModel);
+    }, getMemoOptions(table.options, "debugTable", "getFilteredSelectedRowModel"));
+    table.getGroupedSelectedRowModel = memo$1(() => [table.getState().rowSelection, table.getSortedRowModel()], (rowSelection, rowModel) => {
+      if (!Object.keys(rowSelection).length) {
+        return {
+          rows: [],
+          flatRows: [],
+          rowsById: {}
+        };
+      }
+      return selectRowsFn(table, rowModel);
+    }, getMemoOptions(table.options, "debugTable", "getGroupedSelectedRowModel"));
+    table.getIsAllRowsSelected = () => {
+      const preGroupedFlatRows = table.getFilteredRowModel().flatRows;
+      const {
+        rowSelection
+      } = table.getState();
+      let isAllRowsSelected = Boolean(preGroupedFlatRows.length && Object.keys(rowSelection).length);
+      if (isAllRowsSelected) {
+        if (preGroupedFlatRows.some((row) => row.getCanSelect() && !rowSelection[row.id])) {
+          isAllRowsSelected = false;
+        }
+      }
+      return isAllRowsSelected;
+    };
+    table.getIsAllPageRowsSelected = () => {
+      const paginationFlatRows = table.getPaginationRowModel().flatRows.filter((row) => row.getCanSelect());
+      const {
+        rowSelection
+      } = table.getState();
+      let isAllPageRowsSelected = !!paginationFlatRows.length;
+      if (isAllPageRowsSelected && paginationFlatRows.some((row) => !rowSelection[row.id])) {
+        isAllPageRowsSelected = false;
+      }
+      return isAllPageRowsSelected;
+    };
+    table.getIsSomeRowsSelected = () => {
+      var _table$getState$rowSe;
+      const totalSelected = Object.keys((_table$getState$rowSe = table.getState().rowSelection) != null ? _table$getState$rowSe : {}).length;
+      return totalSelected > 0 && totalSelected < table.getFilteredRowModel().flatRows.length;
+    };
+    table.getIsSomePageRowsSelected = () => {
+      const paginationFlatRows = table.getPaginationRowModel().flatRows;
+      return table.getIsAllPageRowsSelected() ? false : paginationFlatRows.filter((row) => row.getCanSelect()).some((d) => d.getIsSelected() || d.getIsSomeSelected());
+    };
+    table.getToggleAllRowsSelectedHandler = () => {
+      return (e) => {
+        table.toggleAllRowsSelected(e.target.checked);
+      };
+    };
+    table.getToggleAllPageRowsSelectedHandler = () => {
+      return (e) => {
+        table.toggleAllPageRowsSelected(e.target.checked);
+      };
+    };
+  },
+  createRow: (row, table) => {
+    row.toggleSelected = (value2, opts) => {
+      const isSelected = row.getIsSelected();
+      table.setRowSelection((old) => {
+        var _opts$selectChildren;
+        value2 = typeof value2 !== "undefined" ? value2 : !isSelected;
+        if (row.getCanSelect() && isSelected === value2) {
+          return old;
+        }
+        const selectedRowIds = {
+          ...old
+        };
+        mutateRowIsSelected(selectedRowIds, row.id, value2, (_opts$selectChildren = opts == null ? void 0 : opts.selectChildren) != null ? _opts$selectChildren : true, table);
+        return selectedRowIds;
+      });
+    };
+    row.getIsSelected = () => {
+      const {
+        rowSelection
+      } = table.getState();
+      return isRowSelected(row, rowSelection);
+    };
+    row.getIsSomeSelected = () => {
+      const {
+        rowSelection
+      } = table.getState();
+      return isSubRowSelected(row, rowSelection) === "some";
+    };
+    row.getIsAllSubRowsSelected = () => {
+      const {
+        rowSelection
+      } = table.getState();
+      return isSubRowSelected(row, rowSelection) === "all";
+    };
+    row.getCanSelect = () => {
+      var _table$options$enable;
+      if (typeof table.options.enableRowSelection === "function") {
+        return table.options.enableRowSelection(row);
+      }
+      return (_table$options$enable = table.options.enableRowSelection) != null ? _table$options$enable : true;
+    };
+    row.getCanSelectSubRows = () => {
+      var _table$options$enable2;
+      if (typeof table.options.enableSubRowSelection === "function") {
+        return table.options.enableSubRowSelection(row);
+      }
+      return (_table$options$enable2 = table.options.enableSubRowSelection) != null ? _table$options$enable2 : true;
+    };
+    row.getCanMultiSelect = () => {
+      var _table$options$enable3;
+      if (typeof table.options.enableMultiRowSelection === "function") {
+        return table.options.enableMultiRowSelection(row);
+      }
+      return (_table$options$enable3 = table.options.enableMultiRowSelection) != null ? _table$options$enable3 : true;
+    };
+    row.getToggleSelectedHandler = () => {
+      const canSelect = row.getCanSelect();
+      return (e) => {
+        var _target;
+        if (!canSelect) return;
+        row.toggleSelected((_target = e.target) == null ? void 0 : _target.checked);
+      };
+    };
+  }
+};
+const mutateRowIsSelected = (selectedRowIds, id2, value2, includeChildren, table) => {
+  var _row$subRows;
+  const row = table.getRow(id2, true);
+  if (value2) {
+    if (!row.getCanMultiSelect()) {
+      Object.keys(selectedRowIds).forEach((key) => delete selectedRowIds[key]);
+    }
+    if (row.getCanSelect()) {
+      selectedRowIds[id2] = true;
+    }
+  } else {
+    delete selectedRowIds[id2];
+  }
+  if (includeChildren && (_row$subRows = row.subRows) != null && _row$subRows.length && row.getCanSelectSubRows()) {
+    row.subRows.forEach((row2) => mutateRowIsSelected(selectedRowIds, row2.id, value2, includeChildren, table));
+  }
+};
+function selectRowsFn(table, rowModel) {
+  const rowSelection = table.getState().rowSelection;
+  const newSelectedFlatRows = [];
+  const newSelectedRowsById = {};
+  const recurseRows = function(rows, depth) {
+    return rows.map((row) => {
+      var _row$subRows2;
+      const isSelected = isRowSelected(row, rowSelection);
+      if (isSelected) {
+        newSelectedFlatRows.push(row);
+        newSelectedRowsById[row.id] = row;
+      }
+      if ((_row$subRows2 = row.subRows) != null && _row$subRows2.length) {
+        row = {
+          ...row,
+          subRows: recurseRows(row.subRows)
+        };
+      }
+      if (isSelected) {
+        return row;
+      }
+    }).filter(Boolean);
+  };
+  return {
+    rows: recurseRows(rowModel.rows),
+    flatRows: newSelectedFlatRows,
+    rowsById: newSelectedRowsById
+  };
+}
+function isRowSelected(row, selection) {
+  var _selection$row$id;
+  return (_selection$row$id = selection[row.id]) != null ? _selection$row$id : false;
+}
+function isSubRowSelected(row, selection, table) {
+  var _row$subRows3;
+  if (!((_row$subRows3 = row.subRows) != null && _row$subRows3.length)) return false;
+  let allChildrenSelected = true;
+  let someSelected = false;
+  row.subRows.forEach((subRow) => {
+    if (someSelected && !allChildrenSelected) {
+      return;
+    }
+    if (subRow.getCanSelect()) {
+      if (isRowSelected(subRow, selection)) {
+        someSelected = true;
+      } else {
+        allChildrenSelected = false;
+      }
+    }
+    if (subRow.subRows && subRow.subRows.length) {
+      const subRowChildrenSelected = isSubRowSelected(subRow, selection);
+      if (subRowChildrenSelected === "all") {
+        someSelected = true;
+      } else if (subRowChildrenSelected === "some") {
+        someSelected = true;
+        allChildrenSelected = false;
+      } else {
+        allChildrenSelected = false;
+      }
+    }
+  });
+  return allChildrenSelected ? "all" : someSelected ? "some" : false;
+}
+const reSplitAlphaNumeric = /([0-9]+)/gm;
+const alphanumeric = (rowA, rowB, columnId) => {
+  return compareAlphanumeric(toString(rowA.getValue(columnId)).toLowerCase(), toString(rowB.getValue(columnId)).toLowerCase());
+};
+const alphanumericCaseSensitive = (rowA, rowB, columnId) => {
+  return compareAlphanumeric(toString(rowA.getValue(columnId)), toString(rowB.getValue(columnId)));
+};
+const text$2 = (rowA, rowB, columnId) => {
+  return compareBasic(toString(rowA.getValue(columnId)).toLowerCase(), toString(rowB.getValue(columnId)).toLowerCase());
+};
+const textCaseSensitive = (rowA, rowB, columnId) => {
+  return compareBasic(toString(rowA.getValue(columnId)), toString(rowB.getValue(columnId)));
+};
+const datetime = (rowA, rowB, columnId) => {
+  const a = rowA.getValue(columnId);
+  const b = rowB.getValue(columnId);
+  return a > b ? 1 : a < b ? -1 : 0;
+};
+const basic = (rowA, rowB, columnId) => {
+  return compareBasic(rowA.getValue(columnId), rowB.getValue(columnId));
+};
+function compareBasic(a, b) {
+  return a === b ? 0 : a > b ? 1 : -1;
+}
+function toString(a) {
+  if (typeof a === "number") {
+    if (isNaN(a) || a === Infinity || a === -Infinity) {
+      return "";
+    }
+    return String(a);
+  }
+  if (typeof a === "string") {
+    return a;
+  }
+  return "";
+}
+function compareAlphanumeric(aStr, bStr) {
+  const a = aStr.split(reSplitAlphaNumeric).filter(Boolean);
+  const b = bStr.split(reSplitAlphaNumeric).filter(Boolean);
+  while (a.length && b.length) {
+    const aa = a.shift();
+    const bb = b.shift();
+    const an = parseInt(aa, 10);
+    const bn = parseInt(bb, 10);
+    const combo = [an, bn].sort();
+    if (isNaN(combo[0])) {
+      if (aa > bb) {
+        return 1;
+      }
+      if (bb > aa) {
+        return -1;
+      }
+      continue;
+    }
+    if (isNaN(combo[1])) {
+      return isNaN(an) ? -1 : 1;
+    }
+    if (an > bn) {
+      return 1;
+    }
+    if (bn > an) {
+      return -1;
+    }
+  }
+  return a.length - b.length;
+}
+const sortingFns = {
+  alphanumeric,
+  alphanumericCaseSensitive,
+  text: text$2,
+  textCaseSensitive,
+  datetime,
+  basic
+};
+const RowSorting = {
+  getInitialState: (state) => {
+    return {
+      sorting: [],
+      ...state
+    };
+  },
+  getDefaultColumnDef: () => {
+    return {
+      sortingFn: "auto",
+      sortUndefined: 1
+    };
+  },
+  getDefaultOptions: (table) => {
+    return {
+      onSortingChange: makeStateUpdater("sorting", table),
+      isMultiSortEvent: (e) => {
+        return e.shiftKey;
+      }
+    };
+  },
+  createColumn: (column, table) => {
+    column.getAutoSortingFn = () => {
+      const firstRows = table.getFilteredRowModel().flatRows.slice(10);
+      let isString2 = false;
+      for (const row of firstRows) {
+        const value2 = row == null ? void 0 : row.getValue(column.id);
+        if (Object.prototype.toString.call(value2) === "[object Date]") {
+          return sortingFns.datetime;
+        }
+        if (typeof value2 === "string") {
+          isString2 = true;
+          if (value2.split(reSplitAlphaNumeric).length > 1) {
+            return sortingFns.alphanumeric;
+          }
+        }
+      }
+      if (isString2) {
+        return sortingFns.text;
+      }
+      return sortingFns.basic;
+    };
+    column.getAutoSortDir = () => {
+      const firstRow = table.getFilteredRowModel().flatRows[0];
+      const value2 = firstRow == null ? void 0 : firstRow.getValue(column.id);
+      if (typeof value2 === "string") {
+        return "asc";
+      }
+      return "desc";
+    };
+    column.getSortingFn = () => {
+      var _table$options$sortin, _table$options$sortin2;
+      if (!column) {
+        throw new Error();
+      }
+      return isFunction(column.columnDef.sortingFn) ? column.columnDef.sortingFn : column.columnDef.sortingFn === "auto" ? column.getAutoSortingFn() : (_table$options$sortin = (_table$options$sortin2 = table.options.sortingFns) == null ? void 0 : _table$options$sortin2[column.columnDef.sortingFn]) != null ? _table$options$sortin : sortingFns[column.columnDef.sortingFn];
+    };
+    column.toggleSorting = (desc, multi) => {
+      const nextSortingOrder = column.getNextSortingOrder();
+      const hasManualValue = typeof desc !== "undefined" && desc !== null;
+      table.setSorting((old) => {
+        const existingSorting = old == null ? void 0 : old.find((d) => d.id === column.id);
+        const existingIndex = old == null ? void 0 : old.findIndex((d) => d.id === column.id);
+        let newSorting = [];
+        let sortAction;
+        let nextDesc = hasManualValue ? desc : nextSortingOrder === "desc";
+        if (old != null && old.length && column.getCanMultiSort() && multi) {
+          if (existingSorting) {
+            sortAction = "toggle";
+          } else {
+            sortAction = "add";
+          }
+        } else {
+          if (old != null && old.length && existingIndex !== old.length - 1) {
+            sortAction = "replace";
+          } else if (existingSorting) {
+            sortAction = "toggle";
+          } else {
+            sortAction = "replace";
+          }
+        }
+        if (sortAction === "toggle") {
+          if (!hasManualValue) {
+            if (!nextSortingOrder) {
+              sortAction = "remove";
+            }
+          }
+        }
+        if (sortAction === "add") {
+          var _table$options$maxMul;
+          newSorting = [...old, {
+            id: column.id,
+            desc: nextDesc
+          }];
+          newSorting.splice(0, newSorting.length - ((_table$options$maxMul = table.options.maxMultiSortColCount) != null ? _table$options$maxMul : Number.MAX_SAFE_INTEGER));
+        } else if (sortAction === "toggle") {
+          newSorting = old.map((d) => {
+            if (d.id === column.id) {
+              return {
+                ...d,
+                desc: nextDesc
+              };
+            }
+            return d;
+          });
+        } else if (sortAction === "remove") {
+          newSorting = old.filter((d) => d.id !== column.id);
+        } else {
+          newSorting = [{
+            id: column.id,
+            desc: nextDesc
+          }];
+        }
+        return newSorting;
+      });
+    };
+    column.getFirstSortDir = () => {
+      var _ref, _column$columnDef$sor;
+      const sortDescFirst = (_ref = (_column$columnDef$sor = column.columnDef.sortDescFirst) != null ? _column$columnDef$sor : table.options.sortDescFirst) != null ? _ref : column.getAutoSortDir() === "desc";
+      return sortDescFirst ? "desc" : "asc";
+    };
+    column.getNextSortingOrder = (multi) => {
+      var _table$options$enable, _table$options$enable2;
+      const firstSortDirection = column.getFirstSortDir();
+      const isSorted = column.getIsSorted();
+      if (!isSorted) {
+        return firstSortDirection;
+      }
+      if (isSorted !== firstSortDirection && ((_table$options$enable = table.options.enableSortingRemoval) != null ? _table$options$enable : true) && // If enableSortRemove, enable in general
+      (multi ? (_table$options$enable2 = table.options.enableMultiRemove) != null ? _table$options$enable2 : true : true)) {
+        return false;
+      }
+      return isSorted === "desc" ? "asc" : "desc";
+    };
+    column.getCanSort = () => {
+      var _column$columnDef$ena, _table$options$enable3;
+      return ((_column$columnDef$ena = column.columnDef.enableSorting) != null ? _column$columnDef$ena : true) && ((_table$options$enable3 = table.options.enableSorting) != null ? _table$options$enable3 : true) && !!column.accessorFn;
+    };
+    column.getCanMultiSort = () => {
+      var _ref2, _column$columnDef$ena2;
+      return (_ref2 = (_column$columnDef$ena2 = column.columnDef.enableMultiSort) != null ? _column$columnDef$ena2 : table.options.enableMultiSort) != null ? _ref2 : !!column.accessorFn;
+    };
+    column.getIsSorted = () => {
+      var _table$getState$sorti;
+      const columnSort = (_table$getState$sorti = table.getState().sorting) == null ? void 0 : _table$getState$sorti.find((d) => d.id === column.id);
+      return !columnSort ? false : columnSort.desc ? "desc" : "asc";
+    };
+    column.getSortIndex = () => {
+      var _table$getState$sorti2, _table$getState$sorti3;
+      return (_table$getState$sorti2 = (_table$getState$sorti3 = table.getState().sorting) == null ? void 0 : _table$getState$sorti3.findIndex((d) => d.id === column.id)) != null ? _table$getState$sorti2 : -1;
+    };
+    column.clearSorting = () => {
+      table.setSorting((old) => old != null && old.length ? old.filter((d) => d.id !== column.id) : []);
+    };
+    column.getToggleSortingHandler = () => {
+      const canSort = column.getCanSort();
+      return (e) => {
+        if (!canSort) return;
+        e.persist == null || e.persist();
+        column.toggleSorting == null || column.toggleSorting(void 0, column.getCanMultiSort() ? table.options.isMultiSortEvent == null ? void 0 : table.options.isMultiSortEvent(e) : false);
+      };
+    };
+  },
+  createTable: (table) => {
+    table.setSorting = (updater) => table.options.onSortingChange == null ? void 0 : table.options.onSortingChange(updater);
+    table.resetSorting = (defaultState) => {
+      var _table$initialState$s, _table$initialState;
+      table.setSorting(defaultState ? [] : (_table$initialState$s = (_table$initialState = table.initialState) == null ? void 0 : _table$initialState.sorting) != null ? _table$initialState$s : []);
+    };
+    table.getPreSortedRowModel = () => table.getGroupedRowModel();
+    table.getSortedRowModel = () => {
+      if (!table._getSortedRowModel && table.options.getSortedRowModel) {
+        table._getSortedRowModel = table.options.getSortedRowModel(table);
+      }
+      if (table.options.manualSorting || !table._getSortedRowModel) {
+        return table.getPreSortedRowModel();
+      }
+      return table._getSortedRowModel();
+    };
+  }
+};
+const builtInFeatures = [
+  Headers,
+  ColumnVisibility,
+  ColumnOrdering,
+  ColumnPinning,
+  ColumnFaceting,
+  ColumnFiltering,
+  GlobalFaceting,
+  //depends on ColumnFaceting
+  GlobalFiltering,
+  //depends on ColumnFiltering
+  RowSorting,
+  ColumnGrouping,
+  //depends on RowSorting
+  RowExpanding,
+  RowPagination,
+  RowPinning,
+  RowSelection,
+  ColumnSizing
+];
+function createTable(options) {
+  var _options$_features, _options$initialState;
+  if (process.env.NODE_ENV !== "production" && (options.debugAll || options.debugTable)) {
+    console.info("Creating Table Instance...");
+  }
+  const _features = [...builtInFeatures, ...(_options$_features = options._features) != null ? _options$_features : []];
+  let table = {
+    _features
+  };
+  const defaultOptions2 = table._features.reduce((obj, feature) => {
+    return Object.assign(obj, feature.getDefaultOptions == null ? void 0 : feature.getDefaultOptions(table));
+  }, {});
+  const mergeOptions = (options2) => {
+    if (table.options.mergeOptions) {
+      return table.options.mergeOptions(defaultOptions2, options2);
+    }
+    return {
+      ...defaultOptions2,
+      ...options2
+    };
+  };
+  const coreInitialState = {};
+  let initialState2 = {
+    ...coreInitialState,
+    ...(_options$initialState = options.initialState) != null ? _options$initialState : {}
+  };
+  table._features.forEach((feature) => {
+    var _feature$getInitialSt;
+    initialState2 = (_feature$getInitialSt = feature.getInitialState == null ? void 0 : feature.getInitialState(initialState2)) != null ? _feature$getInitialSt : initialState2;
+  });
+  const queued = [];
+  let queuedTimeout = false;
+  const coreInstance = {
+    _features,
+    options: {
+      ...defaultOptions2,
+      ...options
+    },
+    initialState: initialState2,
+    _queue: (cb) => {
+      queued.push(cb);
+      if (!queuedTimeout) {
+        queuedTimeout = true;
+        Promise.resolve().then(() => {
+          while (queued.length) {
+            queued.shift()();
+          }
+          queuedTimeout = false;
+        }).catch((error2) => setTimeout(() => {
+          throw error2;
+        }));
+      }
+    },
+    reset: () => {
+      table.setState(table.initialState);
+    },
+    setOptions: (updater) => {
+      const newOptions = functionalUpdate(updater, table.options);
+      table.options = mergeOptions(newOptions);
+    },
+    getState: () => {
+      return table.options.state;
+    },
+    setState: (updater) => {
+      table.options.onStateChange == null || table.options.onStateChange(updater);
+    },
+    _getRowId: (row, index2, parent) => {
+      var _table$options$getRow;
+      return (_table$options$getRow = table.options.getRowId == null ? void 0 : table.options.getRowId(row, index2, parent)) != null ? _table$options$getRow : `${parent ? [parent.id, index2].join(".") : index2}`;
+    },
+    getCoreRowModel: () => {
+      if (!table._getCoreRowModel) {
+        table._getCoreRowModel = table.options.getCoreRowModel(table);
+      }
+      return table._getCoreRowModel();
+    },
+    // The final calls start at the bottom of the model,
+    // expanded rows, which then work their way up
+    getRowModel: () => {
+      return table.getPaginationRowModel();
+    },
+    //in next version, we should just pass in the row model as the optional 2nd arg
+    getRow: (id2, searchAll) => {
+      let row = (searchAll ? table.getPrePaginationRowModel() : table.getRowModel()).rowsById[id2];
+      if (!row) {
+        row = table.getCoreRowModel().rowsById[id2];
+        if (!row) {
+          if (process.env.NODE_ENV !== "production") {
+            throw new Error(`getRow could not find row with ID: ${id2}`);
+          }
+          throw new Error();
+        }
+      }
+      return row;
+    },
+    _getDefaultColumnDef: memo$1(() => [table.options.defaultColumn], (defaultColumn) => {
+      var _defaultColumn;
+      defaultColumn = (_defaultColumn = defaultColumn) != null ? _defaultColumn : {};
+      return {
+        header: (props) => {
+          const resolvedColumnDef = props.header.column.columnDef;
+          if (resolvedColumnDef.accessorKey) {
+            return resolvedColumnDef.accessorKey;
+          }
+          if (resolvedColumnDef.accessorFn) {
+            return resolvedColumnDef.id;
+          }
+          return null;
+        },
+        // footer: props => props.header.column.id,
+        cell: (props) => {
+          var _props$renderValue$to, _props$renderValue;
+          return (_props$renderValue$to = (_props$renderValue = props.renderValue()) == null || _props$renderValue.toString == null ? void 0 : _props$renderValue.toString()) != null ? _props$renderValue$to : null;
+        },
+        ...table._features.reduce((obj, feature) => {
+          return Object.assign(obj, feature.getDefaultColumnDef == null ? void 0 : feature.getDefaultColumnDef());
+        }, {}),
+        ...defaultColumn
+      };
+    }, getMemoOptions(options, "debugColumns", "_getDefaultColumnDef")),
+    _getColumnDefs: () => table.options.columns,
+    getAllColumns: memo$1(() => [table._getColumnDefs()], (columnDefs) => {
+      const recurseColumns = function(columnDefs2, parent, depth) {
+        if (depth === void 0) {
+          depth = 0;
+        }
+        return columnDefs2.map((columnDef) => {
+          const column = createColumn(table, columnDef, depth, parent);
+          const groupingColumnDef = columnDef;
+          column.columns = groupingColumnDef.columns ? recurseColumns(groupingColumnDef.columns, column, depth + 1) : [];
+          return column;
+        });
+      };
+      return recurseColumns(columnDefs);
+    }, getMemoOptions(options, "debugColumns", "getAllColumns")),
+    getAllFlatColumns: memo$1(() => [table.getAllColumns()], (allColumns) => {
+      return allColumns.flatMap((column) => {
+        return column.getFlatColumns();
+      });
+    }, getMemoOptions(options, "debugColumns", "getAllFlatColumns")),
+    _getAllFlatColumnsById: memo$1(() => [table.getAllFlatColumns()], (flatColumns) => {
+      return flatColumns.reduce((acc, column) => {
+        acc[column.id] = column;
+        return acc;
+      }, {});
+    }, getMemoOptions(options, "debugColumns", "getAllFlatColumnsById")),
+    getAllLeafColumns: memo$1(() => [table.getAllColumns(), table._getOrderColumnsFn()], (allColumns, orderColumns2) => {
+      let leafColumns = allColumns.flatMap((column) => column.getLeafColumns());
+      return orderColumns2(leafColumns);
+    }, getMemoOptions(options, "debugColumns", "getAllLeafColumns")),
+    getColumn: (columnId) => {
+      const column = table._getAllFlatColumnsById()[columnId];
+      if (process.env.NODE_ENV !== "production" && !column) {
+        console.error(`[Table] Column with id '${columnId}' does not exist.`);
+      }
+      return column;
+    }
+  };
+  Object.assign(table, coreInstance);
+  for (let index2 = 0; index2 < table._features.length; index2++) {
+    const feature = table._features[index2];
+    feature == null || feature.createTable == null || feature.createTable(table);
+  }
+  return table;
+}
+function getCoreRowModel() {
+  return (table) => memo$1(() => [table.options.data], (data) => {
+    const rowModel = {
+      rows: [],
+      flatRows: [],
+      rowsById: {}
+    };
+    const accessRows = function(originalRows, depth, parentRow) {
+      if (depth === void 0) {
+        depth = 0;
+      }
+      const rows = [];
+      for (let i2 = 0; i2 < originalRows.length; i2++) {
+        const row = createRow(table, table._getRowId(originalRows[i2], i2, parentRow), originalRows[i2], i2, depth, void 0, parentRow == null ? void 0 : parentRow.id);
+        rowModel.flatRows.push(row);
+        rowModel.rowsById[row.id] = row;
+        rows.push(row);
+        if (table.options.getSubRows) {
+          var _row$originalSubRows;
+          row.originalSubRows = table.options.getSubRows(originalRows[i2], i2);
+          if ((_row$originalSubRows = row.originalSubRows) != null && _row$originalSubRows.length) {
+            row.subRows = accessRows(row.originalSubRows, depth + 1, row);
+          }
+        }
+      }
+      return rows;
+    };
+    rowModel.rows = accessRows(data);
+    return rowModel;
+  }, getMemoOptions(table.options, "debugTable", "getRowModel", () => table._autoResetPageIndex()));
+}
+function getExpandedRowModel() {
+  return (table) => memo$1(() => [table.getState().expanded, table.getPreExpandedRowModel(), table.options.paginateExpandedRows], (expanded, rowModel, paginateExpandedRows) => {
+    if (!rowModel.rows.length || expanded !== true && !Object.keys(expanded != null ? expanded : {}).length) {
+      return rowModel;
+    }
+    if (!paginateExpandedRows) {
+      return rowModel;
+    }
+    return expandRows(rowModel);
+  }, getMemoOptions(table.options, "debugTable", "getExpandedRowModel"));
+}
+function expandRows(rowModel) {
+  const expandedRows = [];
+  const handleRow = (row) => {
+    var _row$subRows;
+    expandedRows.push(row);
+    if ((_row$subRows = row.subRows) != null && _row$subRows.length && row.getIsExpanded()) {
+      row.subRows.forEach(handleRow);
+    }
+  };
+  rowModel.rows.forEach(handleRow);
+  return {
+    rows: expandedRows,
+    flatRows: rowModel.flatRows,
+    rowsById: rowModel.rowsById
+  };
+}
+function filterRows(rows, filterRowImpl, table) {
+  if (table.options.filterFromLeafRows) {
+    return filterRowModelFromLeafs(rows, filterRowImpl, table);
+  }
+  return filterRowModelFromRoot(rows, filterRowImpl, table);
+}
+function filterRowModelFromLeafs(rowsToFilter, filterRow, table) {
+  var _table$options$maxLea;
+  const newFilteredFlatRows = [];
+  const newFilteredRowsById = {};
+  const maxDepth = (_table$options$maxLea = table.options.maxLeafRowFilterDepth) != null ? _table$options$maxLea : 100;
+  const recurseFilterRows = function(rowsToFilter2, depth) {
+    if (depth === void 0) {
+      depth = 0;
+    }
+    const rows = [];
+    for (let i2 = 0; i2 < rowsToFilter2.length; i2++) {
+      var _row$subRows;
+      let row = rowsToFilter2[i2];
+      const newRow = createRow(table, row.id, row.original, row.index, row.depth, void 0, row.parentId);
+      newRow.columnFilters = row.columnFilters;
+      if ((_row$subRows = row.subRows) != null && _row$subRows.length && depth < maxDepth) {
+        newRow.subRows = recurseFilterRows(row.subRows, depth + 1);
+        row = newRow;
+        if (filterRow(row) && !newRow.subRows.length) {
+          rows.push(row);
+          newFilteredRowsById[row.id] = row;
+          newFilteredFlatRows.push(row);
+          continue;
+        }
+        if (filterRow(row) || newRow.subRows.length) {
+          rows.push(row);
+          newFilteredRowsById[row.id] = row;
+          newFilteredFlatRows.push(row);
+          continue;
+        }
+      } else {
+        row = newRow;
+        if (filterRow(row)) {
+          rows.push(row);
+          newFilteredRowsById[row.id] = row;
+          newFilteredFlatRows.push(row);
+        }
+      }
+    }
+    return rows;
+  };
+  return {
+    rows: recurseFilterRows(rowsToFilter),
+    flatRows: newFilteredFlatRows,
+    rowsById: newFilteredRowsById
+  };
+}
+function filterRowModelFromRoot(rowsToFilter, filterRow, table) {
+  var _table$options$maxLea2;
+  const newFilteredFlatRows = [];
+  const newFilteredRowsById = {};
+  const maxDepth = (_table$options$maxLea2 = table.options.maxLeafRowFilterDepth) != null ? _table$options$maxLea2 : 100;
+  const recurseFilterRows = function(rowsToFilter2, depth) {
+    if (depth === void 0) {
+      depth = 0;
+    }
+    const rows = [];
+    for (let i2 = 0; i2 < rowsToFilter2.length; i2++) {
+      let row = rowsToFilter2[i2];
+      const pass = filterRow(row);
+      if (pass) {
+        var _row$subRows2;
+        if ((_row$subRows2 = row.subRows) != null && _row$subRows2.length && depth < maxDepth) {
+          const newRow = createRow(table, row.id, row.original, row.index, row.depth, void 0, row.parentId);
+          newRow.subRows = recurseFilterRows(row.subRows, depth + 1);
+          row = newRow;
+        }
+        rows.push(row);
+        newFilteredFlatRows.push(row);
+        newFilteredRowsById[row.id] = row;
+      }
+    }
+    return rows;
+  };
+  return {
+    rows: recurseFilterRows(rowsToFilter),
+    flatRows: newFilteredFlatRows,
+    rowsById: newFilteredRowsById
+  };
+}
+function getFilteredRowModel() {
+  return (table) => memo$1(() => [table.getPreFilteredRowModel(), table.getState().columnFilters, table.getState().globalFilter], (rowModel, columnFilters, globalFilter) => {
+    if (!rowModel.rows.length || !(columnFilters != null && columnFilters.length) && !globalFilter) {
+      for (let i2 = 0; i2 < rowModel.flatRows.length; i2++) {
+        rowModel.flatRows[i2].columnFilters = {};
+        rowModel.flatRows[i2].columnFiltersMeta = {};
+      }
+      return rowModel;
+    }
+    const resolvedColumnFilters = [];
+    const resolvedGlobalFilters = [];
+    (columnFilters != null ? columnFilters : []).forEach((d) => {
+      var _filterFn$resolveFilt;
+      const column = table.getColumn(d.id);
+      if (!column) {
+        return;
+      }
+      const filterFn = column.getFilterFn();
+      if (!filterFn) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn(`Could not find a valid 'column.filterFn' for column with the ID: ${column.id}.`);
+        }
+        return;
+      }
+      resolvedColumnFilters.push({
+        id: d.id,
+        filterFn,
+        resolvedValue: (_filterFn$resolveFilt = filterFn.resolveFilterValue == null ? void 0 : filterFn.resolveFilterValue(d.value)) != null ? _filterFn$resolveFilt : d.value
+      });
+    });
+    const filterableIds = (columnFilters != null ? columnFilters : []).map((d) => d.id);
+    const globalFilterFn = table.getGlobalFilterFn();
+    const globallyFilterableColumns = table.getAllLeafColumns().filter((column) => column.getCanGlobalFilter());
+    if (globalFilter && globalFilterFn && globallyFilterableColumns.length) {
+      filterableIds.push("__global__");
+      globallyFilterableColumns.forEach((column) => {
+        var _globalFilterFn$resol;
+        resolvedGlobalFilters.push({
+          id: column.id,
+          filterFn: globalFilterFn,
+          resolvedValue: (_globalFilterFn$resol = globalFilterFn.resolveFilterValue == null ? void 0 : globalFilterFn.resolveFilterValue(globalFilter)) != null ? _globalFilterFn$resol : globalFilter
+        });
+      });
+    }
+    let currentColumnFilter;
+    let currentGlobalFilter;
+    for (let j = 0; j < rowModel.flatRows.length; j++) {
+      const row = rowModel.flatRows[j];
+      row.columnFilters = {};
+      if (resolvedColumnFilters.length) {
+        for (let i2 = 0; i2 < resolvedColumnFilters.length; i2++) {
+          currentColumnFilter = resolvedColumnFilters[i2];
+          const id2 = currentColumnFilter.id;
+          row.columnFilters[id2] = currentColumnFilter.filterFn(row, id2, currentColumnFilter.resolvedValue, (filterMeta) => {
+            row.columnFiltersMeta[id2] = filterMeta;
+          });
+        }
+      }
+      if (resolvedGlobalFilters.length) {
+        for (let i2 = 0; i2 < resolvedGlobalFilters.length; i2++) {
+          currentGlobalFilter = resolvedGlobalFilters[i2];
+          const id2 = currentGlobalFilter.id;
+          if (currentGlobalFilter.filterFn(row, id2, currentGlobalFilter.resolvedValue, (filterMeta) => {
+            row.columnFiltersMeta[id2] = filterMeta;
+          })) {
+            row.columnFilters.__global__ = true;
+            break;
+          }
+        }
+        if (row.columnFilters.__global__ !== true) {
+          row.columnFilters.__global__ = false;
+        }
+      }
+    }
+    const filterRowsImpl = (row) => {
+      for (let i2 = 0; i2 < filterableIds.length; i2++) {
+        if (row.columnFilters[filterableIds[i2]] === false) {
+          return false;
+        }
+      }
+      return true;
+    };
+    return filterRows(rowModel.rows, filterRowsImpl, table);
+  }, getMemoOptions(table.options, "debugTable", "getFilteredRowModel", () => table._autoResetPageIndex()));
+}
+function getSortedRowModel() {
+  return (table) => memo$1(() => [table.getState().sorting, table.getPreSortedRowModel()], (sorting, rowModel) => {
+    if (!rowModel.rows.length || !(sorting != null && sorting.length)) {
+      return rowModel;
+    }
+    const sortingState = table.getState().sorting;
+    const sortedFlatRows = [];
+    const availableSorting = sortingState.filter((sort) => {
+      var _table$getColumn;
+      return (_table$getColumn = table.getColumn(sort.id)) == null ? void 0 : _table$getColumn.getCanSort();
+    });
+    const columnInfoById = {};
+    availableSorting.forEach((sortEntry) => {
+      const column = table.getColumn(sortEntry.id);
+      if (!column) return;
+      columnInfoById[sortEntry.id] = {
+        sortUndefined: column.columnDef.sortUndefined,
+        invertSorting: column.columnDef.invertSorting,
+        sortingFn: column.getSortingFn()
+      };
+    });
+    const sortData = (rows) => {
+      const sortedData = rows.map((row) => ({
+        ...row
+      }));
+      sortedData.sort((rowA, rowB) => {
+        for (let i2 = 0; i2 < availableSorting.length; i2 += 1) {
+          var _sortEntry$desc;
+          const sortEntry = availableSorting[i2];
+          const columnInfo = columnInfoById[sortEntry.id];
+          const sortUndefined = columnInfo.sortUndefined;
+          const isDesc = (_sortEntry$desc = sortEntry == null ? void 0 : sortEntry.desc) != null ? _sortEntry$desc : false;
+          let sortInt = 0;
+          if (sortUndefined) {
+            const aValue = rowA.getValue(sortEntry.id);
+            const bValue = rowB.getValue(sortEntry.id);
+            const aUndefined = aValue === void 0;
+            const bUndefined = bValue === void 0;
+            if (aUndefined || bUndefined) {
+              if (sortUndefined === "first") return aUndefined ? -1 : 1;
+              if (sortUndefined === "last") return aUndefined ? 1 : -1;
+              sortInt = aUndefined && bUndefined ? 0 : aUndefined ? sortUndefined : -sortUndefined;
+            }
+          }
+          if (sortInt === 0) {
+            sortInt = columnInfo.sortingFn(rowA, rowB, sortEntry.id);
+          }
+          if (sortInt !== 0) {
+            if (isDesc) {
+              sortInt *= -1;
+            }
+            if (columnInfo.invertSorting) {
+              sortInt *= -1;
+            }
+            return sortInt;
+          }
+        }
+        return rowA.index - rowB.index;
+      });
+      sortedData.forEach((row) => {
+        var _row$subRows;
+        sortedFlatRows.push(row);
+        if ((_row$subRows = row.subRows) != null && _row$subRows.length) {
+          row.subRows = sortData(row.subRows);
+        }
+      });
+      return sortedData;
+    };
+    return {
+      rows: sortData(rowModel.rows),
+      flatRows: sortedFlatRows,
+      rowsById: rowModel.rowsById
+    };
+  }, getMemoOptions(table.options, "debugTable", "getSortedRowModel", () => table._autoResetPageIndex()));
+}
+/**
+   * react-table
+   *
+   * Copyright (c) TanStack
+   *
+   * This source code is licensed under the MIT license found in the
+   * LICENSE.md file in the root directory of this source tree.
+   *
+   * @license MIT
+   */
+function flexRender(Comp, props) {
+  return !Comp ? null : isReactComponent(Comp) ? /* @__PURE__ */ React.createElement(Comp, props) : Comp;
+}
+function isReactComponent(component) {
+  return isClassComponent(component) || typeof component === "function" || isExoticComponent(component);
+}
+function isClassComponent(component) {
+  return typeof component === "function" && (() => {
+    const proto = Object.getPrototypeOf(component);
+    return proto.prototype && proto.prototype.isReactComponent;
+  })();
+}
+function isExoticComponent(component) {
+  return typeof component === "object" && typeof component.$$typeof === "symbol" && ["react.memo", "react.forward_ref"].includes(component.$$typeof.description);
+}
+function useReactTable(options) {
+  const resolvedOptions = {
+    state: {},
+    // Dummy state
+    onStateChange: () => {
+    },
+    // noop
+    renderFallbackValue: null,
+    ...options
+  };
+  const [tableRef] = React.useState(() => ({
+    current: createTable(resolvedOptions)
+  }));
+  const [state, setState] = React.useState(() => tableRef.current.initialState);
+  tableRef.current.setOptions((prev) => ({
+    ...prev,
+    ...options,
+    state: {
+      ...state,
+      ...options.state
+    },
+    // Similarly, we'll maintain both our internal state and any user-provided
+    // state.
+    onStateChange: (updater) => {
+      setState(updater);
+      options.onStateChange == null || options.onStateChange(updater);
+    }
+  }));
+  return tableRef.current;
+}
+function memo(getDeps, fn, opts) {
+  let deps = opts.initialDeps ?? [];
+  let result;
+  return () => {
+    var _a, _b, _c, _d;
+    let depTime;
+    if (opts.key && ((_a = opts.debug) == null ? void 0 : _a.call(opts))) depTime = Date.now();
+    const newDeps = getDeps();
+    const depsChanged = newDeps.length !== deps.length || newDeps.some((dep, index2) => deps[index2] !== dep);
+    if (!depsChanged) {
+      return result;
+    }
+    deps = newDeps;
+    let resultTime;
+    if (opts.key && ((_b = opts.debug) == null ? void 0 : _b.call(opts))) resultTime = Date.now();
+    result = fn(...newDeps);
+    if (opts.key && ((_c = opts.debug) == null ? void 0 : _c.call(opts))) {
+      const depEndTime = Math.round((Date.now() - depTime) * 100) / 100;
+      const resultEndTime = Math.round((Date.now() - resultTime) * 100) / 100;
+      const resultFpsPercentage = resultEndTime / 16;
+      const pad = (str, num) => {
+        str = String(str);
+        while (str.length < num) {
+          str = " " + str;
+        }
+        return str;
+      };
+      console.info(
+        `%c⏱ ${pad(resultEndTime, 5)} /${pad(depEndTime, 5)} ms`,
+        `
+            font-size: .6rem;
+            font-weight: bold;
+            color: hsl(${Math.max(
+          0,
+          Math.min(120 - 120 * resultFpsPercentage, 120)
+        )}deg 100% 31%);`,
+        opts == null ? void 0 : opts.key
+      );
+    }
+    (_d = opts == null ? void 0 : opts.onChange) == null ? void 0 : _d.call(opts, result);
+    return result;
+  };
+}
+function notUndefined(value2, msg) {
+  if (value2 === void 0) {
+    throw new Error(`Unexpected undefined${""}`);
+  } else {
+    return value2;
+  }
+}
+const approxEqual = (a, b) => Math.abs(a - b) < 1;
+const debounce = (targetWindow, fn, ms) => {
+  let timeoutId;
+  return function(...args) {
+    targetWindow.clearTimeout(timeoutId);
+    timeoutId = targetWindow.setTimeout(() => fn.apply(this, args), ms);
+  };
+};
+const defaultKeyExtractor = (index2) => index2;
+const defaultRangeExtractor = (range2) => {
+  const start2 = Math.max(range2.startIndex - range2.overscan, 0);
+  const end2 = Math.min(range2.endIndex + range2.overscan, range2.count - 1);
+  const arr = [];
+  for (let i2 = start2; i2 <= end2; i2++) {
+    arr.push(i2);
+  }
+  return arr;
+};
+const observeElementRect = (instance2, cb) => {
+  const element = instance2.scrollElement;
+  if (!element) {
+    return;
+  }
+  const targetWindow = instance2.targetWindow;
+  if (!targetWindow) {
+    return;
+  }
+  const handler = (rect) => {
+    const { width, height } = rect;
+    cb({ width: Math.round(width), height: Math.round(height) });
+  };
+  handler(element.getBoundingClientRect());
+  if (!targetWindow.ResizeObserver) {
+    return () => {
+    };
+  }
+  const observer = new targetWindow.ResizeObserver((entries) => {
+    const run = () => {
+      const entry = entries[0];
+      if (entry == null ? void 0 : entry.borderBoxSize) {
+        const box = entry.borderBoxSize[0];
+        if (box) {
+          handler({ width: box.inlineSize, height: box.blockSize });
+          return;
+        }
+      }
+      handler(element.getBoundingClientRect());
+    };
+    instance2.options.useAnimationFrameWithResizeObserver ? requestAnimationFrame(run) : run();
+  });
+  observer.observe(element, { box: "border-box" });
+  return () => {
+    observer.unobserve(element);
+  };
+};
+const addEventListenerOptions = {
+  passive: true
+};
+const supportsScrollend = typeof window == "undefined" ? true : "onscrollend" in window;
+const observeElementOffset = (instance2, cb) => {
+  const element = instance2.scrollElement;
+  if (!element) {
+    return;
+  }
+  const targetWindow = instance2.targetWindow;
+  if (!targetWindow) {
+    return;
+  }
+  let offset2 = 0;
+  const fallback = instance2.options.useScrollendEvent && supportsScrollend ? () => void 0 : debounce(
+    targetWindow,
+    () => {
+      cb(offset2, false);
+    },
+    instance2.options.isScrollingResetDelay
+  );
+  const createHandler = (isScrolling) => () => {
+    const { horizontal, isRtl } = instance2.options;
+    offset2 = horizontal ? element["scrollLeft"] * (isRtl && -1 || 1) : element["scrollTop"];
+    fallback();
+    cb(offset2, isScrolling);
+  };
+  const handler = createHandler(true);
+  const endHandler = createHandler(false);
+  endHandler();
+  element.addEventListener("scroll", handler, addEventListenerOptions);
+  const registerScrollendEvent = instance2.options.useScrollendEvent && supportsScrollend;
+  if (registerScrollendEvent) {
+    element.addEventListener("scrollend", endHandler, addEventListenerOptions);
+  }
+  return () => {
+    element.removeEventListener("scroll", handler);
+    if (registerScrollendEvent) {
+      element.removeEventListener("scrollend", endHandler);
+    }
+  };
+};
+const measureElement = (element, entry, instance2) => {
+  if (entry == null ? void 0 : entry.borderBoxSize) {
+    const box = entry.borderBoxSize[0];
+    if (box) {
+      const size2 = Math.round(
+        box[instance2.options.horizontal ? "inlineSize" : "blockSize"]
+      );
+      return size2;
+    }
+  }
+  return Math.round(
+    element.getBoundingClientRect()[instance2.options.horizontal ? "width" : "height"]
+  );
+};
+const elementScroll = (offset2, {
+  adjustments = 0,
+  behavior
+}, instance2) => {
+  var _a, _b;
+  const toOffset = offset2 + adjustments;
+  (_b = (_a = instance2.scrollElement) == null ? void 0 : _a.scrollTo) == null ? void 0 : _b.call(_a, {
+    [instance2.options.horizontal ? "left" : "top"]: toOffset,
+    behavior
+  });
+};
+class Virtualizer {
+  constructor(opts) {
+    this.unsubs = [];
+    this.scrollElement = null;
+    this.targetWindow = null;
+    this.isScrolling = false;
+    this.scrollToIndexTimeoutId = null;
+    this.measurementsCache = [];
+    this.itemSizeCache = /* @__PURE__ */ new Map();
+    this.pendingMeasuredCacheIndexes = [];
+    this.scrollRect = null;
+    this.scrollOffset = null;
+    this.scrollDirection = null;
+    this.scrollAdjustments = 0;
+    this.elementsCache = /* @__PURE__ */ new Map();
+    this.observer = /* @__PURE__ */ (() => {
+      let _ro = null;
+      const get2 = () => {
+        if (_ro) {
+          return _ro;
+        }
+        if (!this.targetWindow || !this.targetWindow.ResizeObserver) {
+          return null;
+        }
+        return _ro = new this.targetWindow.ResizeObserver((entries) => {
+          entries.forEach((entry) => {
+            const run = () => {
+              this._measureElement(entry.target, entry);
+            };
+            this.options.useAnimationFrameWithResizeObserver ? requestAnimationFrame(run) : run();
+          });
+        });
+      };
+      return {
+        disconnect: () => {
+          var _a;
+          (_a = get2()) == null ? void 0 : _a.disconnect();
+          _ro = null;
+        },
+        observe: (target2) => {
+          var _a;
+          return (_a = get2()) == null ? void 0 : _a.observe(target2, { box: "border-box" });
+        },
+        unobserve: (target2) => {
+          var _a;
+          return (_a = get2()) == null ? void 0 : _a.unobserve(target2);
+        }
+      };
+    })();
+    this.range = null;
+    this.setOptions = (opts2) => {
+      Object.entries(opts2).forEach(([key, value2]) => {
+        if (typeof value2 === "undefined") delete opts2[key];
+      });
+      this.options = {
+        debug: false,
+        initialOffset: 0,
+        overscan: 1,
+        paddingStart: 0,
+        paddingEnd: 0,
+        scrollPaddingStart: 0,
+        scrollPaddingEnd: 0,
+        horizontal: false,
+        getItemKey: defaultKeyExtractor,
+        rangeExtractor: defaultRangeExtractor,
+        onChange: () => {
+        },
+        measureElement,
+        initialRect: { width: 0, height: 0 },
+        scrollMargin: 0,
+        gap: 0,
+        indexAttribute: "data-index",
+        initialMeasurementsCache: [],
+        lanes: 1,
+        isScrollingResetDelay: 150,
+        enabled: true,
+        isRtl: false,
+        useScrollendEvent: true,
+        useAnimationFrameWithResizeObserver: false,
+        ...opts2
+      };
+    };
+    this.notify = (sync) => {
+      var _a, _b;
+      (_b = (_a = this.options).onChange) == null ? void 0 : _b.call(_a, this, sync);
+    };
+    this.maybeNotify = memo(
+      () => {
+        this.calculateRange();
+        return [
+          this.isScrolling,
+          this.range ? this.range.startIndex : null,
+          this.range ? this.range.endIndex : null
+        ];
+      },
+      (isScrolling) => {
+        this.notify(isScrolling);
+      },
+      {
+        key: process.env.NODE_ENV !== "production" && "maybeNotify",
+        debug: () => this.options.debug,
+        initialDeps: [
+          this.isScrolling,
+          this.range ? this.range.startIndex : null,
+          this.range ? this.range.endIndex : null
+        ]
+      }
+    );
+    this.cleanup = () => {
+      this.unsubs.filter(Boolean).forEach((d) => d());
+      this.unsubs = [];
+      this.observer.disconnect();
+      this.scrollElement = null;
+      this.targetWindow = null;
+    };
+    this._didMount = () => {
+      return () => {
+        this.cleanup();
+      };
+    };
+    this._willUpdate = () => {
+      var _a;
+      const scrollElement = this.options.enabled ? this.options.getScrollElement() : null;
+      if (this.scrollElement !== scrollElement) {
+        this.cleanup();
+        if (!scrollElement) {
+          this.maybeNotify();
+          return;
+        }
+        this.scrollElement = scrollElement;
+        if (this.scrollElement && "ownerDocument" in this.scrollElement) {
+          this.targetWindow = this.scrollElement.ownerDocument.defaultView;
+        } else {
+          this.targetWindow = ((_a = this.scrollElement) == null ? void 0 : _a.window) ?? null;
+        }
+        this.elementsCache.forEach((cached) => {
+          this.observer.observe(cached);
+        });
+        this._scrollToOffset(this.getScrollOffset(), {
+          adjustments: void 0,
+          behavior: void 0
+        });
+        this.unsubs.push(
+          this.options.observeElementRect(this, (rect) => {
+            this.scrollRect = rect;
+            this.maybeNotify();
+          })
+        );
+        this.unsubs.push(
+          this.options.observeElementOffset(this, (offset2, isScrolling) => {
+            this.scrollAdjustments = 0;
+            this.scrollDirection = isScrolling ? this.getScrollOffset() < offset2 ? "forward" : "backward" : null;
+            this.scrollOffset = offset2;
+            this.isScrolling = isScrolling;
+            this.maybeNotify();
+          })
+        );
+      }
+    };
+    this.getSize = () => {
+      if (!this.options.enabled) {
+        this.scrollRect = null;
+        return 0;
+      }
+      this.scrollRect = this.scrollRect ?? this.options.initialRect;
+      return this.scrollRect[this.options.horizontal ? "width" : "height"];
+    };
+    this.getScrollOffset = () => {
+      if (!this.options.enabled) {
+        this.scrollOffset = null;
+        return 0;
+      }
+      this.scrollOffset = this.scrollOffset ?? (typeof this.options.initialOffset === "function" ? this.options.initialOffset() : this.options.initialOffset);
+      return this.scrollOffset;
+    };
+    this.getFurthestMeasurement = (measurements, index2) => {
+      const furthestMeasurementsFound = /* @__PURE__ */ new Map();
+      const furthestMeasurements = /* @__PURE__ */ new Map();
+      for (let m = index2 - 1; m >= 0; m--) {
+        const measurement = measurements[m];
+        if (furthestMeasurementsFound.has(measurement.lane)) {
+          continue;
+        }
+        const previousFurthestMeasurement = furthestMeasurements.get(
+          measurement.lane
+        );
+        if (previousFurthestMeasurement == null || measurement.end > previousFurthestMeasurement.end) {
+          furthestMeasurements.set(measurement.lane, measurement);
+        } else if (measurement.end < previousFurthestMeasurement.end) {
+          furthestMeasurementsFound.set(measurement.lane, true);
+        }
+        if (furthestMeasurementsFound.size === this.options.lanes) {
+          break;
+        }
+      }
+      return furthestMeasurements.size === this.options.lanes ? Array.from(furthestMeasurements.values()).sort((a, b) => {
+        if (a.end === b.end) {
+          return a.index - b.index;
+        }
+        return a.end - b.end;
+      })[0] : void 0;
+    };
+    this.getMeasurementOptions = memo(
+      () => [
+        this.options.count,
+        this.options.paddingStart,
+        this.options.scrollMargin,
+        this.options.getItemKey,
+        this.options.enabled
+      ],
+      (count2, paddingStart, scrollMargin, getItemKey, enabled2) => {
+        this.pendingMeasuredCacheIndexes = [];
+        return {
+          count: count2,
+          paddingStart,
+          scrollMargin,
+          getItemKey,
+          enabled: enabled2
+        };
+      },
+      {
+        key: false
+      }
+    );
+    this.getMeasurements = memo(
+      () => [this.getMeasurementOptions(), this.itemSizeCache],
+      ({ count: count2, paddingStart, scrollMargin, getItemKey, enabled: enabled2 }, itemSizeCache) => {
+        if (!enabled2) {
+          this.measurementsCache = [];
+          this.itemSizeCache.clear();
+          return [];
+        }
+        if (this.measurementsCache.length === 0) {
+          this.measurementsCache = this.options.initialMeasurementsCache;
+          this.measurementsCache.forEach((item) => {
+            this.itemSizeCache.set(item.key, item.size);
+          });
+        }
+        const min2 = this.pendingMeasuredCacheIndexes.length > 0 ? Math.min(...this.pendingMeasuredCacheIndexes) : 0;
+        this.pendingMeasuredCacheIndexes = [];
+        const measurements = this.measurementsCache.slice(0, min2);
+        for (let i2 = min2; i2 < count2; i2++) {
+          const key = getItemKey(i2);
+          const furthestMeasurement = this.options.lanes === 1 ? measurements[i2 - 1] : this.getFurthestMeasurement(measurements, i2);
+          const start2 = furthestMeasurement ? furthestMeasurement.end + this.options.gap : paddingStart + scrollMargin;
+          const measuredSize = itemSizeCache.get(key);
+          const size2 = typeof measuredSize === "number" ? measuredSize : this.options.estimateSize(i2);
+          const end2 = start2 + size2;
+          const lane = furthestMeasurement ? furthestMeasurement.lane : i2 % this.options.lanes;
+          measurements[i2] = {
+            index: i2,
+            start: start2,
+            size: size2,
+            end: end2,
+            key,
+            lane
+          };
+        }
+        this.measurementsCache = measurements;
+        return measurements;
+      },
+      {
+        key: process.env.NODE_ENV !== "production" && "getMeasurements",
+        debug: () => this.options.debug
+      }
+    );
+    this.calculateRange = memo(
+      () => [
+        this.getMeasurements(),
+        this.getSize(),
+        this.getScrollOffset(),
+        this.options.lanes
+      ],
+      (measurements, outerSize, scrollOffset, lanes) => {
+        return this.range = measurements.length > 0 && outerSize > 0 ? calculateRange({
+          measurements,
+          outerSize,
+          scrollOffset,
+          lanes
+        }) : null;
+      },
+      {
+        key: process.env.NODE_ENV !== "production" && "calculateRange",
+        debug: () => this.options.debug
+      }
+    );
+    this.getVirtualIndexes = memo(
+      () => {
+        let startIndex = null;
+        let endIndex = null;
+        const range2 = this.calculateRange();
+        if (range2) {
+          startIndex = range2.startIndex;
+          endIndex = range2.endIndex;
+        }
+        return [
+          this.options.rangeExtractor,
+          this.options.overscan,
+          this.options.count,
+          startIndex,
+          endIndex
+        ];
+      },
+      (rangeExtractor, overscan, count2, startIndex, endIndex) => {
+        return startIndex === null || endIndex === null ? [] : rangeExtractor({
+          startIndex,
+          endIndex,
+          overscan,
+          count: count2
+        });
+      },
+      {
+        key: process.env.NODE_ENV !== "production" && "getVirtualIndexes",
+        debug: () => this.options.debug
+      }
+    );
+    this.indexFromElement = (node) => {
+      const attributeName = this.options.indexAttribute;
+      const indexStr = node.getAttribute(attributeName);
+      if (!indexStr) {
+        console.warn(
+          `Missing attribute name '${attributeName}={index}' on measured element.`
+        );
+        return -1;
+      }
+      return parseInt(indexStr, 10);
+    };
+    this._measureElement = (node, entry) => {
+      const index2 = this.indexFromElement(node);
+      const item = this.measurementsCache[index2];
+      if (!item) {
+        return;
+      }
+      const key = item.key;
+      const prevNode = this.elementsCache.get(key);
+      if (prevNode !== node) {
+        if (prevNode) {
+          this.observer.unobserve(prevNode);
+        }
+        this.observer.observe(node);
+        this.elementsCache.set(key, node);
+      }
+      if (node.isConnected) {
+        this.resizeItem(index2, this.options.measureElement(node, entry, this));
+      }
+    };
+    this.resizeItem = (index2, size2) => {
+      const item = this.measurementsCache[index2];
+      if (!item) {
+        return;
+      }
+      const itemSize = this.itemSizeCache.get(item.key) ?? item.size;
+      const delta = size2 - itemSize;
+      if (delta !== 0) {
+        if (this.shouldAdjustScrollPositionOnItemSizeChange !== void 0 ? this.shouldAdjustScrollPositionOnItemSizeChange(item, delta, this) : item.start < this.getScrollOffset() + this.scrollAdjustments) {
+          if (process.env.NODE_ENV !== "production" && this.options.debug) {
+            console.info("correction", delta);
+          }
+          this._scrollToOffset(this.getScrollOffset(), {
+            adjustments: this.scrollAdjustments += delta,
+            behavior: void 0
+          });
+        }
+        this.pendingMeasuredCacheIndexes.push(item.index);
+        this.itemSizeCache = new Map(this.itemSizeCache.set(item.key, size2));
+        this.notify(false);
+      }
+    };
+    this.measureElement = (node) => {
+      if (!node) {
+        this.elementsCache.forEach((cached, key) => {
+          if (!cached.isConnected) {
+            this.observer.unobserve(cached);
+            this.elementsCache.delete(key);
+          }
+        });
+        return;
+      }
+      this._measureElement(node, void 0);
+    };
+    this.getVirtualItems = memo(
+      () => [this.getVirtualIndexes(), this.getMeasurements()],
+      (indexes, measurements) => {
+        const virtualItems = [];
+        for (let k = 0, len = indexes.length; k < len; k++) {
+          const i2 = indexes[k];
+          const measurement = measurements[i2];
+          virtualItems.push(measurement);
+        }
+        return virtualItems;
+      },
+      {
+        key: process.env.NODE_ENV !== "production" && "getVirtualItems",
+        debug: () => this.options.debug
+      }
+    );
+    this.getVirtualItemForOffset = (offset2) => {
+      const measurements = this.getMeasurements();
+      if (measurements.length === 0) {
+        return void 0;
+      }
+      return notUndefined(
+        measurements[findNearestBinarySearch(
+          0,
+          measurements.length - 1,
+          (index2) => notUndefined(measurements[index2]).start,
+          offset2
+        )]
+      );
+    };
+    this.getOffsetForAlignment = (toOffset, align2, itemSize = 0) => {
+      const size2 = this.getSize();
+      const scrollOffset = this.getScrollOffset();
+      if (align2 === "auto") {
+        align2 = toOffset >= scrollOffset + size2 ? "end" : "start";
+      }
+      if (align2 === "center") {
+        toOffset += (itemSize - size2) / 2;
+      } else if (align2 === "end") {
+        toOffset -= size2;
+      }
+      const scrollSizeProp = this.options.horizontal ? "scrollWidth" : "scrollHeight";
+      const scrollSize = this.scrollElement ? "document" in this.scrollElement ? this.scrollElement.document.documentElement[scrollSizeProp] : this.scrollElement[scrollSizeProp] : 0;
+      const maxOffset = scrollSize - size2;
+      return Math.max(Math.min(maxOffset, toOffset), 0);
+    };
+    this.getOffsetForIndex = (index2, align2 = "auto") => {
+      index2 = Math.max(0, Math.min(index2, this.options.count - 1));
+      const item = this.measurementsCache[index2];
+      if (!item) {
+        return void 0;
+      }
+      const size2 = this.getSize();
+      const scrollOffset = this.getScrollOffset();
+      if (align2 === "auto") {
+        if (item.end >= scrollOffset + size2 - this.options.scrollPaddingEnd) {
+          align2 = "end";
+        } else if (item.start <= scrollOffset + this.options.scrollPaddingStart) {
+          align2 = "start";
+        } else {
+          return [scrollOffset, align2];
+        }
+      }
+      const toOffset = align2 === "end" ? item.end + this.options.scrollPaddingEnd : item.start - this.options.scrollPaddingStart;
+      return [
+        this.getOffsetForAlignment(toOffset, align2, item.size),
+        align2
+      ];
+    };
+    this.isDynamicMode = () => this.elementsCache.size > 0;
+    this.cancelScrollToIndex = () => {
+      if (this.scrollToIndexTimeoutId !== null && this.targetWindow) {
+        this.targetWindow.clearTimeout(this.scrollToIndexTimeoutId);
+        this.scrollToIndexTimeoutId = null;
+      }
+    };
+    this.scrollToOffset = (toOffset, { align: align2 = "start", behavior } = {}) => {
+      this.cancelScrollToIndex();
+      if (behavior === "smooth" && this.isDynamicMode()) {
+        console.warn(
+          "The `smooth` scroll behavior is not fully supported with dynamic size."
+        );
+      }
+      this._scrollToOffset(this.getOffsetForAlignment(toOffset, align2), {
+        adjustments: void 0,
+        behavior
+      });
+    };
+    this.scrollToIndex = (index2, { align: initialAlign = "auto", behavior } = {}) => {
+      index2 = Math.max(0, Math.min(index2, this.options.count - 1));
+      this.cancelScrollToIndex();
+      if (behavior === "smooth" && this.isDynamicMode()) {
+        console.warn(
+          "The `smooth` scroll behavior is not fully supported with dynamic size."
+        );
+      }
+      const offsetAndAlign = this.getOffsetForIndex(index2, initialAlign);
+      if (!offsetAndAlign) return;
+      const [offset2, align2] = offsetAndAlign;
+      this._scrollToOffset(offset2, { adjustments: void 0, behavior });
+      if (behavior !== "smooth" && this.isDynamicMode() && this.targetWindow) {
+        this.scrollToIndexTimeoutId = this.targetWindow.setTimeout(() => {
+          this.scrollToIndexTimeoutId = null;
+          const elementInDOM = this.elementsCache.has(
+            this.options.getItemKey(index2)
+          );
+          if (elementInDOM) {
+            const [latestOffset] = notUndefined(
+              this.getOffsetForIndex(index2, align2)
+            );
+            if (!approxEqual(latestOffset, this.getScrollOffset())) {
+              this.scrollToIndex(index2, { align: align2, behavior });
+            }
+          } else {
+            this.scrollToIndex(index2, { align: align2, behavior });
+          }
+        });
+      }
+    };
+    this.scrollBy = (delta, { behavior } = {}) => {
+      this.cancelScrollToIndex();
+      if (behavior === "smooth" && this.isDynamicMode()) {
+        console.warn(
+          "The `smooth` scroll behavior is not fully supported with dynamic size."
+        );
+      }
+      this._scrollToOffset(this.getScrollOffset() + delta, {
+        adjustments: void 0,
+        behavior
+      });
+    };
+    this.getTotalSize = () => {
+      var _a;
+      const measurements = this.getMeasurements();
+      let end2;
+      if (measurements.length === 0) {
+        end2 = this.options.paddingStart;
+      } else {
+        end2 = this.options.lanes === 1 ? ((_a = measurements[measurements.length - 1]) == null ? void 0 : _a.end) ?? 0 : Math.max(
+          ...measurements.slice(-this.options.lanes).map((m) => m.end)
+        );
+      }
+      return Math.max(
+        end2 - this.options.scrollMargin + this.options.paddingEnd,
+        0
+      );
+    };
+    this._scrollToOffset = (offset2, {
+      adjustments,
+      behavior
+    }) => {
+      this.options.scrollToFn(offset2, { behavior, adjustments }, this);
+    };
+    this.measure = () => {
+      this.itemSizeCache = /* @__PURE__ */ new Map();
+      this.notify(false);
+    };
+    this.setOptions(opts);
+  }
+}
+const findNearestBinarySearch = (low, high, getCurrentValue, value2) => {
+  while (low <= high) {
+    const middle = (low + high) / 2 | 0;
+    const currentValue = getCurrentValue(middle);
+    if (currentValue < value2) {
+      low = middle + 1;
+    } else if (currentValue > value2) {
+      high = middle - 1;
+    } else {
+      return middle;
+    }
+  }
+  if (low > 0) {
+    return low - 1;
+  } else {
+    return 0;
+  }
+};
+function calculateRange({
+  measurements,
+  outerSize,
+  scrollOffset,
+  lanes
+}) {
+  const lastIndex = measurements.length - 1;
+  const getOffset2 = (index2) => measurements[index2].start;
+  let startIndex = findNearestBinarySearch(
+    0,
+    lastIndex,
+    getOffset2,
+    scrollOffset
+  );
+  let endIndex = startIndex;
+  while (endIndex < lastIndex && measurements[endIndex].end < scrollOffset + outerSize) {
+    endIndex++;
+  }
+  if (lanes > 1) {
+    startIndex = Math.max(0, startIndex - startIndex % lanes);
+    endIndex = Math.min(lastIndex, endIndex + (lanes - 1 - endIndex % lanes));
+  }
+  return { startIndex, endIndex };
+}
+const useIsomorphicLayoutEffect$2 = typeof document !== "undefined" ? React.useLayoutEffect : React.useEffect;
+function useVirtualizerBase(options) {
+  const rerender = React.useReducer(() => ({}), {})[1];
+  const resolvedOptions = {
+    ...options,
+    onChange: (instance22, sync) => {
+      var _a;
+      if (sync) {
+        flushSync(rerender);
+      } else {
+        rerender();
+      }
+      (_a = options.onChange) == null ? void 0 : _a.call(options, instance22, sync);
+    }
+  };
+  const [instance2] = React.useState(
+    () => new Virtualizer(resolvedOptions)
+  );
+  instance2.setOptions(resolvedOptions);
+  useIsomorphicLayoutEffect$2(() => {
+    return instance2._didMount();
+  }, []);
+  useIsomorphicLayoutEffect$2(() => {
+    return instance2._willUpdate();
+  });
+  return instance2;
+}
+function useVirtualizer(options) {
+  return useVirtualizerBase({
+    observeElementRect,
+    observeElementOffset,
+    scrollToFn: elementScroll,
+    ...options
+  });
+}
+const useVirtualTable = ({
+  data,
+  columns,
+  estimateSize = 33,
+  overscan = 5,
+  ...tableProps
+}) => {
+  const [sorting, setSorting] = useState([]);
+  const tableContainerRef = useRef(null);
+  const [expanded, setExpanded] = useState({});
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, expanded },
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    onExpandedChange: setExpanded,
+    getSubRows: (row) => row.children || [],
+    getRowCanExpand: (row) => {
+      const childDevices = row.original.childDevices;
+      const childAssets = row.original.childAssets;
+      const childDevicesLength = childDevices ? childDevices.references.length : 0;
+      const childAssetsLength = childAssets ? childAssets.references.length : 0;
+      return childDevicesLength > 0 || childAssetsLength > 0;
+    },
+    manualSorting: false,
+    defaultColumn: {
+      size: 0,
+      minSize: 0
+    },
+    ...tableProps
+  });
+  const { rows } = table.getRowModel();
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    estimateSize: () => 33,
+    //estimate row height for accurate scrollbar dragging
+    getScrollElement: () => tableContainerRef.current,
+    //measure dynamic row height, except in firefox because it measures table border height incorrectly
+    measureElement: typeof window !== "undefined" && navigator.userAgent.indexOf("Firefox") === -1 ? (element) => element == null ? void 0 : element.getBoundingClientRect().height : void 0,
+    overscan: 5
+  });
+  const handleSortingChange = (updater) => {
+    var _a;
+    setSorting(updater);
+    if (table.getRowModel().rows.length) {
+      (_a = rowVirtualizer.scrollToIndex) == null ? void 0 : _a.call(rowVirtualizer, 0);
+    }
+  };
+  table.setOptions((prev) => ({
+    ...prev,
+    onSortingChange: handleSortingChange
+  }));
+  return {
+    table,
+    rowVirtualizer,
+    tableContainerRef,
+    virtualRows: rowVirtualizer.getVirtualItems(),
+    rows
+  };
+};
+const useInfiniteVirtualTable = ({
+  fetchNextPage,
+  hasNextPage,
+  isFetching,
+  intersectionThreshold = 0.2,
+  ...tableProps
+}) => {
+  const tableData = useVirtualTable(tableProps);
+  const { observerTarget } = useIntersectionObserver({
+    hasNextPage,
+    fetchNextPage,
+    isFetching,
+    threshold: intersectionThreshold
+  });
+  return {
+    ...tableData,
+    observerTarget
+  };
+};
 const LoadingSpinner = () => {
   const { t: t2 } = useTranslation();
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 transform flex-col items-center gap-y-2 sm:flex-row sm:gap-y-0", children: [
@@ -21950,7 +25950,7 @@ const SvgSetting = (props) => /* @__PURE__ */ React.createElement("svg", { width
 const SvgTool = (props) => /* @__PURE__ */ React.createElement("svg", { width: 20, height: 20, viewBox: "0 0 20 20", fill: "none", xmlns: "http://www.w3.org/2000/svg", ...props }, /* @__PURE__ */ React.createElement("path", { d: "M12.25 5.25C12.0973 5.40578 12.0118 5.61521 12.0118 5.83334C12.0118 6.05146 12.0973 6.2609 12.25 6.41667L13.5833 7.75C13.7391 7.90269 13.9485 7.98822 14.1667 7.98822C14.3848 7.98822 14.5942 7.90269 14.75 7.75L17.8917 4.60834C18.3107 5.53433 18.4376 6.56603 18.2554 7.56596C18.0732 8.56588 17.5906 9.48654 16.8719 10.2052C16.1532 10.9239 15.2325 11.4065 14.2326 11.5887C13.2327 11.7709 12.201 11.644 11.275 11.225L5.51667 16.9833C5.18515 17.3149 4.73551 17.5011 4.26667 17.5011C3.79783 17.5011 3.34819 17.3149 3.01667 16.9833C2.68515 16.6518 2.4989 16.2022 2.4989 15.7333C2.4989 15.2645 2.68515 14.8149 3.01667 14.4833L8.775 8.725C8.35597 7.79901 8.2291 6.76731 8.41129 5.76738C8.59348 4.76746 9.07607 3.8468 9.79477 3.1281C10.5135 2.40941 11.4341 1.92681 12.434 1.74462C13.434 1.56243 14.4657 1.68931 15.3917 2.10834L12.2583 5.24167L12.25 5.25Z", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" }));
 const SvgWidgetPlus = (props) => /* @__PURE__ */ React.createElement("svg", { width: 16, height: 16, viewBox: "0 0 16 16", fill: "none", xmlns: "http://www.w3.org/2000/svg", ...props }, /* @__PURE__ */ React.createElement("path", { d: "M12.6667 2H3.33333C2.59695 2 2 2.59695 2 3.33333V12.6667C2 13.403 2.59695 14 3.33333 14H12.6667C13.403 14 14 13.403 14 12.6667V3.33333C14 2.59695 13.403 2 12.6667 2Z", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" }), /* @__PURE__ */ React.createElement("path", { d: "M8 5.33333V10.6667", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" }), /* @__PURE__ */ React.createElement("path", { d: "M5.33334 8H10.6667", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" }));
 const SvgMapPin = (props) => /* @__PURE__ */ React.createElement("svg", { width: 20, height: 30, viewBox: "0 0 20 30", fill: "none", xmlns: "http://www.w3.org/2000/svg", ...props }, /* @__PURE__ */ React.createElement("g", { clipPath: "url(#clip0_2280_4362)" }, /* @__PURE__ */ React.createElement("path", { d: "M9.99995 0.714355C4.87138 0.714355 0.714233 4.98578 0.714233 10.2501C0.714233 11.8358 1.09995 13.3358 1.76423 14.6501L9.33566 28.8144C9.33566 28.8144 9.36423 28.8715 9.37852 28.8929C9.49995 29.1215 9.72852 29.2786 9.99995 29.2786C10.2714 29.2786 10.4999 29.1215 10.6214 28.8929L10.6642 28.8144L18.2357 14.6501C18.9071 13.3358 19.2857 11.8358 19.2857 10.2501C19.2857 4.98578 15.1285 0.714355 9.99995 0.714355ZM9.99995 12.8572C8.42138 12.8572 7.14281 11.5786 7.14281 10.0001C7.14281 8.4215 8.42138 7.14293 9.99995 7.14293C11.5785 7.14293 12.8571 8.4215 12.8571 10.0001C12.8571 11.5786 11.5785 12.8572 9.99995 12.8572Z", fill: "#0075FF", stroke: "#0456B6", strokeMiterlimit: 10 })), /* @__PURE__ */ React.createElement("defs", null, /* @__PURE__ */ React.createElement("clipPath", { id: "clip0_2280_4362" }, /* @__PURE__ */ React.createElement("rect", { width: 20, height: 30, fill: "white" }))));
-const SvgInputDelete = (props) => /* @__PURE__ */ React.createElement("svg", { width: 24, height: 24, viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg", ...props }, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 9, fill: "#CCCCCC" }), /* @__PURE__ */ React.createElement("path", { d: "M9 9L15 15", stroke: "white", strokeWidth: 1.5, strokeLinecap: "round" }), /* @__PURE__ */ React.createElement("path", { d: "M15 9L9 15", stroke: "white", strokeWidth: 1.5, strokeLinecap: "round" }));
+const SvgInputDelete = (props) => /* @__PURE__ */ React.createElement("svg", { width: 24, height: 24, viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg", ...props }, /* @__PURE__ */ React.createElement("circle", { cx: 12, cy: 12, r: 9, fill: "currentColor" }), /* @__PURE__ */ React.createElement("path", { d: "M9 9L15 15", stroke: "white", strokeWidth: 1.5, strokeLinecap: "round" }), /* @__PURE__ */ React.createElement("path", { d: "M15 9L9 15", stroke: "white", strokeWidth: 1.5, strokeLinecap: "round" }));
 const SvgSuccess = (props) => /* @__PURE__ */ React.createElement("svg", { width: 20, height: 20, viewBox: "0 0 20 20", fill: "none", xmlns: "http://www.w3.org/2000/svg", ...props }, /* @__PURE__ */ React.createElement("path", { fillRule: "evenodd", clipRule: "evenodd", d: "M19 10C19 14.9706 14.9706 19 10 19C5.02944 19 1 14.9706 1 10C1 5.02944 5.02944 1 10 1C14.9706 1 19 5.02944 19 10ZM14.7071 7.95711C15.0976 7.56658 15.0976 6.93342 14.7071 6.54289C14.3166 6.15237 13.6834 6.15237 13.2929 6.54289L8.5 11.3358L6.70711 9.54289C6.31658 9.15237 5.68342 9.15237 5.29289 9.54289C4.90237 9.93342 4.90237 10.5666 5.29289 10.9571L7.79289 13.4571C8.18342 13.8476 8.81658 13.8476 9.20711 13.4571L14.7071 7.95711Z", fill: "white" }));
 const SvgMoreVertical = (props) => /* @__PURE__ */ React.createElement("svg", { width: 20, height: 20, viewBox: "0 0 20 20", fill: "currentColor", xmlns: "http://www.w3.org/2000/svg", ...props }, /* @__PURE__ */ React.createElement("path", { d: "M10 17.5C10.8284 17.5 11.5 16.8284 11.5 16C11.5 15.1716 10.8284 14.5 10 14.5C9.17157 14.5 8.5 15.1716 8.5 16C8.5 16.8284 9.17157 17.5 10 17.5Z" }), /* @__PURE__ */ React.createElement("path", { d: "M10 11.5C10.8284 11.5 11.5 10.8284 11.5 10C11.5 9.17157 10.8284 8.5 10 8.5C9.17157 8.5 8.5 9.17157 8.5 10C8.5 10.8284 9.17157 11.5 10 11.5Z" }), /* @__PURE__ */ React.createElement("path", { d: "M10 5.5C10.8284 5.5 11.5 4.82843 11.5 4C11.5 3.17157 10.8284 2.5 10 2.5C9.17157 2.5 8.5 3.17157 8.5 4C8.5 4.82843 9.17157 5.5 10 5.5Z" }));
 const SvgMinus = (props) => /* @__PURE__ */ React.createElement("svg", { width: 20, height: 20, viewBox: "0 0 20 20", fill: "none", xmlns: "http://www.w3.org/2000/svg", ...props }, /* @__PURE__ */ React.createElement("path", { d: "M4 10H16", stroke: "#666666", strokeWidth: 1.5, strokeLinecap: "round" }));
@@ -22009,6 +26009,10 @@ const SvgAdvancedSimulators = (props) => /* @__PURE__ */ React.createElement("sv
 const SvgCockpit = (props) => /* @__PURE__ */ React.createElement("svg", { width: 40, height: 40, viewBox: "0 0 40 40", fill: "none", xmlns: "http://www.w3.org/2000/svg", ...props }, /* @__PURE__ */ React.createElement("circle", { cx: 20, cy: 20, r: 16.5, stroke: "currentColor", strokeWidth: 3 }), /* @__PURE__ */ React.createElement("circle", { cx: 20.0004, cy: 25.4008, r: 2.1, stroke: "currentColor", strokeWidth: 3 }), /* @__PURE__ */ React.createElement("path", { d: "M20 22.7008V10.5508", stroke: "currentColor", strokeWidth: 3, strokeLinecap: "round" }));
 const SvgInfo = (props) => /* @__PURE__ */ React.createElement("svg", { width: 16, height: 16, viewBox: "0 0 16 16", fill: "none", xmlns: "http://www.w3.org/2000/svg", ...props }, /* @__PURE__ */ React.createElement("g", { clipPath: "url(#clip0_2800_39597)" }, /* @__PURE__ */ React.createElement("path", { d: "M8.00004 14.6663C11.6819 14.6663 14.6667 11.6816 14.6667 7.99967C14.6667 4.31778 11.6819 1.33301 8.00004 1.33301C4.31814 1.33301 1.33337 4.31778 1.33337 7.99967C1.33337 11.6816 4.31814 14.6663 8.00004 14.6663Z", stroke: "#999999", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" }), /* @__PURE__ */ React.createElement("path", { d: "M8 10.6667V8", stroke: "#999999", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" }), /* @__PURE__ */ React.createElement("path", { d: "M8 5.33301H8.00667", stroke: "#999999", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" })), /* @__PURE__ */ React.createElement("defs", null, /* @__PURE__ */ React.createElement("clipPath", { id: "clip0_2800_39597" }, /* @__PURE__ */ React.createElement("rect", { width: 16, height: 16, fill: "white" }))));
 const SvgCircle = (props) => /* @__PURE__ */ React.createElement("svg", { width: 16, height: 16, viewBox: "0 0 16 16", stroke: "inherit", fill: "none", xmlns: "http://www.w3.org/2000/svg", ...props }, /* @__PURE__ */ React.createElement("g", null, /* @__PURE__ */ React.createElement("path", { d: "M8.00004 14.6663C11.6819 14.6663 14.6667 11.6816 14.6667 7.99967C14.6667 4.31778 11.6819 1.33301 8.00004 1.33301C4.31814 1.33301 1.33337 4.31778 1.33337 7.99967C1.33337 11.6816 4.31814 14.6663 8.00004 14.6663Z", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" })));
+const SvgUnlink = (props) => /* @__PURE__ */ React.createElement("svg", { width: 114, height: 116, viewBox: "0 0 114 116", fill: "currentColor", xmlns: "http://www.w3.org/2000/svg", ...props }, /* @__PURE__ */ React.createElement("path", { d: "M45.854 79.5744L45.8539 79.5743L45.8538 79.5743L45.842 79.5666L45.8295 79.5595C45.0749 79.1308 44.4122 78.5576 43.8791 77.8728C43.3461 77.1879 42.9531 76.4048 42.7227 75.568C42.4923 74.7313 42.429 73.8574 42.5363 72.9962C42.6436 72.135 42.9196 71.3034 43.3483 70.5488C43.777 69.7942 44.3502 69.1315 45.035 68.5984C45.7199 68.0654 46.503 67.6724 47.3398 67.442C48.1765 67.2116 49.0504 67.1483 49.9116 67.2556C50.7614 67.3615 51.5824 67.6316 52.329 68.0507C52.3488 68.0657 52.3767 68.0864 52.4126 68.1121C52.4849 68.1639 52.5898 68.2359 52.726 68.3216C52.9983 68.493 53.3966 68.7197 53.9122 68.9498C54.9435 69.4102 56.4459 69.8855 58.346 69.9586C60.2108 70.0303 62.4574 69.9233 65.031 68.9989C67.6037 68.075 70.4742 66.3449 73.6086 63.2104L94.6791 42.14L94.6836 42.1355C100.348 36.326 100.355 26.8847 94.6823 21.2083C90.5844 16.9669 84.3279 16.2625 79.2736 17.9954L79.2676 17.9975C77.2768 18.7085 75.3677 19.5818 73.7443 21.2052L73.7052 21.2443L73.6756 21.291C73.1521 22.1169 72.4496 22.8145 71.62 23.3323C70.7905 23.8501 69.8553 24.1747 68.8834 24.2823C67.9114 24.3898 66.9278 24.2775 66.0052 23.9536C65.0825 23.6297 64.2445 23.1026 63.5531 22.4111C62.8616 21.7197 62.3345 20.8817 62.0106 19.959C61.6867 19.0364 61.5744 18.0528 61.6819 17.0809C61.7895 16.109 62.1142 15.1737 62.6319 14.3442C63.1497 13.5147 63.8473 12.8122 64.6732 12.2886L64.7199 12.259L64.759 12.2199C67.7884 9.19045 71.3739 7.11894 75.1108 5.73444C77.267 4.97398 79.5542 4.68046 81.8856 4.53076V4.66902L82.4134 4.6397C84.9287 4.49996 87.6831 4.50323 90.1435 5.04997C95.1131 6.15434 99.662 8.49834 103.524 12.3603L103.526 12.3626C114.283 22.9818 114.287 40.3626 103.524 51.1253L82.4535 72.1958L82.4506 72.1987C73.9822 80.8059 64.2898 83.4195 57.4119 83.0069C53.9654 82.8001 51.0685 81.9381 49.0334 81.1276C48.0165 80.7225 47.2166 80.331 46.6731 80.0422C46.4015 79.8978 46.1941 79.7792 46.0559 79.6974C45.9868 79.6566 45.935 79.625 45.9012 79.604L45.864 79.5807L45.8556 79.5754L45.8541 79.5744L45.854 79.5744ZM54.2716 36.9482L54.7916 36.969V36.6929C58.0137 36.8821 60.7248 37.6013 62.6575 38.2892C63.675 38.6513 64.4751 39.0042 65.0186 39.2653C65.2903 39.3958 65.4977 39.5033 65.6359 39.5774C65.705 39.6144 65.7568 39.6431 65.7906 39.6621L65.8278 39.6832L65.8361 39.6881L65.8376 39.6889L65.8377 39.689L65.8378 39.689L65.8379 39.6891L65.8913 39.7205L65.9511 39.738C66.8684 40.0055 67.7157 40.4713 68.4332 41.1024C69.1506 41.7335 69.7206 42.5145 70.103 43.3902C70.4853 44.2658 70.6706 45.2148 70.6458 46.17C70.621 47.1252 70.3866 48.0633 69.9593 48.9179C69.532 49.7725 68.9222 50.5229 68.1729 51.1158C67.4236 51.7088 66.5533 52.13 65.6233 52.3495C64.6934 52.569 63.7265 52.5816 62.7912 52.3863C61.8559 52.191 60.9748 51.7926 60.2104 51.2193L60.1612 51.1824L60.1045 51.1585L59.9104 51.6193C60.1045 51.1585 60.1043 51.1584 60.1042 51.1584L60.1039 51.1583L60.1031 51.1579L60.1008 51.1569L60.0932 51.1538L60.0664 51.1429C60.0434 51.1337 60.0104 51.1205 59.9675 51.104C59.8817 51.0711 59.7566 51.0246 59.5951 50.9689C59.272 50.8574 58.8026 50.7086 58.209 50.5557C57.0224 50.25 55.3356 49.9272 53.3262 49.8554C51.32 49.7837 49.0401 49.9264 46.5389 50.8145C44.0374 51.7027 41.3417 53.3269 38.4864 56.1822L17.4159 77.2527L17.4114 77.2572C11.7472 83.0666 11.7399 92.508 17.4128 98.1844C21.5107 102.426 27.7672 103.13 32.8214 101.397L32.8274 101.395C34.8183 100.684 36.7273 99.8108 38.3507 98.1875L38.3898 98.1483L38.4194 98.1016C38.943 97.2757 39.6454 96.5781 40.475 96.0604C41.3045 95.5426 42.2398 95.2179 43.2117 95.1104C44.1836 95.0029 45.1672 95.1152 46.0898 95.439C47.0125 95.7629 47.8505 96.2901 48.5419 96.9815C49.2334 97.6729 49.7605 98.511 50.0844 99.4336C50.4083 100.356 50.5206 101.34 50.4131 102.312C50.3055 103.284 49.9809 104.219 49.4631 105.048C48.9453 105.878 48.2477 106.581 47.4218 107.104L47.3751 107.134L47.336 107.173C44.3062 110.203 40.7203 112.274 36.983 113.659C27.3295 117.105 16.2975 114.899 8.57105 107.173L8.56876 107.171C-2.18832 96.5514 -2.19162 79.1705 8.57104 68.4078L29.6415 47.3374L29.6445 47.3344C37.8232 39.0171 47.3739 36.6722 54.2716 36.9482Z", fill: "currentColor", stroke: "currentColor" }), /* @__PURE__ */ React.createElement("line", { x1: 10.6065, y1: 7.94973, x2: 105.95, y2: 102.394, stroke: "currentColor", strokeWidth: 15, strokeLinecap: "round" }));
+const SvgNetwork = (props) => /* @__PURE__ */ React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "4 4 40 40", ...props }, /* @__PURE__ */ React.createElement("defs", null, /* @__PURE__ */ React.createElement("style", null, ".cls-1{fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;}.cls-2{fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;}")), /* @__PURE__ */ React.createElement("title", null, "configuration"), /* @__PURE__ */ React.createElement("g", { id: "configuration" }, /* @__PURE__ */ React.createElement("path", { className: "cls-1", d: "M42,23.5A8.51,8.51,0,0,1,33.5,32h-.86l-.72-.89c.43-3.16-1-1,1.74-4.38l-2-3.46c-4.28.67-1.68.55-4.66-.68L26,20H22c-1.28,3.33-.68,2.31-2,3.07s-.09.76-3.66.2l-2,3.46,1.74,2.16c-.39,2.87.62,1.46-.72,3.11H13.5A7.49,7.49,0,0,1,13,17a11,11,0,0,1,21.83-1.92A8.5,8.5,0,0,1,42,23.5Z", stroke: "currentColor", strokeWidth: 3, strokeLinecap: "round", strokeLinejoin: "round" }), /* @__PURE__ */ React.createElement("path", { className: "cls-2", d: "M31.92,31.11c.43-3.16-1-1,1.74-4.38l-2-3.46-2.74.43C26.42,21.75,27.56,24,26,20H22l-1,2.59c-2.9,1.2-.44,1.34-4.66.68l-2,3.46c2.72,3.38,1.31,1.18,1.74,4.38l-1.74,2.16,2,3.46,2.74-.43c2.5,2,1.36-.33,2.92,3.7h4l1-2.59c2.9-1.2.44-1.34,4.66-.68l2-3.46ZM24,33a3,3,0,1,1,3-3A3,3,0,0,1,24,33Z", stroke: "currentColor", strokeWidth: 3, strokeLinecap: "round", strokeLinejoin: "round" })));
+const SvgTimesync = (props) => /* @__PURE__ */ React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: 24, height: 22.069, viewBox: "0 0 24 22.069", fill: "currentColor", ...props }, /* @__PURE__ */ React.createElement("g", null, /* @__PURE__ */ React.createElement("polygon", { points: "10 5.228 10 11.676 13.292 14.974 14.708 13.562 12 10.848 12 5.228 10 5.228" }), /* @__PURE__ */ React.createElement("path", { d: "M11.036,0a11.035,11.035,0,1,0,7.586,19.048,10.65,10.65,0,0,0,1.205-1.34l-3.188-2.417a6.733,6.733,0,0,1-.762.846,7.037,7.037,0,1,1,2.116-6.1H16l3.9,4.908L24,10.034H22.021A11.047,11.047,0,0,0,11.036,0Z" })));
+const SvgTedge = (props) => /* @__PURE__ */ React.createElement("svg", { width: "113px", height: "113px", viewBox: "0 0 113 113", xmlns: "http://www.w3.org/2000/svg", xmlnsXlink: "http://www.w3.org/1999/xlink", ...props }, /* @__PURE__ */ React.createElement("title", null, "favicon"), /* @__PURE__ */ React.createElement("g", { id: "favicon", stroke: "none", strokeWidth: 1, fill: "none", fillRule: "evenodd" }, /* @__PURE__ */ React.createElement("g", { id: "Group-2", transform: "translate(17.000000, 8.000000)" }, /* @__PURE__ */ React.createElement("path", { d: "M18.2988234,12.499107 L18.2988234,26.8909989 L37.1059475,26.8909989 L37.1059475,33.8842421 L18.2988234,33.8842421 L18.2988234,63.5801881 L18.3035491,63.9236565 C18.3665584,66.1866338 19.0596607,67.9133605 20.3828561,69.1038367 C21.5942904,70.1937617 23.1535302,70.8085121 25.0605754,70.9480879 L21.3619415,78.3745289 C18.5372889,77.958725 16.1438378,76.9124131 14.1815881,75.2355935 C11.6564817,73.0777905 10.3214652,69.8126107 10.1765387,65.4400539 L10.166013,64.999107 L10.166013,33.8842421 L0,33.8842421 L0,26.8909989 L10.166013,26.8909989 L10.166013,14.7288367 L18.2988234,12.499107 Z", id: "Shape", fill: "currentColor", fillRule: "nonzero" }), /* @__PURE__ */ React.createElement("path", { d: "M72.4728172,32.8067253 C76.8520583,37.3022305 79.0416788,43.606078 79.0416788,51.7182679 C79.0416788,53.8525464 78.895323,55.6370902 78.6026116,57.0718993 L78.5324647,57.3968008 L43.8040646,57.3968008 L43.8784734,57.8064357 C44.4502563,60.7752825 45.5966457,62.9709921 47.3176417,64.3935645 C49.1168648,65.8807994 51.510171,66.6244168 54.4975602,66.6244168 C57.009683,66.6244168 59.0635131,66.1512057 60.6590506,65.2047835 C62.1607329,64.3140333 63.196311,63.0340476 63.765785,61.3648265 L63.8670993,61.0472862 L77.9214078,65.5089907 L77.7792412,65.924466 C76.3157144,70.047037 73.5963734,73.2041224 69.6212183,75.395722 C65.5135581,77.660375 60.4723387,78.7927015 54.4975602,78.7927015 C45.8396844,78.7927015 39.1600809,76.6148031 34.4587499,72.2590063 L46.506,48.0672848 L62.8486711,48.0677825 C62.0339286,41.4428274 58.9107489,38.1303499 53.4791321,38.1303499 C52.7323818,38.1303499 52.0269417,38.1914237 51.3628115,38.3135714 L57.3790302,26.2362848 C63.7633778,26.8407497 68.7946401,29.0308965 72.4728172,32.8067253 Z", id: "edge", fill: "currentColor", fillRule: "nonzero" }), /* @__PURE__ */ React.createElement("path", { d: "M41.1989443,-2.42299884 C43.6842694,-2.42199536 45.6988881,-0.407709919 45.7003028,2.07761502 L45.7532371,95.0763873 C45.75465,97.5585883 43.7435738,99.5719551 41.2613729,99.5733679 C41.2599153,99.5733687 41.2584576,99.5733689 41.257,99.5733683 C38.7716749,99.5723648 36.7570562,97.5580794 36.7556416,95.0727544 L36.7027072,2.07398213 C36.7012944,-0.408218824 38.7123705,-2.42158562 41.1945714,-2.42299848 C41.1960291,-2.42299931 41.1974867,-2.42299943 41.1989443,-2.42299884 Z", id: "slash", fill: "currentColor", transform: "translate(41.227972, 48.575185) rotate(26.500000) translate(-41.227972, -48.575185) " }))));
 const DataMenu = ({
   dataType,
   onDelete,
@@ -22213,4048 +26217,6 @@ const eventSchema = {
     }
   }
 };
-var util;
-(function(util2) {
-  util2.assertEqual = (val) => val;
-  function assertIs(_arg) {
-  }
-  util2.assertIs = assertIs;
-  function assertNever(_x) {
-    throw new Error();
-  }
-  util2.assertNever = assertNever;
-  util2.arrayToEnum = (items) => {
-    const obj = {};
-    for (const item of items) {
-      obj[item] = item;
-    }
-    return obj;
-  };
-  util2.getValidEnumValues = (obj) => {
-    const validKeys = util2.objectKeys(obj).filter((k) => typeof obj[obj[k]] !== "number");
-    const filtered = {};
-    for (const k of validKeys) {
-      filtered[k] = obj[k];
-    }
-    return util2.objectValues(filtered);
-  };
-  util2.objectValues = (obj) => {
-    return util2.objectKeys(obj).map(function(e) {
-      return obj[e];
-    });
-  };
-  util2.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object) => {
-    const keys2 = [];
-    for (const key in object) {
-      if (Object.prototype.hasOwnProperty.call(object, key)) {
-        keys2.push(key);
-      }
-    }
-    return keys2;
-  };
-  util2.find = (arr, checker) => {
-    for (const item of arr) {
-      if (checker(item))
-        return item;
-    }
-    return void 0;
-  };
-  util2.isInteger = typeof Number.isInteger === "function" ? (val) => Number.isInteger(val) : (val) => typeof val === "number" && isFinite(val) && Math.floor(val) === val;
-  function joinValues(array, separator = " | ") {
-    return array.map((val) => typeof val === "string" ? `'${val}'` : val).join(separator);
-  }
-  util2.joinValues = joinValues;
-  util2.jsonStringifyReplacer = (_, value2) => {
-    if (typeof value2 === "bigint") {
-      return value2.toString();
-    }
-    return value2;
-  };
-})(util || (util = {}));
-var objectUtil;
-(function(objectUtil2) {
-  objectUtil2.mergeShapes = (first, second2) => {
-    return {
-      ...first,
-      ...second2
-      // second overwrites first
-    };
-  };
-})(objectUtil || (objectUtil = {}));
-const ZodParsedType = util.arrayToEnum([
-  "string",
-  "nan",
-  "number",
-  "integer",
-  "float",
-  "boolean",
-  "date",
-  "bigint",
-  "symbol",
-  "function",
-  "undefined",
-  "null",
-  "array",
-  "object",
-  "unknown",
-  "promise",
-  "void",
-  "never",
-  "map",
-  "set"
-]);
-const getParsedType = (data) => {
-  const t2 = typeof data;
-  switch (t2) {
-    case "undefined":
-      return ZodParsedType.undefined;
-    case "string":
-      return ZodParsedType.string;
-    case "number":
-      return isNaN(data) ? ZodParsedType.nan : ZodParsedType.number;
-    case "boolean":
-      return ZodParsedType.boolean;
-    case "function":
-      return ZodParsedType.function;
-    case "bigint":
-      return ZodParsedType.bigint;
-    case "symbol":
-      return ZodParsedType.symbol;
-    case "object":
-      if (Array.isArray(data)) {
-        return ZodParsedType.array;
-      }
-      if (data === null) {
-        return ZodParsedType.null;
-      }
-      if (data.then && typeof data.then === "function" && data.catch && typeof data.catch === "function") {
-        return ZodParsedType.promise;
-      }
-      if (typeof Map !== "undefined" && data instanceof Map) {
-        return ZodParsedType.map;
-      }
-      if (typeof Set !== "undefined" && data instanceof Set) {
-        return ZodParsedType.set;
-      }
-      if (typeof Date !== "undefined" && data instanceof Date) {
-        return ZodParsedType.date;
-      }
-      return ZodParsedType.object;
-    default:
-      return ZodParsedType.unknown;
-  }
-};
-const ZodIssueCode = util.arrayToEnum([
-  "invalid_type",
-  "invalid_literal",
-  "custom",
-  "invalid_union",
-  "invalid_union_discriminator",
-  "invalid_enum_value",
-  "unrecognized_keys",
-  "invalid_arguments",
-  "invalid_return_type",
-  "invalid_date",
-  "invalid_string",
-  "too_small",
-  "too_big",
-  "invalid_intersection_types",
-  "not_multiple_of",
-  "not_finite"
-]);
-const quotelessJson = (obj) => {
-  const json = JSON.stringify(obj, null, 2);
-  return json.replace(/"([^"]+)":/g, "$1:");
-};
-class ZodError extends Error {
-  get errors() {
-    return this.issues;
-  }
-  constructor(issues) {
-    super();
-    this.issues = [];
-    this.addIssue = (sub) => {
-      this.issues = [...this.issues, sub];
-    };
-    this.addIssues = (subs = []) => {
-      this.issues = [...this.issues, ...subs];
-    };
-    const actualProto = new.target.prototype;
-    if (Object.setPrototypeOf) {
-      Object.setPrototypeOf(this, actualProto);
-    } else {
-      this.__proto__ = actualProto;
-    }
-    this.name = "ZodError";
-    this.issues = issues;
-  }
-  format(_mapper) {
-    const mapper = _mapper || function(issue) {
-      return issue.message;
-    };
-    const fieldErrors = { _errors: [] };
-    const processError = (error2) => {
-      for (const issue of error2.issues) {
-        if (issue.code === "invalid_union") {
-          issue.unionErrors.map(processError);
-        } else if (issue.code === "invalid_return_type") {
-          processError(issue.returnTypeError);
-        } else if (issue.code === "invalid_arguments") {
-          processError(issue.argumentsError);
-        } else if (issue.path.length === 0) {
-          fieldErrors._errors.push(mapper(issue));
-        } else {
-          let curr = fieldErrors;
-          let i2 = 0;
-          while (i2 < issue.path.length) {
-            const el = issue.path[i2];
-            const terminal = i2 === issue.path.length - 1;
-            if (!terminal) {
-              curr[el] = curr[el] || { _errors: [] };
-            } else {
-              curr[el] = curr[el] || { _errors: [] };
-              curr[el]._errors.push(mapper(issue));
-            }
-            curr = curr[el];
-            i2++;
-          }
-        }
-      }
-    };
-    processError(this);
-    return fieldErrors;
-  }
-  static assert(value2) {
-    if (!(value2 instanceof ZodError)) {
-      throw new Error(`Not a ZodError: ${value2}`);
-    }
-  }
-  toString() {
-    return this.message;
-  }
-  get message() {
-    return JSON.stringify(this.issues, util.jsonStringifyReplacer, 2);
-  }
-  get isEmpty() {
-    return this.issues.length === 0;
-  }
-  flatten(mapper = (issue) => issue.message) {
-    const fieldErrors = {};
-    const formErrors = [];
-    for (const sub of this.issues) {
-      if (sub.path.length > 0) {
-        fieldErrors[sub.path[0]] = fieldErrors[sub.path[0]] || [];
-        fieldErrors[sub.path[0]].push(mapper(sub));
-      } else {
-        formErrors.push(mapper(sub));
-      }
-    }
-    return { formErrors, fieldErrors };
-  }
-  get formErrors() {
-    return this.flatten();
-  }
-}
-ZodError.create = (issues) => {
-  const error2 = new ZodError(issues);
-  return error2;
-};
-const errorMap = (issue, _ctx) => {
-  let message2;
-  switch (issue.code) {
-    case ZodIssueCode.invalid_type:
-      if (issue.received === ZodParsedType.undefined) {
-        message2 = "Required";
-      } else {
-        message2 = `Expected ${issue.expected}, received ${issue.received}`;
-      }
-      break;
-    case ZodIssueCode.invalid_literal:
-      message2 = `Invalid literal value, expected ${JSON.stringify(issue.expected, util.jsonStringifyReplacer)}`;
-      break;
-    case ZodIssueCode.unrecognized_keys:
-      message2 = `Unrecognized key(s) in object: ${util.joinValues(issue.keys, ", ")}`;
-      break;
-    case ZodIssueCode.invalid_union:
-      message2 = `Invalid input`;
-      break;
-    case ZodIssueCode.invalid_union_discriminator:
-      message2 = `Invalid discriminator value. Expected ${util.joinValues(issue.options)}`;
-      break;
-    case ZodIssueCode.invalid_enum_value:
-      message2 = `Invalid enum value. Expected ${util.joinValues(issue.options)}, received '${issue.received}'`;
-      break;
-    case ZodIssueCode.invalid_arguments:
-      message2 = `Invalid function arguments`;
-      break;
-    case ZodIssueCode.invalid_return_type:
-      message2 = `Invalid function return type`;
-      break;
-    case ZodIssueCode.invalid_date:
-      message2 = `Invalid date`;
-      break;
-    case ZodIssueCode.invalid_string:
-      if (typeof issue.validation === "object") {
-        if ("includes" in issue.validation) {
-          message2 = `Invalid input: must include "${issue.validation.includes}"`;
-          if (typeof issue.validation.position === "number") {
-            message2 = `${message2} at one or more positions greater than or equal to ${issue.validation.position}`;
-          }
-        } else if ("startsWith" in issue.validation) {
-          message2 = `Invalid input: must start with "${issue.validation.startsWith}"`;
-        } else if ("endsWith" in issue.validation) {
-          message2 = `Invalid input: must end with "${issue.validation.endsWith}"`;
-        } else {
-          util.assertNever(issue.validation);
-        }
-      } else if (issue.validation !== "regex") {
-        message2 = `Invalid ${issue.validation}`;
-      } else {
-        message2 = "Invalid";
-      }
-      break;
-    case ZodIssueCode.too_small:
-      if (issue.type === "array")
-        message2 = `Array must contain ${issue.exact ? "exactly" : issue.inclusive ? `at least` : `more than`} ${issue.minimum} element(s)`;
-      else if (issue.type === "string")
-        message2 = `String must contain ${issue.exact ? "exactly" : issue.inclusive ? `at least` : `over`} ${issue.minimum} character(s)`;
-      else if (issue.type === "number")
-        message2 = `Number must be ${issue.exact ? `exactly equal to ` : issue.inclusive ? `greater than or equal to ` : `greater than `}${issue.minimum}`;
-      else if (issue.type === "date")
-        message2 = `Date must be ${issue.exact ? `exactly equal to ` : issue.inclusive ? `greater than or equal to ` : `greater than `}${new Date(Number(issue.minimum))}`;
-      else
-        message2 = "Invalid input";
-      break;
-    case ZodIssueCode.too_big:
-      if (issue.type === "array")
-        message2 = `Array must contain ${issue.exact ? `exactly` : issue.inclusive ? `at most` : `less than`} ${issue.maximum} element(s)`;
-      else if (issue.type === "string")
-        message2 = `String must contain ${issue.exact ? `exactly` : issue.inclusive ? `at most` : `under`} ${issue.maximum} character(s)`;
-      else if (issue.type === "number")
-        message2 = `Number must be ${issue.exact ? `exactly` : issue.inclusive ? `less than or equal to` : `less than`} ${issue.maximum}`;
-      else if (issue.type === "bigint")
-        message2 = `BigInt must be ${issue.exact ? `exactly` : issue.inclusive ? `less than or equal to` : `less than`} ${issue.maximum}`;
-      else if (issue.type === "date")
-        message2 = `Date must be ${issue.exact ? `exactly` : issue.inclusive ? `smaller than or equal to` : `smaller than`} ${new Date(Number(issue.maximum))}`;
-      else
-        message2 = "Invalid input";
-      break;
-    case ZodIssueCode.custom:
-      message2 = `Invalid input`;
-      break;
-    case ZodIssueCode.invalid_intersection_types:
-      message2 = `Intersection results could not be merged`;
-      break;
-    case ZodIssueCode.not_multiple_of:
-      message2 = `Number must be a multiple of ${issue.multipleOf}`;
-      break;
-    case ZodIssueCode.not_finite:
-      message2 = "Number must be finite";
-      break;
-    default:
-      message2 = _ctx.defaultError;
-      util.assertNever(issue);
-  }
-  return { message: message2 };
-};
-let overrideErrorMap = errorMap;
-function setErrorMap(map2) {
-  overrideErrorMap = map2;
-}
-function getErrorMap() {
-  return overrideErrorMap;
-}
-const makeIssue = (params) => {
-  const { data, path: path2, errorMaps, issueData } = params;
-  const fullPath = [...path2, ...issueData.path || []];
-  const fullIssue = {
-    ...issueData,
-    path: fullPath
-  };
-  if (issueData.message !== void 0) {
-    return {
-      ...issueData,
-      path: fullPath,
-      message: issueData.message
-    };
-  }
-  let errorMessage = "";
-  const maps = errorMaps.filter((m) => !!m).slice().reverse();
-  for (const map2 of maps) {
-    errorMessage = map2(fullIssue, { data, defaultError: errorMessage }).message;
-  }
-  return {
-    ...issueData,
-    path: fullPath,
-    message: errorMessage
-  };
-};
-const EMPTY_PATH = [];
-function addIssueToContext(ctx, issueData) {
-  const overrideMap = getErrorMap();
-  const issue = makeIssue({
-    issueData,
-    data: ctx.data,
-    path: ctx.path,
-    errorMaps: [
-      ctx.common.contextualErrorMap,
-      // contextual error map is first priority
-      ctx.schemaErrorMap,
-      // then schema-bound map if available
-      overrideMap,
-      // then global override map
-      overrideMap === errorMap ? void 0 : errorMap
-      // then global default map
-    ].filter((x) => !!x)
-  });
-  ctx.common.issues.push(issue);
-}
-class ParseStatus {
-  constructor() {
-    this.value = "valid";
-  }
-  dirty() {
-    if (this.value === "valid")
-      this.value = "dirty";
-  }
-  abort() {
-    if (this.value !== "aborted")
-      this.value = "aborted";
-  }
-  static mergeArray(status2, results) {
-    const arrayValue = [];
-    for (const s2 of results) {
-      if (s2.status === "aborted")
-        return INVALID;
-      if (s2.status === "dirty")
-        status2.dirty();
-      arrayValue.push(s2.value);
-    }
-    return { status: status2.value, value: arrayValue };
-  }
-  static async mergeObjectAsync(status2, pairs) {
-    const syncPairs = [];
-    for (const pair of pairs) {
-      const key = await pair.key;
-      const value2 = await pair.value;
-      syncPairs.push({
-        key,
-        value: value2
-      });
-    }
-    return ParseStatus.mergeObjectSync(status2, syncPairs);
-  }
-  static mergeObjectSync(status2, pairs) {
-    const finalObject = {};
-    for (const pair of pairs) {
-      const { key, value: value2 } = pair;
-      if (key.status === "aborted")
-        return INVALID;
-      if (value2.status === "aborted")
-        return INVALID;
-      if (key.status === "dirty")
-        status2.dirty();
-      if (value2.status === "dirty")
-        status2.dirty();
-      if (key.value !== "__proto__" && (typeof value2.value !== "undefined" || pair.alwaysSet)) {
-        finalObject[key.value] = value2.value;
-      }
-    }
-    return { status: status2.value, value: finalObject };
-  }
-}
-const INVALID = Object.freeze({
-  status: "aborted"
-});
-const DIRTY = (value2) => ({ status: "dirty", value: value2 });
-const OK = (value2) => ({ status: "valid", value: value2 });
-const isAborted = (x) => x.status === "aborted";
-const isDirty = (x) => x.status === "dirty";
-const isValid = (x) => x.status === "valid";
-const isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
-function __classPrivateFieldGet(receiver, state, kind, f) {
-  if (typeof state === "function" ? receiver !== state || true : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
-  return state.get(receiver);
-}
-function __classPrivateFieldSet(receiver, state, value2, kind, f) {
-  if (typeof state === "function" ? receiver !== state || true : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
-  return state.set(receiver, value2), value2;
-}
-typeof SuppressedError === "function" ? SuppressedError : function(error2, suppressed, message2) {
-  var e = new Error(message2);
-  return e.name = "SuppressedError", e.error = error2, e.suppressed = suppressed, e;
-};
-var errorUtil;
-(function(errorUtil2) {
-  errorUtil2.errToObj = (message2) => typeof message2 === "string" ? { message: message2 } : message2 || {};
-  errorUtil2.toString = (message2) => typeof message2 === "string" ? message2 : message2 === null || message2 === void 0 ? void 0 : message2.message;
-})(errorUtil || (errorUtil = {}));
-var _ZodEnum_cache, _ZodNativeEnum_cache;
-class ParseInputLazyPath {
-  constructor(parent, value2, path2, key) {
-    this._cachedPath = [];
-    this.parent = parent;
-    this.data = value2;
-    this._path = path2;
-    this._key = key;
-  }
-  get path() {
-    if (!this._cachedPath.length) {
-      if (this._key instanceof Array) {
-        this._cachedPath.push(...this._path, ...this._key);
-      } else {
-        this._cachedPath.push(...this._path, this._key);
-      }
-    }
-    return this._cachedPath;
-  }
-}
-const handleResult = (ctx, result) => {
-  if (isValid(result)) {
-    return { success: true, data: result.value };
-  } else {
-    if (!ctx.common.issues.length) {
-      throw new Error("Validation failed but no issues detected.");
-    }
-    return {
-      success: false,
-      get error() {
-        if (this._error)
-          return this._error;
-        const error2 = new ZodError(ctx.common.issues);
-        this._error = error2;
-        return this._error;
-      }
-    };
-  }
-};
-function processCreateParams(params) {
-  if (!params)
-    return {};
-  const { errorMap: errorMap2, invalid_type_error, required_error, description: description2 } = params;
-  if (errorMap2 && (invalid_type_error || required_error)) {
-    throw new Error(`Can't use "invalid_type_error" or "required_error" in conjunction with custom error map.`);
-  }
-  if (errorMap2)
-    return { errorMap: errorMap2, description: description2 };
-  const customMap = (iss, ctx) => {
-    var _a, _b;
-    const { message: message2 } = params;
-    if (iss.code === "invalid_enum_value") {
-      return { message: message2 !== null && message2 !== void 0 ? message2 : ctx.defaultError };
-    }
-    if (typeof ctx.data === "undefined") {
-      return { message: (_a = message2 !== null && message2 !== void 0 ? message2 : required_error) !== null && _a !== void 0 ? _a : ctx.defaultError };
-    }
-    if (iss.code !== "invalid_type")
-      return { message: ctx.defaultError };
-    return { message: (_b = message2 !== null && message2 !== void 0 ? message2 : invalid_type_error) !== null && _b !== void 0 ? _b : ctx.defaultError };
-  };
-  return { errorMap: customMap, description: description2 };
-}
-class ZodType {
-  get description() {
-    return this._def.description;
-  }
-  _getType(input) {
-    return getParsedType(input.data);
-  }
-  _getOrReturnCtx(input, ctx) {
-    return ctx || {
-      common: input.parent.common,
-      data: input.data,
-      parsedType: getParsedType(input.data),
-      schemaErrorMap: this._def.errorMap,
-      path: input.path,
-      parent: input.parent
-    };
-  }
-  _processInputParams(input) {
-    return {
-      status: new ParseStatus(),
-      ctx: {
-        common: input.parent.common,
-        data: input.data,
-        parsedType: getParsedType(input.data),
-        schemaErrorMap: this._def.errorMap,
-        path: input.path,
-        parent: input.parent
-      }
-    };
-  }
-  _parseSync(input) {
-    const result = this._parse(input);
-    if (isAsync(result)) {
-      throw new Error("Synchronous parse encountered promise.");
-    }
-    return result;
-  }
-  _parseAsync(input) {
-    const result = this._parse(input);
-    return Promise.resolve(result);
-  }
-  parse(data, params) {
-    const result = this.safeParse(data, params);
-    if (result.success)
-      return result.data;
-    throw result.error;
-  }
-  safeParse(data, params) {
-    var _a;
-    const ctx = {
-      common: {
-        issues: [],
-        async: (_a = params === null || params === void 0 ? void 0 : params.async) !== null && _a !== void 0 ? _a : false,
-        contextualErrorMap: params === null || params === void 0 ? void 0 : params.errorMap
-      },
-      path: (params === null || params === void 0 ? void 0 : params.path) || [],
-      schemaErrorMap: this._def.errorMap,
-      parent: null,
-      data,
-      parsedType: getParsedType(data)
-    };
-    const result = this._parseSync({ data, path: ctx.path, parent: ctx });
-    return handleResult(ctx, result);
-  }
-  "~validate"(data) {
-    var _a, _b;
-    const ctx = {
-      common: {
-        issues: [],
-        async: !!this["~standard"].async
-      },
-      path: [],
-      schemaErrorMap: this._def.errorMap,
-      parent: null,
-      data,
-      parsedType: getParsedType(data)
-    };
-    if (!this["~standard"].async) {
-      try {
-        const result = this._parseSync({ data, path: [], parent: ctx });
-        return isValid(result) ? {
-          value: result.value
-        } : {
-          issues: ctx.common.issues
-        };
-      } catch (err) {
-        if ((_b = (_a = err === null || err === void 0 ? void 0 : err.message) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === null || _b === void 0 ? void 0 : _b.includes("encountered")) {
-          this["~standard"].async = true;
-        }
-        ctx.common = {
-          issues: [],
-          async: true
-        };
-      }
-    }
-    return this._parseAsync({ data, path: [], parent: ctx }).then((result) => isValid(result) ? {
-      value: result.value
-    } : {
-      issues: ctx.common.issues
-    });
-  }
-  async parseAsync(data, params) {
-    const result = await this.safeParseAsync(data, params);
-    if (result.success)
-      return result.data;
-    throw result.error;
-  }
-  async safeParseAsync(data, params) {
-    const ctx = {
-      common: {
-        issues: [],
-        contextualErrorMap: params === null || params === void 0 ? void 0 : params.errorMap,
-        async: true
-      },
-      path: (params === null || params === void 0 ? void 0 : params.path) || [],
-      schemaErrorMap: this._def.errorMap,
-      parent: null,
-      data,
-      parsedType: getParsedType(data)
-    };
-    const maybeAsyncResult = this._parse({ data, path: ctx.path, parent: ctx });
-    const result = await (isAsync(maybeAsyncResult) ? maybeAsyncResult : Promise.resolve(maybeAsyncResult));
-    return handleResult(ctx, result);
-  }
-  refine(check, message2) {
-    const getIssueProperties = (val) => {
-      if (typeof message2 === "string" || typeof message2 === "undefined") {
-        return { message: message2 };
-      } else if (typeof message2 === "function") {
-        return message2(val);
-      } else {
-        return message2;
-      }
-    };
-    return this._refinement((val, ctx) => {
-      const result = check(val);
-      const setError = () => ctx.addIssue({
-        code: ZodIssueCode.custom,
-        ...getIssueProperties(val)
-      });
-      if (typeof Promise !== "undefined" && result instanceof Promise) {
-        return result.then((data) => {
-          if (!data) {
-            setError();
-            return false;
-          } else {
-            return true;
-          }
-        });
-      }
-      if (!result) {
-        setError();
-        return false;
-      } else {
-        return true;
-      }
-    });
-  }
-  refinement(check, refinementData) {
-    return this._refinement((val, ctx) => {
-      if (!check(val)) {
-        ctx.addIssue(typeof refinementData === "function" ? refinementData(val, ctx) : refinementData);
-        return false;
-      } else {
-        return true;
-      }
-    });
-  }
-  _refinement(refinement) {
-    return new ZodEffects({
-      schema: this,
-      typeName: ZodFirstPartyTypeKind.ZodEffects,
-      effect: { type: "refinement", refinement }
-    });
-  }
-  superRefine(refinement) {
-    return this._refinement(refinement);
-  }
-  constructor(def) {
-    this.spa = this.safeParseAsync;
-    this._def = def;
-    this.parse = this.parse.bind(this);
-    this.safeParse = this.safeParse.bind(this);
-    this.parseAsync = this.parseAsync.bind(this);
-    this.safeParseAsync = this.safeParseAsync.bind(this);
-    this.spa = this.spa.bind(this);
-    this.refine = this.refine.bind(this);
-    this.refinement = this.refinement.bind(this);
-    this.superRefine = this.superRefine.bind(this);
-    this.optional = this.optional.bind(this);
-    this.nullable = this.nullable.bind(this);
-    this.nullish = this.nullish.bind(this);
-    this.array = this.array.bind(this);
-    this.promise = this.promise.bind(this);
-    this.or = this.or.bind(this);
-    this.and = this.and.bind(this);
-    this.transform = this.transform.bind(this);
-    this.brand = this.brand.bind(this);
-    this.default = this.default.bind(this);
-    this.catch = this.catch.bind(this);
-    this.describe = this.describe.bind(this);
-    this.pipe = this.pipe.bind(this);
-    this.readonly = this.readonly.bind(this);
-    this.isNullable = this.isNullable.bind(this);
-    this.isOptional = this.isOptional.bind(this);
-    this["~standard"] = {
-      version: 1,
-      vendor: "zod",
-      validate: (data) => this["~validate"](data)
-    };
-  }
-  optional() {
-    return ZodOptional.create(this, this._def);
-  }
-  nullable() {
-    return ZodNullable.create(this, this._def);
-  }
-  nullish() {
-    return this.nullable().optional();
-  }
-  array() {
-    return ZodArray.create(this);
-  }
-  promise() {
-    return ZodPromise.create(this, this._def);
-  }
-  or(option) {
-    return ZodUnion.create([this, option], this._def);
-  }
-  and(incoming) {
-    return ZodIntersection.create(this, incoming, this._def);
-  }
-  transform(transform) {
-    return new ZodEffects({
-      ...processCreateParams(this._def),
-      schema: this,
-      typeName: ZodFirstPartyTypeKind.ZodEffects,
-      effect: { type: "transform", transform }
-    });
-  }
-  default(def) {
-    const defaultValueFunc = typeof def === "function" ? def : () => def;
-    return new ZodDefault({
-      ...processCreateParams(this._def),
-      innerType: this,
-      defaultValue: defaultValueFunc,
-      typeName: ZodFirstPartyTypeKind.ZodDefault
-    });
-  }
-  brand() {
-    return new ZodBranded({
-      typeName: ZodFirstPartyTypeKind.ZodBranded,
-      type: this,
-      ...processCreateParams(this._def)
-    });
-  }
-  catch(def) {
-    const catchValueFunc = typeof def === "function" ? def : () => def;
-    return new ZodCatch({
-      ...processCreateParams(this._def),
-      innerType: this,
-      catchValue: catchValueFunc,
-      typeName: ZodFirstPartyTypeKind.ZodCatch
-    });
-  }
-  describe(description2) {
-    const This = this.constructor;
-    return new This({
-      ...this._def,
-      description: description2
-    });
-  }
-  pipe(target2) {
-    return ZodPipeline.create(this, target2);
-  }
-  readonly() {
-    return ZodReadonly.create(this);
-  }
-  isOptional() {
-    return this.safeParse(void 0).success;
-  }
-  isNullable() {
-    return this.safeParse(null).success;
-  }
-}
-const cuidRegex = /^c[^\s-]{8,}$/i;
-const cuid2Regex = /^[0-9a-z]+$/;
-const ulidRegex = /^[0-9A-HJKMNP-TV-Z]{26}$/i;
-const uuidRegex = /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/i;
-const nanoidRegex = /^[a-z0-9_-]{21}$/i;
-const jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]*$/;
-const durationRegex = /^[-+]?P(?!$)(?:(?:[-+]?\d+Y)|(?:[-+]?\d+[.,]\d+Y$))?(?:(?:[-+]?\d+M)|(?:[-+]?\d+[.,]\d+M$))?(?:(?:[-+]?\d+W)|(?:[-+]?\d+[.,]\d+W$))?(?:(?:[-+]?\d+D)|(?:[-+]?\d+[.,]\d+D$))?(?:T(?=[\d+-])(?:(?:[-+]?\d+H)|(?:[-+]?\d+[.,]\d+H$))?(?:(?:[-+]?\d+M)|(?:[-+]?\d+[.,]\d+M$))?(?:[-+]?\d+(?:[.,]\d+)?S)?)??$/;
-const emailRegex = /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i;
-const _emojiRegex = `^(\\p{Extended_Pictographic}|\\p{Emoji_Component})+$`;
-let emojiRegex;
-const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/;
-const ipv4CidrRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\/(3[0-2]|[12]?[0-9])$/;
-const ipv6Regex = /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/;
-const ipv6CidrRegex = /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))\/(12[0-8]|1[01][0-9]|[1-9]?[0-9])$/;
-const base64Regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
-const base64urlRegex = /^([0-9a-zA-Z-_]{4})*(([0-9a-zA-Z-_]{2}(==)?)|([0-9a-zA-Z-_]{3}(=)?))?$/;
-const dateRegexSource = `((\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-((0[13578]|1[02])-(0[1-9]|[12]\\d|3[01])|(0[469]|11)-(0[1-9]|[12]\\d|30)|(02)-(0[1-9]|1\\d|2[0-8])))`;
-const dateRegex = new RegExp(`^${dateRegexSource}$`);
-function timeRegexSource(args) {
-  let regex = `([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d`;
-  if (args.precision) {
-    regex = `${regex}\\.\\d{${args.precision}}`;
-  } else if (args.precision == null) {
-    regex = `${regex}(\\.\\d+)?`;
-  }
-  return regex;
-}
-function timeRegex(args) {
-  return new RegExp(`^${timeRegexSource(args)}$`);
-}
-function datetimeRegex(args) {
-  let regex = `${dateRegexSource}T${timeRegexSource(args)}`;
-  const opts = [];
-  opts.push(args.local ? `Z?` : `Z`);
-  if (args.offset)
-    opts.push(`([+-]\\d{2}:?\\d{2})`);
-  regex = `${regex}(${opts.join("|")})`;
-  return new RegExp(`^${regex}$`);
-}
-function isValidIP(ip2, version2) {
-  if ((version2 === "v4" || !version2) && ipv4Regex.test(ip2)) {
-    return true;
-  }
-  if ((version2 === "v6" || !version2) && ipv6Regex.test(ip2)) {
-    return true;
-  }
-  return false;
-}
-function isValidJWT(jwt, alg) {
-  if (!jwtRegex.test(jwt))
-    return false;
-  try {
-    const [header] = jwt.split(".");
-    const base64 = header.replace(/-/g, "+").replace(/_/g, "/").padEnd(header.length + (4 - header.length % 4) % 4, "=");
-    const decoded = JSON.parse(atob(base64));
-    if (typeof decoded !== "object" || decoded === null)
-      return false;
-    if (!decoded.typ || !decoded.alg)
-      return false;
-    if (alg && decoded.alg !== alg)
-      return false;
-    return true;
-  } catch (_a) {
-    return false;
-  }
-}
-function isValidCidr(ip2, version2) {
-  if ((version2 === "v4" || !version2) && ipv4CidrRegex.test(ip2)) {
-    return true;
-  }
-  if ((version2 === "v6" || !version2) && ipv6CidrRegex.test(ip2)) {
-    return true;
-  }
-  return false;
-}
-class ZodString extends ZodType {
-  _parse(input) {
-    if (this._def.coerce) {
-      input.data = String(input.data);
-    }
-    const parsedType = this._getType(input);
-    if (parsedType !== ZodParsedType.string) {
-      const ctx2 = this._getOrReturnCtx(input);
-      addIssueToContext(ctx2, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.string,
-        received: ctx2.parsedType
-      });
-      return INVALID;
-    }
-    const status2 = new ParseStatus();
-    let ctx = void 0;
-    for (const check of this._def.checks) {
-      if (check.kind === "min") {
-        if (input.data.length < check.value) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_small,
-            minimum: check.value,
-            type: "string",
-            inclusive: true,
-            exact: false,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "max") {
-        if (input.data.length > check.value) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_big,
-            maximum: check.value,
-            type: "string",
-            inclusive: true,
-            exact: false,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "length") {
-        const tooBig = input.data.length > check.value;
-        const tooSmall = input.data.length < check.value;
-        if (tooBig || tooSmall) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          if (tooBig) {
-            addIssueToContext(ctx, {
-              code: ZodIssueCode.too_big,
-              maximum: check.value,
-              type: "string",
-              inclusive: true,
-              exact: true,
-              message: check.message
-            });
-          } else if (tooSmall) {
-            addIssueToContext(ctx, {
-              code: ZodIssueCode.too_small,
-              minimum: check.value,
-              type: "string",
-              inclusive: true,
-              exact: true,
-              message: check.message
-            });
-          }
-          status2.dirty();
-        }
-      } else if (check.kind === "email") {
-        if (!emailRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "email",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "emoji") {
-        if (!emojiRegex) {
-          emojiRegex = new RegExp(_emojiRegex, "u");
-        }
-        if (!emojiRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "emoji",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "uuid") {
-        if (!uuidRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "uuid",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "nanoid") {
-        if (!nanoidRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "nanoid",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "cuid") {
-        if (!cuidRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "cuid",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "cuid2") {
-        if (!cuid2Regex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "cuid2",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "ulid") {
-        if (!ulidRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "ulid",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "url") {
-        try {
-          new URL(input.data);
-        } catch (_a) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "url",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "regex") {
-        check.regex.lastIndex = 0;
-        const testResult = check.regex.test(input.data);
-        if (!testResult) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "regex",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "trim") {
-        input.data = input.data.trim();
-      } else if (check.kind === "includes") {
-        if (!input.data.includes(check.value, check.position)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_string,
-            validation: { includes: check.value, position: check.position },
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "toLowerCase") {
-        input.data = input.data.toLowerCase();
-      } else if (check.kind === "toUpperCase") {
-        input.data = input.data.toUpperCase();
-      } else if (check.kind === "startsWith") {
-        if (!input.data.startsWith(check.value)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_string,
-            validation: { startsWith: check.value },
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "endsWith") {
-        if (!input.data.endsWith(check.value)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_string,
-            validation: { endsWith: check.value },
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "datetime") {
-        const regex = datetimeRegex(check);
-        if (!regex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_string,
-            validation: "datetime",
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "date") {
-        const regex = dateRegex;
-        if (!regex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_string,
-            validation: "date",
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "time") {
-        const regex = timeRegex(check);
-        if (!regex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_string,
-            validation: "time",
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "duration") {
-        if (!durationRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "duration",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "ip") {
-        if (!isValidIP(input.data, check.version)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "ip",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "jwt") {
-        if (!isValidJWT(input.data, check.alg)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "jwt",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "cidr") {
-        if (!isValidCidr(input.data, check.version)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "cidr",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "base64") {
-        if (!base64Regex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "base64",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "base64url") {
-        if (!base64urlRegex.test(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            validation: "base64url",
-            code: ZodIssueCode.invalid_string,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else {
-        util.assertNever(check);
-      }
-    }
-    return { status: status2.value, value: input.data };
-  }
-  _regex(regex, validation, message2) {
-    return this.refinement((data) => regex.test(data), {
-      validation,
-      code: ZodIssueCode.invalid_string,
-      ...errorUtil.errToObj(message2)
-    });
-  }
-  _addCheck(check) {
-    return new ZodString({
-      ...this._def,
-      checks: [...this._def.checks, check]
-    });
-  }
-  email(message2) {
-    return this._addCheck({ kind: "email", ...errorUtil.errToObj(message2) });
-  }
-  url(message2) {
-    return this._addCheck({ kind: "url", ...errorUtil.errToObj(message2) });
-  }
-  emoji(message2) {
-    return this._addCheck({ kind: "emoji", ...errorUtil.errToObj(message2) });
-  }
-  uuid(message2) {
-    return this._addCheck({ kind: "uuid", ...errorUtil.errToObj(message2) });
-  }
-  nanoid(message2) {
-    return this._addCheck({ kind: "nanoid", ...errorUtil.errToObj(message2) });
-  }
-  cuid(message2) {
-    return this._addCheck({ kind: "cuid", ...errorUtil.errToObj(message2) });
-  }
-  cuid2(message2) {
-    return this._addCheck({ kind: "cuid2", ...errorUtil.errToObj(message2) });
-  }
-  ulid(message2) {
-    return this._addCheck({ kind: "ulid", ...errorUtil.errToObj(message2) });
-  }
-  base64(message2) {
-    return this._addCheck({ kind: "base64", ...errorUtil.errToObj(message2) });
-  }
-  base64url(message2) {
-    return this._addCheck({
-      kind: "base64url",
-      ...errorUtil.errToObj(message2)
-    });
-  }
-  jwt(options) {
-    return this._addCheck({ kind: "jwt", ...errorUtil.errToObj(options) });
-  }
-  ip(options) {
-    return this._addCheck({ kind: "ip", ...errorUtil.errToObj(options) });
-  }
-  cidr(options) {
-    return this._addCheck({ kind: "cidr", ...errorUtil.errToObj(options) });
-  }
-  datetime(options) {
-    var _a, _b;
-    if (typeof options === "string") {
-      return this._addCheck({
-        kind: "datetime",
-        precision: null,
-        offset: false,
-        local: false,
-        message: options
-      });
-    }
-    return this._addCheck({
-      kind: "datetime",
-      precision: typeof (options === null || options === void 0 ? void 0 : options.precision) === "undefined" ? null : options === null || options === void 0 ? void 0 : options.precision,
-      offset: (_a = options === null || options === void 0 ? void 0 : options.offset) !== null && _a !== void 0 ? _a : false,
-      local: (_b = options === null || options === void 0 ? void 0 : options.local) !== null && _b !== void 0 ? _b : false,
-      ...errorUtil.errToObj(options === null || options === void 0 ? void 0 : options.message)
-    });
-  }
-  date(message2) {
-    return this._addCheck({ kind: "date", message: message2 });
-  }
-  time(options) {
-    if (typeof options === "string") {
-      return this._addCheck({
-        kind: "time",
-        precision: null,
-        message: options
-      });
-    }
-    return this._addCheck({
-      kind: "time",
-      precision: typeof (options === null || options === void 0 ? void 0 : options.precision) === "undefined" ? null : options === null || options === void 0 ? void 0 : options.precision,
-      ...errorUtil.errToObj(options === null || options === void 0 ? void 0 : options.message)
-    });
-  }
-  duration(message2) {
-    return this._addCheck({ kind: "duration", ...errorUtil.errToObj(message2) });
-  }
-  regex(regex, message2) {
-    return this._addCheck({
-      kind: "regex",
-      regex,
-      ...errorUtil.errToObj(message2)
-    });
-  }
-  includes(value2, options) {
-    return this._addCheck({
-      kind: "includes",
-      value: value2,
-      position: options === null || options === void 0 ? void 0 : options.position,
-      ...errorUtil.errToObj(options === null || options === void 0 ? void 0 : options.message)
-    });
-  }
-  startsWith(value2, message2) {
-    return this._addCheck({
-      kind: "startsWith",
-      value: value2,
-      ...errorUtil.errToObj(message2)
-    });
-  }
-  endsWith(value2, message2) {
-    return this._addCheck({
-      kind: "endsWith",
-      value: value2,
-      ...errorUtil.errToObj(message2)
-    });
-  }
-  min(minLength, message2) {
-    return this._addCheck({
-      kind: "min",
-      value: minLength,
-      ...errorUtil.errToObj(message2)
-    });
-  }
-  max(maxLength, message2) {
-    return this._addCheck({
-      kind: "max",
-      value: maxLength,
-      ...errorUtil.errToObj(message2)
-    });
-  }
-  length(len, message2) {
-    return this._addCheck({
-      kind: "length",
-      value: len,
-      ...errorUtil.errToObj(message2)
-    });
-  }
-  /**
-   * Equivalent to `.min(1)`
-   */
-  nonempty(message2) {
-    return this.min(1, errorUtil.errToObj(message2));
-  }
-  trim() {
-    return new ZodString({
-      ...this._def,
-      checks: [...this._def.checks, { kind: "trim" }]
-    });
-  }
-  toLowerCase() {
-    return new ZodString({
-      ...this._def,
-      checks: [...this._def.checks, { kind: "toLowerCase" }]
-    });
-  }
-  toUpperCase() {
-    return new ZodString({
-      ...this._def,
-      checks: [...this._def.checks, { kind: "toUpperCase" }]
-    });
-  }
-  get isDatetime() {
-    return !!this._def.checks.find((ch) => ch.kind === "datetime");
-  }
-  get isDate() {
-    return !!this._def.checks.find((ch) => ch.kind === "date");
-  }
-  get isTime() {
-    return !!this._def.checks.find((ch) => ch.kind === "time");
-  }
-  get isDuration() {
-    return !!this._def.checks.find((ch) => ch.kind === "duration");
-  }
-  get isEmail() {
-    return !!this._def.checks.find((ch) => ch.kind === "email");
-  }
-  get isURL() {
-    return !!this._def.checks.find((ch) => ch.kind === "url");
-  }
-  get isEmoji() {
-    return !!this._def.checks.find((ch) => ch.kind === "emoji");
-  }
-  get isUUID() {
-    return !!this._def.checks.find((ch) => ch.kind === "uuid");
-  }
-  get isNANOID() {
-    return !!this._def.checks.find((ch) => ch.kind === "nanoid");
-  }
-  get isCUID() {
-    return !!this._def.checks.find((ch) => ch.kind === "cuid");
-  }
-  get isCUID2() {
-    return !!this._def.checks.find((ch) => ch.kind === "cuid2");
-  }
-  get isULID() {
-    return !!this._def.checks.find((ch) => ch.kind === "ulid");
-  }
-  get isIP() {
-    return !!this._def.checks.find((ch) => ch.kind === "ip");
-  }
-  get isCIDR() {
-    return !!this._def.checks.find((ch) => ch.kind === "cidr");
-  }
-  get isBase64() {
-    return !!this._def.checks.find((ch) => ch.kind === "base64");
-  }
-  get isBase64url() {
-    return !!this._def.checks.find((ch) => ch.kind === "base64url");
-  }
-  get minLength() {
-    let min2 = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "min") {
-        if (min2 === null || ch.value > min2)
-          min2 = ch.value;
-      }
-    }
-    return min2;
-  }
-  get maxLength() {
-    let max2 = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "max") {
-        if (max2 === null || ch.value < max2)
-          max2 = ch.value;
-      }
-    }
-    return max2;
-  }
-}
-ZodString.create = (params) => {
-  var _a;
-  return new ZodString({
-    checks: [],
-    typeName: ZodFirstPartyTypeKind.ZodString,
-    coerce: (_a = params === null || params === void 0 ? void 0 : params.coerce) !== null && _a !== void 0 ? _a : false,
-    ...processCreateParams(params)
-  });
-};
-function floatSafeRemainder(val, step) {
-  const valDecCount = (val.toString().split(".")[1] || "").length;
-  const stepDecCount = (step.toString().split(".")[1] || "").length;
-  const decCount = valDecCount > stepDecCount ? valDecCount : stepDecCount;
-  const valInt = parseInt(val.toFixed(decCount).replace(".", ""));
-  const stepInt = parseInt(step.toFixed(decCount).replace(".", ""));
-  return valInt % stepInt / Math.pow(10, decCount);
-}
-class ZodNumber extends ZodType {
-  constructor() {
-    super(...arguments);
-    this.min = this.gte;
-    this.max = this.lte;
-    this.step = this.multipleOf;
-  }
-  _parse(input) {
-    if (this._def.coerce) {
-      input.data = Number(input.data);
-    }
-    const parsedType = this._getType(input);
-    if (parsedType !== ZodParsedType.number) {
-      const ctx2 = this._getOrReturnCtx(input);
-      addIssueToContext(ctx2, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.number,
-        received: ctx2.parsedType
-      });
-      return INVALID;
-    }
-    let ctx = void 0;
-    const status2 = new ParseStatus();
-    for (const check of this._def.checks) {
-      if (check.kind === "int") {
-        if (!util.isInteger(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.invalid_type,
-            expected: "integer",
-            received: "float",
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "min") {
-        const tooSmall = check.inclusive ? input.data < check.value : input.data <= check.value;
-        if (tooSmall) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_small,
-            minimum: check.value,
-            type: "number",
-            inclusive: check.inclusive,
-            exact: false,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "max") {
-        const tooBig = check.inclusive ? input.data > check.value : input.data >= check.value;
-        if (tooBig) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_big,
-            maximum: check.value,
-            type: "number",
-            inclusive: check.inclusive,
-            exact: false,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "multipleOf") {
-        if (floatSafeRemainder(input.data, check.value) !== 0) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.not_multiple_of,
-            multipleOf: check.value,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "finite") {
-        if (!Number.isFinite(input.data)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.not_finite,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else {
-        util.assertNever(check);
-      }
-    }
-    return { status: status2.value, value: input.data };
-  }
-  gte(value2, message2) {
-    return this.setLimit("min", value2, true, errorUtil.toString(message2));
-  }
-  gt(value2, message2) {
-    return this.setLimit("min", value2, false, errorUtil.toString(message2));
-  }
-  lte(value2, message2) {
-    return this.setLimit("max", value2, true, errorUtil.toString(message2));
-  }
-  lt(value2, message2) {
-    return this.setLimit("max", value2, false, errorUtil.toString(message2));
-  }
-  setLimit(kind, value2, inclusive, message2) {
-    return new ZodNumber({
-      ...this._def,
-      checks: [
-        ...this._def.checks,
-        {
-          kind,
-          value: value2,
-          inclusive,
-          message: errorUtil.toString(message2)
-        }
-      ]
-    });
-  }
-  _addCheck(check) {
-    return new ZodNumber({
-      ...this._def,
-      checks: [...this._def.checks, check]
-    });
-  }
-  int(message2) {
-    return this._addCheck({
-      kind: "int",
-      message: errorUtil.toString(message2)
-    });
-  }
-  positive(message2) {
-    return this._addCheck({
-      kind: "min",
-      value: 0,
-      inclusive: false,
-      message: errorUtil.toString(message2)
-    });
-  }
-  negative(message2) {
-    return this._addCheck({
-      kind: "max",
-      value: 0,
-      inclusive: false,
-      message: errorUtil.toString(message2)
-    });
-  }
-  nonpositive(message2) {
-    return this._addCheck({
-      kind: "max",
-      value: 0,
-      inclusive: true,
-      message: errorUtil.toString(message2)
-    });
-  }
-  nonnegative(message2) {
-    return this._addCheck({
-      kind: "min",
-      value: 0,
-      inclusive: true,
-      message: errorUtil.toString(message2)
-    });
-  }
-  multipleOf(value2, message2) {
-    return this._addCheck({
-      kind: "multipleOf",
-      value: value2,
-      message: errorUtil.toString(message2)
-    });
-  }
-  finite(message2) {
-    return this._addCheck({
-      kind: "finite",
-      message: errorUtil.toString(message2)
-    });
-  }
-  safe(message2) {
-    return this._addCheck({
-      kind: "min",
-      inclusive: true,
-      value: Number.MIN_SAFE_INTEGER,
-      message: errorUtil.toString(message2)
-    })._addCheck({
-      kind: "max",
-      inclusive: true,
-      value: Number.MAX_SAFE_INTEGER,
-      message: errorUtil.toString(message2)
-    });
-  }
-  get minValue() {
-    let min2 = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "min") {
-        if (min2 === null || ch.value > min2)
-          min2 = ch.value;
-      }
-    }
-    return min2;
-  }
-  get maxValue() {
-    let max2 = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "max") {
-        if (max2 === null || ch.value < max2)
-          max2 = ch.value;
-      }
-    }
-    return max2;
-  }
-  get isInt() {
-    return !!this._def.checks.find((ch) => ch.kind === "int" || ch.kind === "multipleOf" && util.isInteger(ch.value));
-  }
-  get isFinite() {
-    let max2 = null, min2 = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "finite" || ch.kind === "int" || ch.kind === "multipleOf") {
-        return true;
-      } else if (ch.kind === "min") {
-        if (min2 === null || ch.value > min2)
-          min2 = ch.value;
-      } else if (ch.kind === "max") {
-        if (max2 === null || ch.value < max2)
-          max2 = ch.value;
-      }
-    }
-    return Number.isFinite(min2) && Number.isFinite(max2);
-  }
-}
-ZodNumber.create = (params) => {
-  return new ZodNumber({
-    checks: [],
-    typeName: ZodFirstPartyTypeKind.ZodNumber,
-    coerce: (params === null || params === void 0 ? void 0 : params.coerce) || false,
-    ...processCreateParams(params)
-  });
-};
-class ZodBigInt extends ZodType {
-  constructor() {
-    super(...arguments);
-    this.min = this.gte;
-    this.max = this.lte;
-  }
-  _parse(input) {
-    if (this._def.coerce) {
-      try {
-        input.data = BigInt(input.data);
-      } catch (_a) {
-        return this._getInvalidInput(input);
-      }
-    }
-    const parsedType = this._getType(input);
-    if (parsedType !== ZodParsedType.bigint) {
-      return this._getInvalidInput(input);
-    }
-    let ctx = void 0;
-    const status2 = new ParseStatus();
-    for (const check of this._def.checks) {
-      if (check.kind === "min") {
-        const tooSmall = check.inclusive ? input.data < check.value : input.data <= check.value;
-        if (tooSmall) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_small,
-            type: "bigint",
-            minimum: check.value,
-            inclusive: check.inclusive,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "max") {
-        const tooBig = check.inclusive ? input.data > check.value : input.data >= check.value;
-        if (tooBig) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_big,
-            type: "bigint",
-            maximum: check.value,
-            inclusive: check.inclusive,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "multipleOf") {
-        if (input.data % check.value !== BigInt(0)) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.not_multiple_of,
-            multipleOf: check.value,
-            message: check.message
-          });
-          status2.dirty();
-        }
-      } else {
-        util.assertNever(check);
-      }
-    }
-    return { status: status2.value, value: input.data };
-  }
-  _getInvalidInput(input) {
-    const ctx = this._getOrReturnCtx(input);
-    addIssueToContext(ctx, {
-      code: ZodIssueCode.invalid_type,
-      expected: ZodParsedType.bigint,
-      received: ctx.parsedType
-    });
-    return INVALID;
-  }
-  gte(value2, message2) {
-    return this.setLimit("min", value2, true, errorUtil.toString(message2));
-  }
-  gt(value2, message2) {
-    return this.setLimit("min", value2, false, errorUtil.toString(message2));
-  }
-  lte(value2, message2) {
-    return this.setLimit("max", value2, true, errorUtil.toString(message2));
-  }
-  lt(value2, message2) {
-    return this.setLimit("max", value2, false, errorUtil.toString(message2));
-  }
-  setLimit(kind, value2, inclusive, message2) {
-    return new ZodBigInt({
-      ...this._def,
-      checks: [
-        ...this._def.checks,
-        {
-          kind,
-          value: value2,
-          inclusive,
-          message: errorUtil.toString(message2)
-        }
-      ]
-    });
-  }
-  _addCheck(check) {
-    return new ZodBigInt({
-      ...this._def,
-      checks: [...this._def.checks, check]
-    });
-  }
-  positive(message2) {
-    return this._addCheck({
-      kind: "min",
-      value: BigInt(0),
-      inclusive: false,
-      message: errorUtil.toString(message2)
-    });
-  }
-  negative(message2) {
-    return this._addCheck({
-      kind: "max",
-      value: BigInt(0),
-      inclusive: false,
-      message: errorUtil.toString(message2)
-    });
-  }
-  nonpositive(message2) {
-    return this._addCheck({
-      kind: "max",
-      value: BigInt(0),
-      inclusive: true,
-      message: errorUtil.toString(message2)
-    });
-  }
-  nonnegative(message2) {
-    return this._addCheck({
-      kind: "min",
-      value: BigInt(0),
-      inclusive: true,
-      message: errorUtil.toString(message2)
-    });
-  }
-  multipleOf(value2, message2) {
-    return this._addCheck({
-      kind: "multipleOf",
-      value: value2,
-      message: errorUtil.toString(message2)
-    });
-  }
-  get minValue() {
-    let min2 = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "min") {
-        if (min2 === null || ch.value > min2)
-          min2 = ch.value;
-      }
-    }
-    return min2;
-  }
-  get maxValue() {
-    let max2 = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "max") {
-        if (max2 === null || ch.value < max2)
-          max2 = ch.value;
-      }
-    }
-    return max2;
-  }
-}
-ZodBigInt.create = (params) => {
-  var _a;
-  return new ZodBigInt({
-    checks: [],
-    typeName: ZodFirstPartyTypeKind.ZodBigInt,
-    coerce: (_a = params === null || params === void 0 ? void 0 : params.coerce) !== null && _a !== void 0 ? _a : false,
-    ...processCreateParams(params)
-  });
-};
-class ZodBoolean extends ZodType {
-  _parse(input) {
-    if (this._def.coerce) {
-      input.data = Boolean(input.data);
-    }
-    const parsedType = this._getType(input);
-    if (parsedType !== ZodParsedType.boolean) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.boolean,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-}
-ZodBoolean.create = (params) => {
-  return new ZodBoolean({
-    typeName: ZodFirstPartyTypeKind.ZodBoolean,
-    coerce: (params === null || params === void 0 ? void 0 : params.coerce) || false,
-    ...processCreateParams(params)
-  });
-};
-class ZodDate extends ZodType {
-  _parse(input) {
-    if (this._def.coerce) {
-      input.data = new Date(input.data);
-    }
-    const parsedType = this._getType(input);
-    if (parsedType !== ZodParsedType.date) {
-      const ctx2 = this._getOrReturnCtx(input);
-      addIssueToContext(ctx2, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.date,
-        received: ctx2.parsedType
-      });
-      return INVALID;
-    }
-    if (isNaN(input.data.getTime())) {
-      const ctx2 = this._getOrReturnCtx(input);
-      addIssueToContext(ctx2, {
-        code: ZodIssueCode.invalid_date
-      });
-      return INVALID;
-    }
-    const status2 = new ParseStatus();
-    let ctx = void 0;
-    for (const check of this._def.checks) {
-      if (check.kind === "min") {
-        if (input.data.getTime() < check.value) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_small,
-            message: check.message,
-            inclusive: true,
-            exact: false,
-            minimum: check.value,
-            type: "date"
-          });
-          status2.dirty();
-        }
-      } else if (check.kind === "max") {
-        if (input.data.getTime() > check.value) {
-          ctx = this._getOrReturnCtx(input, ctx);
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.too_big,
-            message: check.message,
-            inclusive: true,
-            exact: false,
-            maximum: check.value,
-            type: "date"
-          });
-          status2.dirty();
-        }
-      } else {
-        util.assertNever(check);
-      }
-    }
-    return {
-      status: status2.value,
-      value: new Date(input.data.getTime())
-    };
-  }
-  _addCheck(check) {
-    return new ZodDate({
-      ...this._def,
-      checks: [...this._def.checks, check]
-    });
-  }
-  min(minDate, message2) {
-    return this._addCheck({
-      kind: "min",
-      value: minDate.getTime(),
-      message: errorUtil.toString(message2)
-    });
-  }
-  max(maxDate, message2) {
-    return this._addCheck({
-      kind: "max",
-      value: maxDate.getTime(),
-      message: errorUtil.toString(message2)
-    });
-  }
-  get minDate() {
-    let min2 = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "min") {
-        if (min2 === null || ch.value > min2)
-          min2 = ch.value;
-      }
-    }
-    return min2 != null ? new Date(min2) : null;
-  }
-  get maxDate() {
-    let max2 = null;
-    for (const ch of this._def.checks) {
-      if (ch.kind === "max") {
-        if (max2 === null || ch.value < max2)
-          max2 = ch.value;
-      }
-    }
-    return max2 != null ? new Date(max2) : null;
-  }
-}
-ZodDate.create = (params) => {
-  return new ZodDate({
-    checks: [],
-    coerce: (params === null || params === void 0 ? void 0 : params.coerce) || false,
-    typeName: ZodFirstPartyTypeKind.ZodDate,
-    ...processCreateParams(params)
-  });
-};
-class ZodSymbol extends ZodType {
-  _parse(input) {
-    const parsedType = this._getType(input);
-    if (parsedType !== ZodParsedType.symbol) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.symbol,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-}
-ZodSymbol.create = (params) => {
-  return new ZodSymbol({
-    typeName: ZodFirstPartyTypeKind.ZodSymbol,
-    ...processCreateParams(params)
-  });
-};
-class ZodUndefined extends ZodType {
-  _parse(input) {
-    const parsedType = this._getType(input);
-    if (parsedType !== ZodParsedType.undefined) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.undefined,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-}
-ZodUndefined.create = (params) => {
-  return new ZodUndefined({
-    typeName: ZodFirstPartyTypeKind.ZodUndefined,
-    ...processCreateParams(params)
-  });
-};
-class ZodNull extends ZodType {
-  _parse(input) {
-    const parsedType = this._getType(input);
-    if (parsedType !== ZodParsedType.null) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.null,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-}
-ZodNull.create = (params) => {
-  return new ZodNull({
-    typeName: ZodFirstPartyTypeKind.ZodNull,
-    ...processCreateParams(params)
-  });
-};
-class ZodAny extends ZodType {
-  constructor() {
-    super(...arguments);
-    this._any = true;
-  }
-  _parse(input) {
-    return OK(input.data);
-  }
-}
-ZodAny.create = (params) => {
-  return new ZodAny({
-    typeName: ZodFirstPartyTypeKind.ZodAny,
-    ...processCreateParams(params)
-  });
-};
-class ZodUnknown extends ZodType {
-  constructor() {
-    super(...arguments);
-    this._unknown = true;
-  }
-  _parse(input) {
-    return OK(input.data);
-  }
-}
-ZodUnknown.create = (params) => {
-  return new ZodUnknown({
-    typeName: ZodFirstPartyTypeKind.ZodUnknown,
-    ...processCreateParams(params)
-  });
-};
-class ZodNever extends ZodType {
-  _parse(input) {
-    const ctx = this._getOrReturnCtx(input);
-    addIssueToContext(ctx, {
-      code: ZodIssueCode.invalid_type,
-      expected: ZodParsedType.never,
-      received: ctx.parsedType
-    });
-    return INVALID;
-  }
-}
-ZodNever.create = (params) => {
-  return new ZodNever({
-    typeName: ZodFirstPartyTypeKind.ZodNever,
-    ...processCreateParams(params)
-  });
-};
-class ZodVoid extends ZodType {
-  _parse(input) {
-    const parsedType = this._getType(input);
-    if (parsedType !== ZodParsedType.undefined) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.void,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-}
-ZodVoid.create = (params) => {
-  return new ZodVoid({
-    typeName: ZodFirstPartyTypeKind.ZodVoid,
-    ...processCreateParams(params)
-  });
-};
-class ZodArray extends ZodType {
-  _parse(input) {
-    const { ctx, status: status2 } = this._processInputParams(input);
-    const def = this._def;
-    if (ctx.parsedType !== ZodParsedType.array) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.array,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    if (def.exactLength !== null) {
-      const tooBig = ctx.data.length > def.exactLength.value;
-      const tooSmall = ctx.data.length < def.exactLength.value;
-      if (tooBig || tooSmall) {
-        addIssueToContext(ctx, {
-          code: tooBig ? ZodIssueCode.too_big : ZodIssueCode.too_small,
-          minimum: tooSmall ? def.exactLength.value : void 0,
-          maximum: tooBig ? def.exactLength.value : void 0,
-          type: "array",
-          inclusive: true,
-          exact: true,
-          message: def.exactLength.message
-        });
-        status2.dirty();
-      }
-    }
-    if (def.minLength !== null) {
-      if (ctx.data.length < def.minLength.value) {
-        addIssueToContext(ctx, {
-          code: ZodIssueCode.too_small,
-          minimum: def.minLength.value,
-          type: "array",
-          inclusive: true,
-          exact: false,
-          message: def.minLength.message
-        });
-        status2.dirty();
-      }
-    }
-    if (def.maxLength !== null) {
-      if (ctx.data.length > def.maxLength.value) {
-        addIssueToContext(ctx, {
-          code: ZodIssueCode.too_big,
-          maximum: def.maxLength.value,
-          type: "array",
-          inclusive: true,
-          exact: false,
-          message: def.maxLength.message
-        });
-        status2.dirty();
-      }
-    }
-    if (ctx.common.async) {
-      return Promise.all([...ctx.data].map((item, i2) => {
-        return def.type._parseAsync(new ParseInputLazyPath(ctx, item, ctx.path, i2));
-      })).then((result2) => {
-        return ParseStatus.mergeArray(status2, result2);
-      });
-    }
-    const result = [...ctx.data].map((item, i2) => {
-      return def.type._parseSync(new ParseInputLazyPath(ctx, item, ctx.path, i2));
-    });
-    return ParseStatus.mergeArray(status2, result);
-  }
-  get element() {
-    return this._def.type;
-  }
-  min(minLength, message2) {
-    return new ZodArray({
-      ...this._def,
-      minLength: { value: minLength, message: errorUtil.toString(message2) }
-    });
-  }
-  max(maxLength, message2) {
-    return new ZodArray({
-      ...this._def,
-      maxLength: { value: maxLength, message: errorUtil.toString(message2) }
-    });
-  }
-  length(len, message2) {
-    return new ZodArray({
-      ...this._def,
-      exactLength: { value: len, message: errorUtil.toString(message2) }
-    });
-  }
-  nonempty(message2) {
-    return this.min(1, message2);
-  }
-}
-ZodArray.create = (schema2, params) => {
-  return new ZodArray({
-    type: schema2,
-    minLength: null,
-    maxLength: null,
-    exactLength: null,
-    typeName: ZodFirstPartyTypeKind.ZodArray,
-    ...processCreateParams(params)
-  });
-};
-function deepPartialify(schema2) {
-  if (schema2 instanceof ZodObject) {
-    const newShape = {};
-    for (const key in schema2.shape) {
-      const fieldSchema = schema2.shape[key];
-      newShape[key] = ZodOptional.create(deepPartialify(fieldSchema));
-    }
-    return new ZodObject({
-      ...schema2._def,
-      shape: () => newShape
-    });
-  } else if (schema2 instanceof ZodArray) {
-    return new ZodArray({
-      ...schema2._def,
-      type: deepPartialify(schema2.element)
-    });
-  } else if (schema2 instanceof ZodOptional) {
-    return ZodOptional.create(deepPartialify(schema2.unwrap()));
-  } else if (schema2 instanceof ZodNullable) {
-    return ZodNullable.create(deepPartialify(schema2.unwrap()));
-  } else if (schema2 instanceof ZodTuple) {
-    return ZodTuple.create(schema2.items.map((item) => deepPartialify(item)));
-  } else {
-    return schema2;
-  }
-}
-class ZodObject extends ZodType {
-  constructor() {
-    super(...arguments);
-    this._cached = null;
-    this.nonstrict = this.passthrough;
-    this.augment = this.extend;
-  }
-  _getCached() {
-    if (this._cached !== null)
-      return this._cached;
-    const shape = this._def.shape();
-    const keys2 = util.objectKeys(shape);
-    return this._cached = { shape, keys: keys2 };
-  }
-  _parse(input) {
-    const parsedType = this._getType(input);
-    if (parsedType !== ZodParsedType.object) {
-      const ctx2 = this._getOrReturnCtx(input);
-      addIssueToContext(ctx2, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.object,
-        received: ctx2.parsedType
-      });
-      return INVALID;
-    }
-    const { status: status2, ctx } = this._processInputParams(input);
-    const { shape, keys: shapeKeys } = this._getCached();
-    const extraKeys = [];
-    if (!(this._def.catchall instanceof ZodNever && this._def.unknownKeys === "strip")) {
-      for (const key in ctx.data) {
-        if (!shapeKeys.includes(key)) {
-          extraKeys.push(key);
-        }
-      }
-    }
-    const pairs = [];
-    for (const key of shapeKeys) {
-      const keyValidator = shape[key];
-      const value2 = ctx.data[key];
-      pairs.push({
-        key: { status: "valid", value: key },
-        value: keyValidator._parse(new ParseInputLazyPath(ctx, value2, ctx.path, key)),
-        alwaysSet: key in ctx.data
-      });
-    }
-    if (this._def.catchall instanceof ZodNever) {
-      const unknownKeys = this._def.unknownKeys;
-      if (unknownKeys === "passthrough") {
-        for (const key of extraKeys) {
-          pairs.push({
-            key: { status: "valid", value: key },
-            value: { status: "valid", value: ctx.data[key] }
-          });
-        }
-      } else if (unknownKeys === "strict") {
-        if (extraKeys.length > 0) {
-          addIssueToContext(ctx, {
-            code: ZodIssueCode.unrecognized_keys,
-            keys: extraKeys
-          });
-          status2.dirty();
-        }
-      } else if (unknownKeys === "strip") ;
-      else {
-        throw new Error(`Internal ZodObject error: invalid unknownKeys value.`);
-      }
-    } else {
-      const catchall = this._def.catchall;
-      for (const key of extraKeys) {
-        const value2 = ctx.data[key];
-        pairs.push({
-          key: { status: "valid", value: key },
-          value: catchall._parse(
-            new ParseInputLazyPath(ctx, value2, ctx.path, key)
-            //, ctx.child(key), value, getParsedType(value)
-          ),
-          alwaysSet: key in ctx.data
-        });
-      }
-    }
-    if (ctx.common.async) {
-      return Promise.resolve().then(async () => {
-        const syncPairs = [];
-        for (const pair of pairs) {
-          const key = await pair.key;
-          const value2 = await pair.value;
-          syncPairs.push({
-            key,
-            value: value2,
-            alwaysSet: pair.alwaysSet
-          });
-        }
-        return syncPairs;
-      }).then((syncPairs) => {
-        return ParseStatus.mergeObjectSync(status2, syncPairs);
-      });
-    } else {
-      return ParseStatus.mergeObjectSync(status2, pairs);
-    }
-  }
-  get shape() {
-    return this._def.shape();
-  }
-  strict(message2) {
-    errorUtil.errToObj;
-    return new ZodObject({
-      ...this._def,
-      unknownKeys: "strict",
-      ...message2 !== void 0 ? {
-        errorMap: (issue, ctx) => {
-          var _a, _b, _c, _d;
-          const defaultError = (_c = (_b = (_a = this._def).errorMap) === null || _b === void 0 ? void 0 : _b.call(_a, issue, ctx).message) !== null && _c !== void 0 ? _c : ctx.defaultError;
-          if (issue.code === "unrecognized_keys")
-            return {
-              message: (_d = errorUtil.errToObj(message2).message) !== null && _d !== void 0 ? _d : defaultError
-            };
-          return {
-            message: defaultError
-          };
-        }
-      } : {}
-    });
-  }
-  strip() {
-    return new ZodObject({
-      ...this._def,
-      unknownKeys: "strip"
-    });
-  }
-  passthrough() {
-    return new ZodObject({
-      ...this._def,
-      unknownKeys: "passthrough"
-    });
-  }
-  // const AugmentFactory =
-  //   <Def extends ZodObjectDef>(def: Def) =>
-  //   <Augmentation extends ZodRawShape>(
-  //     augmentation: Augmentation
-  //   ): ZodObject<
-  //     extendShape<ReturnType<Def["shape"]>, Augmentation>,
-  //     Def["unknownKeys"],
-  //     Def["catchall"]
-  //   > => {
-  //     return new ZodObject({
-  //       ...def,
-  //       shape: () => ({
-  //         ...def.shape(),
-  //         ...augmentation,
-  //       }),
-  //     }) as any;
-  //   };
-  extend(augmentation) {
-    return new ZodObject({
-      ...this._def,
-      shape: () => ({
-        ...this._def.shape(),
-        ...augmentation
-      })
-    });
-  }
-  /**
-   * Prior to zod@1.0.12 there was a bug in the
-   * inferred type of merged objects. Please
-   * upgrade if you are experiencing issues.
-   */
-  merge(merging) {
-    const merged = new ZodObject({
-      unknownKeys: merging._def.unknownKeys,
-      catchall: merging._def.catchall,
-      shape: () => ({
-        ...this._def.shape(),
-        ...merging._def.shape()
-      }),
-      typeName: ZodFirstPartyTypeKind.ZodObject
-    });
-    return merged;
-  }
-  // merge<
-  //   Incoming extends AnyZodObject,
-  //   Augmentation extends Incoming["shape"],
-  //   NewOutput extends {
-  //     [k in keyof Augmentation | keyof Output]: k extends keyof Augmentation
-  //       ? Augmentation[k]["_output"]
-  //       : k extends keyof Output
-  //       ? Output[k]
-  //       : never;
-  //   },
-  //   NewInput extends {
-  //     [k in keyof Augmentation | keyof Input]: k extends keyof Augmentation
-  //       ? Augmentation[k]["_input"]
-  //       : k extends keyof Input
-  //       ? Input[k]
-  //       : never;
-  //   }
-  // >(
-  //   merging: Incoming
-  // ): ZodObject<
-  //   extendShape<T, ReturnType<Incoming["_def"]["shape"]>>,
-  //   Incoming["_def"]["unknownKeys"],
-  //   Incoming["_def"]["catchall"],
-  //   NewOutput,
-  //   NewInput
-  // > {
-  //   const merged: any = new ZodObject({
-  //     unknownKeys: merging._def.unknownKeys,
-  //     catchall: merging._def.catchall,
-  //     shape: () =>
-  //       objectUtil.mergeShapes(this._def.shape(), merging._def.shape()),
-  //     typeName: ZodFirstPartyTypeKind.ZodObject,
-  //   }) as any;
-  //   return merged;
-  // }
-  setKey(key, schema2) {
-    return this.augment({ [key]: schema2 });
-  }
-  // merge<Incoming extends AnyZodObject>(
-  //   merging: Incoming
-  // ): //ZodObject<T & Incoming["_shape"], UnknownKeys, Catchall> = (merging) => {
-  // ZodObject<
-  //   extendShape<T, ReturnType<Incoming["_def"]["shape"]>>,
-  //   Incoming["_def"]["unknownKeys"],
-  //   Incoming["_def"]["catchall"]
-  // > {
-  //   // const mergedShape = objectUtil.mergeShapes(
-  //   //   this._def.shape(),
-  //   //   merging._def.shape()
-  //   // );
-  //   const merged: any = new ZodObject({
-  //     unknownKeys: merging._def.unknownKeys,
-  //     catchall: merging._def.catchall,
-  //     shape: () =>
-  //       objectUtil.mergeShapes(this._def.shape(), merging._def.shape()),
-  //     typeName: ZodFirstPartyTypeKind.ZodObject,
-  //   }) as any;
-  //   return merged;
-  // }
-  catchall(index2) {
-    return new ZodObject({
-      ...this._def,
-      catchall: index2
-    });
-  }
-  pick(mask) {
-    const shape = {};
-    util.objectKeys(mask).forEach((key) => {
-      if (mask[key] && this.shape[key]) {
-        shape[key] = this.shape[key];
-      }
-    });
-    return new ZodObject({
-      ...this._def,
-      shape: () => shape
-    });
-  }
-  omit(mask) {
-    const shape = {};
-    util.objectKeys(this.shape).forEach((key) => {
-      if (!mask[key]) {
-        shape[key] = this.shape[key];
-      }
-    });
-    return new ZodObject({
-      ...this._def,
-      shape: () => shape
-    });
-  }
-  /**
-   * @deprecated
-   */
-  deepPartial() {
-    return deepPartialify(this);
-  }
-  partial(mask) {
-    const newShape = {};
-    util.objectKeys(this.shape).forEach((key) => {
-      const fieldSchema = this.shape[key];
-      if (mask && !mask[key]) {
-        newShape[key] = fieldSchema;
-      } else {
-        newShape[key] = fieldSchema.optional();
-      }
-    });
-    return new ZodObject({
-      ...this._def,
-      shape: () => newShape
-    });
-  }
-  required(mask) {
-    const newShape = {};
-    util.objectKeys(this.shape).forEach((key) => {
-      if (mask && !mask[key]) {
-        newShape[key] = this.shape[key];
-      } else {
-        const fieldSchema = this.shape[key];
-        let newField = fieldSchema;
-        while (newField instanceof ZodOptional) {
-          newField = newField._def.innerType;
-        }
-        newShape[key] = newField;
-      }
-    });
-    return new ZodObject({
-      ...this._def,
-      shape: () => newShape
-    });
-  }
-  keyof() {
-    return createZodEnum(util.objectKeys(this.shape));
-  }
-}
-ZodObject.create = (shape, params) => {
-  return new ZodObject({
-    shape: () => shape,
-    unknownKeys: "strip",
-    catchall: ZodNever.create(),
-    typeName: ZodFirstPartyTypeKind.ZodObject,
-    ...processCreateParams(params)
-  });
-};
-ZodObject.strictCreate = (shape, params) => {
-  return new ZodObject({
-    shape: () => shape,
-    unknownKeys: "strict",
-    catchall: ZodNever.create(),
-    typeName: ZodFirstPartyTypeKind.ZodObject,
-    ...processCreateParams(params)
-  });
-};
-ZodObject.lazycreate = (shape, params) => {
-  return new ZodObject({
-    shape,
-    unknownKeys: "strip",
-    catchall: ZodNever.create(),
-    typeName: ZodFirstPartyTypeKind.ZodObject,
-    ...processCreateParams(params)
-  });
-};
-class ZodUnion extends ZodType {
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    const options = this._def.options;
-    function handleResults(results) {
-      for (const result of results) {
-        if (result.result.status === "valid") {
-          return result.result;
-        }
-      }
-      for (const result of results) {
-        if (result.result.status === "dirty") {
-          ctx.common.issues.push(...result.ctx.common.issues);
-          return result.result;
-        }
-      }
-      const unionErrors = results.map((result) => new ZodError(result.ctx.common.issues));
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_union,
-        unionErrors
-      });
-      return INVALID;
-    }
-    if (ctx.common.async) {
-      return Promise.all(options.map(async (option) => {
-        const childCtx = {
-          ...ctx,
-          common: {
-            ...ctx.common,
-            issues: []
-          },
-          parent: null
-        };
-        return {
-          result: await option._parseAsync({
-            data: ctx.data,
-            path: ctx.path,
-            parent: childCtx
-          }),
-          ctx: childCtx
-        };
-      })).then(handleResults);
-    } else {
-      let dirty = void 0;
-      const issues = [];
-      for (const option of options) {
-        const childCtx = {
-          ...ctx,
-          common: {
-            ...ctx.common,
-            issues: []
-          },
-          parent: null
-        };
-        const result = option._parseSync({
-          data: ctx.data,
-          path: ctx.path,
-          parent: childCtx
-        });
-        if (result.status === "valid") {
-          return result;
-        } else if (result.status === "dirty" && !dirty) {
-          dirty = { result, ctx: childCtx };
-        }
-        if (childCtx.common.issues.length) {
-          issues.push(childCtx.common.issues);
-        }
-      }
-      if (dirty) {
-        ctx.common.issues.push(...dirty.ctx.common.issues);
-        return dirty.result;
-      }
-      const unionErrors = issues.map((issues2) => new ZodError(issues2));
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_union,
-        unionErrors
-      });
-      return INVALID;
-    }
-  }
-  get options() {
-    return this._def.options;
-  }
-}
-ZodUnion.create = (types, params) => {
-  return new ZodUnion({
-    options: types,
-    typeName: ZodFirstPartyTypeKind.ZodUnion,
-    ...processCreateParams(params)
-  });
-};
-const getDiscriminator = (type2) => {
-  if (type2 instanceof ZodLazy) {
-    return getDiscriminator(type2.schema);
-  } else if (type2 instanceof ZodEffects) {
-    return getDiscriminator(type2.innerType());
-  } else if (type2 instanceof ZodLiteral) {
-    return [type2.value];
-  } else if (type2 instanceof ZodEnum) {
-    return type2.options;
-  } else if (type2 instanceof ZodNativeEnum) {
-    return util.objectValues(type2.enum);
-  } else if (type2 instanceof ZodDefault) {
-    return getDiscriminator(type2._def.innerType);
-  } else if (type2 instanceof ZodUndefined) {
-    return [void 0];
-  } else if (type2 instanceof ZodNull) {
-    return [null];
-  } else if (type2 instanceof ZodOptional) {
-    return [void 0, ...getDiscriminator(type2.unwrap())];
-  } else if (type2 instanceof ZodNullable) {
-    return [null, ...getDiscriminator(type2.unwrap())];
-  } else if (type2 instanceof ZodBranded) {
-    return getDiscriminator(type2.unwrap());
-  } else if (type2 instanceof ZodReadonly) {
-    return getDiscriminator(type2.unwrap());
-  } else if (type2 instanceof ZodCatch) {
-    return getDiscriminator(type2._def.innerType);
-  } else {
-    return [];
-  }
-};
-class ZodDiscriminatedUnion extends ZodType {
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.object) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.object,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    const discriminator = this.discriminator;
-    const discriminatorValue = ctx.data[discriminator];
-    const option = this.optionsMap.get(discriminatorValue);
-    if (!option) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_union_discriminator,
-        options: Array.from(this.optionsMap.keys()),
-        path: [discriminator]
-      });
-      return INVALID;
-    }
-    if (ctx.common.async) {
-      return option._parseAsync({
-        data: ctx.data,
-        path: ctx.path,
-        parent: ctx
-      });
-    } else {
-      return option._parseSync({
-        data: ctx.data,
-        path: ctx.path,
-        parent: ctx
-      });
-    }
-  }
-  get discriminator() {
-    return this._def.discriminator;
-  }
-  get options() {
-    return this._def.options;
-  }
-  get optionsMap() {
-    return this._def.optionsMap;
-  }
-  /**
-   * The constructor of the discriminated union schema. Its behaviour is very similar to that of the normal z.union() constructor.
-   * However, it only allows a union of objects, all of which need to share a discriminator property. This property must
-   * have a different value for each object in the union.
-   * @param discriminator the name of the discriminator property
-   * @param types an array of object schemas
-   * @param params
-   */
-  static create(discriminator, options, params) {
-    const optionsMap = /* @__PURE__ */ new Map();
-    for (const type2 of options) {
-      const discriminatorValues = getDiscriminator(type2.shape[discriminator]);
-      if (!discriminatorValues.length) {
-        throw new Error(`A discriminator value for key \`${discriminator}\` could not be extracted from all schema options`);
-      }
-      for (const value2 of discriminatorValues) {
-        if (optionsMap.has(value2)) {
-          throw new Error(`Discriminator property ${String(discriminator)} has duplicate value ${String(value2)}`);
-        }
-        optionsMap.set(value2, type2);
-      }
-    }
-    return new ZodDiscriminatedUnion({
-      typeName: ZodFirstPartyTypeKind.ZodDiscriminatedUnion,
-      discriminator,
-      options,
-      optionsMap,
-      ...processCreateParams(params)
-    });
-  }
-}
-function mergeValues(a, b) {
-  const aType = getParsedType(a);
-  const bType = getParsedType(b);
-  if (a === b) {
-    return { valid: true, data: a };
-  } else if (aType === ZodParsedType.object && bType === ZodParsedType.object) {
-    const bKeys = util.objectKeys(b);
-    const sharedKeys = util.objectKeys(a).filter((key) => bKeys.indexOf(key) !== -1);
-    const newObj = { ...a, ...b };
-    for (const key of sharedKeys) {
-      const sharedValue = mergeValues(a[key], b[key]);
-      if (!sharedValue.valid) {
-        return { valid: false };
-      }
-      newObj[key] = sharedValue.data;
-    }
-    return { valid: true, data: newObj };
-  } else if (aType === ZodParsedType.array && bType === ZodParsedType.array) {
-    if (a.length !== b.length) {
-      return { valid: false };
-    }
-    const newArray = [];
-    for (let index2 = 0; index2 < a.length; index2++) {
-      const itemA = a[index2];
-      const itemB = b[index2];
-      const sharedValue = mergeValues(itemA, itemB);
-      if (!sharedValue.valid) {
-        return { valid: false };
-      }
-      newArray.push(sharedValue.data);
-    }
-    return { valid: true, data: newArray };
-  } else if (aType === ZodParsedType.date && bType === ZodParsedType.date && +a === +b) {
-    return { valid: true, data: a };
-  } else {
-    return { valid: false };
-  }
-}
-class ZodIntersection extends ZodType {
-  _parse(input) {
-    const { status: status2, ctx } = this._processInputParams(input);
-    const handleParsed = (parsedLeft, parsedRight) => {
-      if (isAborted(parsedLeft) || isAborted(parsedRight)) {
-        return INVALID;
-      }
-      const merged = mergeValues(parsedLeft.value, parsedRight.value);
-      if (!merged.valid) {
-        addIssueToContext(ctx, {
-          code: ZodIssueCode.invalid_intersection_types
-        });
-        return INVALID;
-      }
-      if (isDirty(parsedLeft) || isDirty(parsedRight)) {
-        status2.dirty();
-      }
-      return { status: status2.value, value: merged.data };
-    };
-    if (ctx.common.async) {
-      return Promise.all([
-        this._def.left._parseAsync({
-          data: ctx.data,
-          path: ctx.path,
-          parent: ctx
-        }),
-        this._def.right._parseAsync({
-          data: ctx.data,
-          path: ctx.path,
-          parent: ctx
-        })
-      ]).then(([left2, right2]) => handleParsed(left2, right2));
-    } else {
-      return handleParsed(this._def.left._parseSync({
-        data: ctx.data,
-        path: ctx.path,
-        parent: ctx
-      }), this._def.right._parseSync({
-        data: ctx.data,
-        path: ctx.path,
-        parent: ctx
-      }));
-    }
-  }
-}
-ZodIntersection.create = (left2, right2, params) => {
-  return new ZodIntersection({
-    left: left2,
-    right: right2,
-    typeName: ZodFirstPartyTypeKind.ZodIntersection,
-    ...processCreateParams(params)
-  });
-};
-class ZodTuple extends ZodType {
-  _parse(input) {
-    const { status: status2, ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.array) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.array,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    if (ctx.data.length < this._def.items.length) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.too_small,
-        minimum: this._def.items.length,
-        inclusive: true,
-        exact: false,
-        type: "array"
-      });
-      return INVALID;
-    }
-    const rest = this._def.rest;
-    if (!rest && ctx.data.length > this._def.items.length) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.too_big,
-        maximum: this._def.items.length,
-        inclusive: true,
-        exact: false,
-        type: "array"
-      });
-      status2.dirty();
-    }
-    const items = [...ctx.data].map((item, itemIndex) => {
-      const schema2 = this._def.items[itemIndex] || this._def.rest;
-      if (!schema2)
-        return null;
-      return schema2._parse(new ParseInputLazyPath(ctx, item, ctx.path, itemIndex));
-    }).filter((x) => !!x);
-    if (ctx.common.async) {
-      return Promise.all(items).then((results) => {
-        return ParseStatus.mergeArray(status2, results);
-      });
-    } else {
-      return ParseStatus.mergeArray(status2, items);
-    }
-  }
-  get items() {
-    return this._def.items;
-  }
-  rest(rest) {
-    return new ZodTuple({
-      ...this._def,
-      rest
-    });
-  }
-}
-ZodTuple.create = (schemas, params) => {
-  if (!Array.isArray(schemas)) {
-    throw new Error("You must pass an array of schemas to z.tuple([ ... ])");
-  }
-  return new ZodTuple({
-    items: schemas,
-    typeName: ZodFirstPartyTypeKind.ZodTuple,
-    rest: null,
-    ...processCreateParams(params)
-  });
-};
-class ZodRecord extends ZodType {
-  get keySchema() {
-    return this._def.keyType;
-  }
-  get valueSchema() {
-    return this._def.valueType;
-  }
-  _parse(input) {
-    const { status: status2, ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.object) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.object,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    const pairs = [];
-    const keyType = this._def.keyType;
-    const valueType = this._def.valueType;
-    for (const key in ctx.data) {
-      pairs.push({
-        key: keyType._parse(new ParseInputLazyPath(ctx, key, ctx.path, key)),
-        value: valueType._parse(new ParseInputLazyPath(ctx, ctx.data[key], ctx.path, key)),
-        alwaysSet: key in ctx.data
-      });
-    }
-    if (ctx.common.async) {
-      return ParseStatus.mergeObjectAsync(status2, pairs);
-    } else {
-      return ParseStatus.mergeObjectSync(status2, pairs);
-    }
-  }
-  get element() {
-    return this._def.valueType;
-  }
-  static create(first, second2, third) {
-    if (second2 instanceof ZodType) {
-      return new ZodRecord({
-        keyType: first,
-        valueType: second2,
-        typeName: ZodFirstPartyTypeKind.ZodRecord,
-        ...processCreateParams(third)
-      });
-    }
-    return new ZodRecord({
-      keyType: ZodString.create(),
-      valueType: first,
-      typeName: ZodFirstPartyTypeKind.ZodRecord,
-      ...processCreateParams(second2)
-    });
-  }
-}
-class ZodMap extends ZodType {
-  get keySchema() {
-    return this._def.keyType;
-  }
-  get valueSchema() {
-    return this._def.valueType;
-  }
-  _parse(input) {
-    const { status: status2, ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.map) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.map,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    const keyType = this._def.keyType;
-    const valueType = this._def.valueType;
-    const pairs = [...ctx.data.entries()].map(([key, value2], index2) => {
-      return {
-        key: keyType._parse(new ParseInputLazyPath(ctx, key, ctx.path, [index2, "key"])),
-        value: valueType._parse(new ParseInputLazyPath(ctx, value2, ctx.path, [index2, "value"]))
-      };
-    });
-    if (ctx.common.async) {
-      const finalMap = /* @__PURE__ */ new Map();
-      return Promise.resolve().then(async () => {
-        for (const pair of pairs) {
-          const key = await pair.key;
-          const value2 = await pair.value;
-          if (key.status === "aborted" || value2.status === "aborted") {
-            return INVALID;
-          }
-          if (key.status === "dirty" || value2.status === "dirty") {
-            status2.dirty();
-          }
-          finalMap.set(key.value, value2.value);
-        }
-        return { status: status2.value, value: finalMap };
-      });
-    } else {
-      const finalMap = /* @__PURE__ */ new Map();
-      for (const pair of pairs) {
-        const key = pair.key;
-        const value2 = pair.value;
-        if (key.status === "aborted" || value2.status === "aborted") {
-          return INVALID;
-        }
-        if (key.status === "dirty" || value2.status === "dirty") {
-          status2.dirty();
-        }
-        finalMap.set(key.value, value2.value);
-      }
-      return { status: status2.value, value: finalMap };
-    }
-  }
-}
-ZodMap.create = (keyType, valueType, params) => {
-  return new ZodMap({
-    valueType,
-    keyType,
-    typeName: ZodFirstPartyTypeKind.ZodMap,
-    ...processCreateParams(params)
-  });
-};
-class ZodSet extends ZodType {
-  _parse(input) {
-    const { status: status2, ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.set) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.set,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    const def = this._def;
-    if (def.minSize !== null) {
-      if (ctx.data.size < def.minSize.value) {
-        addIssueToContext(ctx, {
-          code: ZodIssueCode.too_small,
-          minimum: def.minSize.value,
-          type: "set",
-          inclusive: true,
-          exact: false,
-          message: def.minSize.message
-        });
-        status2.dirty();
-      }
-    }
-    if (def.maxSize !== null) {
-      if (ctx.data.size > def.maxSize.value) {
-        addIssueToContext(ctx, {
-          code: ZodIssueCode.too_big,
-          maximum: def.maxSize.value,
-          type: "set",
-          inclusive: true,
-          exact: false,
-          message: def.maxSize.message
-        });
-        status2.dirty();
-      }
-    }
-    const valueType = this._def.valueType;
-    function finalizeSet(elements2) {
-      const parsedSet = /* @__PURE__ */ new Set();
-      for (const element of elements2) {
-        if (element.status === "aborted")
-          return INVALID;
-        if (element.status === "dirty")
-          status2.dirty();
-        parsedSet.add(element.value);
-      }
-      return { status: status2.value, value: parsedSet };
-    }
-    const elements = [...ctx.data.values()].map((item, i2) => valueType._parse(new ParseInputLazyPath(ctx, item, ctx.path, i2)));
-    if (ctx.common.async) {
-      return Promise.all(elements).then((elements2) => finalizeSet(elements2));
-    } else {
-      return finalizeSet(elements);
-    }
-  }
-  min(minSize, message2) {
-    return new ZodSet({
-      ...this._def,
-      minSize: { value: minSize, message: errorUtil.toString(message2) }
-    });
-  }
-  max(maxSize, message2) {
-    return new ZodSet({
-      ...this._def,
-      maxSize: { value: maxSize, message: errorUtil.toString(message2) }
-    });
-  }
-  size(size2, message2) {
-    return this.min(size2, message2).max(size2, message2);
-  }
-  nonempty(message2) {
-    return this.min(1, message2);
-  }
-}
-ZodSet.create = (valueType, params) => {
-  return new ZodSet({
-    valueType,
-    minSize: null,
-    maxSize: null,
-    typeName: ZodFirstPartyTypeKind.ZodSet,
-    ...processCreateParams(params)
-  });
-};
-class ZodFunction extends ZodType {
-  constructor() {
-    super(...arguments);
-    this.validate = this.implement;
-  }
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.function) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.function,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    function makeArgsIssue(args, error2) {
-      return makeIssue({
-        data: args,
-        path: ctx.path,
-        errorMaps: [
-          ctx.common.contextualErrorMap,
-          ctx.schemaErrorMap,
-          getErrorMap(),
-          errorMap
-        ].filter((x) => !!x),
-        issueData: {
-          code: ZodIssueCode.invalid_arguments,
-          argumentsError: error2
-        }
-      });
-    }
-    function makeReturnsIssue(returns, error2) {
-      return makeIssue({
-        data: returns,
-        path: ctx.path,
-        errorMaps: [
-          ctx.common.contextualErrorMap,
-          ctx.schemaErrorMap,
-          getErrorMap(),
-          errorMap
-        ].filter((x) => !!x),
-        issueData: {
-          code: ZodIssueCode.invalid_return_type,
-          returnTypeError: error2
-        }
-      });
-    }
-    const params = { errorMap: ctx.common.contextualErrorMap };
-    const fn = ctx.data;
-    if (this._def.returns instanceof ZodPromise) {
-      const me = this;
-      return OK(async function(...args) {
-        const error2 = new ZodError([]);
-        const parsedArgs = await me._def.args.parseAsync(args, params).catch((e) => {
-          error2.addIssue(makeArgsIssue(args, e));
-          throw error2;
-        });
-        const result = await Reflect.apply(fn, this, parsedArgs);
-        const parsedReturns = await me._def.returns._def.type.parseAsync(result, params).catch((e) => {
-          error2.addIssue(makeReturnsIssue(result, e));
-          throw error2;
-        });
-        return parsedReturns;
-      });
-    } else {
-      const me = this;
-      return OK(function(...args) {
-        const parsedArgs = me._def.args.safeParse(args, params);
-        if (!parsedArgs.success) {
-          throw new ZodError([makeArgsIssue(args, parsedArgs.error)]);
-        }
-        const result = Reflect.apply(fn, this, parsedArgs.data);
-        const parsedReturns = me._def.returns.safeParse(result, params);
-        if (!parsedReturns.success) {
-          throw new ZodError([makeReturnsIssue(result, parsedReturns.error)]);
-        }
-        return parsedReturns.data;
-      });
-    }
-  }
-  parameters() {
-    return this._def.args;
-  }
-  returnType() {
-    return this._def.returns;
-  }
-  args(...items) {
-    return new ZodFunction({
-      ...this._def,
-      args: ZodTuple.create(items).rest(ZodUnknown.create())
-    });
-  }
-  returns(returnType) {
-    return new ZodFunction({
-      ...this._def,
-      returns: returnType
-    });
-  }
-  implement(func) {
-    const validatedFunc = this.parse(func);
-    return validatedFunc;
-  }
-  strictImplement(func) {
-    const validatedFunc = this.parse(func);
-    return validatedFunc;
-  }
-  static create(args, returns, params) {
-    return new ZodFunction({
-      args: args ? args : ZodTuple.create([]).rest(ZodUnknown.create()),
-      returns: returns || ZodUnknown.create(),
-      typeName: ZodFirstPartyTypeKind.ZodFunction,
-      ...processCreateParams(params)
-    });
-  }
-}
-class ZodLazy extends ZodType {
-  get schema() {
-    return this._def.getter();
-  }
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    const lazySchema = this._def.getter();
-    return lazySchema._parse({ data: ctx.data, path: ctx.path, parent: ctx });
-  }
-}
-ZodLazy.create = (getter, params) => {
-  return new ZodLazy({
-    getter,
-    typeName: ZodFirstPartyTypeKind.ZodLazy,
-    ...processCreateParams(params)
-  });
-};
-class ZodLiteral extends ZodType {
-  _parse(input) {
-    if (input.data !== this._def.value) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        received: ctx.data,
-        code: ZodIssueCode.invalid_literal,
-        expected: this._def.value
-      });
-      return INVALID;
-    }
-    return { status: "valid", value: input.data };
-  }
-  get value() {
-    return this._def.value;
-  }
-}
-ZodLiteral.create = (value2, params) => {
-  return new ZodLiteral({
-    value: value2,
-    typeName: ZodFirstPartyTypeKind.ZodLiteral,
-    ...processCreateParams(params)
-  });
-};
-function createZodEnum(values, params) {
-  return new ZodEnum({
-    values,
-    typeName: ZodFirstPartyTypeKind.ZodEnum,
-    ...processCreateParams(params)
-  });
-}
-class ZodEnum extends ZodType {
-  constructor() {
-    super(...arguments);
-    _ZodEnum_cache.set(this, void 0);
-  }
-  _parse(input) {
-    if (typeof input.data !== "string") {
-      const ctx = this._getOrReturnCtx(input);
-      const expectedValues = this._def.values;
-      addIssueToContext(ctx, {
-        expected: util.joinValues(expectedValues),
-        received: ctx.parsedType,
-        code: ZodIssueCode.invalid_type
-      });
-      return INVALID;
-    }
-    if (!__classPrivateFieldGet(this, _ZodEnum_cache)) {
-      __classPrivateFieldSet(this, _ZodEnum_cache, new Set(this._def.values));
-    }
-    if (!__classPrivateFieldGet(this, _ZodEnum_cache).has(input.data)) {
-      const ctx = this._getOrReturnCtx(input);
-      const expectedValues = this._def.values;
-      addIssueToContext(ctx, {
-        received: ctx.data,
-        code: ZodIssueCode.invalid_enum_value,
-        options: expectedValues
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-  get options() {
-    return this._def.values;
-  }
-  get enum() {
-    const enumValues = {};
-    for (const val of this._def.values) {
-      enumValues[val] = val;
-    }
-    return enumValues;
-  }
-  get Values() {
-    const enumValues = {};
-    for (const val of this._def.values) {
-      enumValues[val] = val;
-    }
-    return enumValues;
-  }
-  get Enum() {
-    const enumValues = {};
-    for (const val of this._def.values) {
-      enumValues[val] = val;
-    }
-    return enumValues;
-  }
-  extract(values, newDef = this._def) {
-    return ZodEnum.create(values, {
-      ...this._def,
-      ...newDef
-    });
-  }
-  exclude(values, newDef = this._def) {
-    return ZodEnum.create(this.options.filter((opt) => !values.includes(opt)), {
-      ...this._def,
-      ...newDef
-    });
-  }
-}
-_ZodEnum_cache = /* @__PURE__ */ new WeakMap();
-ZodEnum.create = createZodEnum;
-class ZodNativeEnum extends ZodType {
-  constructor() {
-    super(...arguments);
-    _ZodNativeEnum_cache.set(this, void 0);
-  }
-  _parse(input) {
-    const nativeEnumValues = util.getValidEnumValues(this._def.values);
-    const ctx = this._getOrReturnCtx(input);
-    if (ctx.parsedType !== ZodParsedType.string && ctx.parsedType !== ZodParsedType.number) {
-      const expectedValues = util.objectValues(nativeEnumValues);
-      addIssueToContext(ctx, {
-        expected: util.joinValues(expectedValues),
-        received: ctx.parsedType,
-        code: ZodIssueCode.invalid_type
-      });
-      return INVALID;
-    }
-    if (!__classPrivateFieldGet(this, _ZodNativeEnum_cache)) {
-      __classPrivateFieldSet(this, _ZodNativeEnum_cache, new Set(util.getValidEnumValues(this._def.values)));
-    }
-    if (!__classPrivateFieldGet(this, _ZodNativeEnum_cache).has(input.data)) {
-      const expectedValues = util.objectValues(nativeEnumValues);
-      addIssueToContext(ctx, {
-        received: ctx.data,
-        code: ZodIssueCode.invalid_enum_value,
-        options: expectedValues
-      });
-      return INVALID;
-    }
-    return OK(input.data);
-  }
-  get enum() {
-    return this._def.values;
-  }
-}
-_ZodNativeEnum_cache = /* @__PURE__ */ new WeakMap();
-ZodNativeEnum.create = (values, params) => {
-  return new ZodNativeEnum({
-    values,
-    typeName: ZodFirstPartyTypeKind.ZodNativeEnum,
-    ...processCreateParams(params)
-  });
-};
-class ZodPromise extends ZodType {
-  unwrap() {
-    return this._def.type;
-  }
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    if (ctx.parsedType !== ZodParsedType.promise && ctx.common.async === false) {
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.promise,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    const promisified = ctx.parsedType === ZodParsedType.promise ? ctx.data : Promise.resolve(ctx.data);
-    return OK(promisified.then((data) => {
-      return this._def.type.parseAsync(data, {
-        path: ctx.path,
-        errorMap: ctx.common.contextualErrorMap
-      });
-    }));
-  }
-}
-ZodPromise.create = (schema2, params) => {
-  return new ZodPromise({
-    type: schema2,
-    typeName: ZodFirstPartyTypeKind.ZodPromise,
-    ...processCreateParams(params)
-  });
-};
-class ZodEffects extends ZodType {
-  innerType() {
-    return this._def.schema;
-  }
-  sourceType() {
-    return this._def.schema._def.typeName === ZodFirstPartyTypeKind.ZodEffects ? this._def.schema.sourceType() : this._def.schema;
-  }
-  _parse(input) {
-    const { status: status2, ctx } = this._processInputParams(input);
-    const effect = this._def.effect || null;
-    const checkCtx = {
-      addIssue: (arg) => {
-        addIssueToContext(ctx, arg);
-        if (arg.fatal) {
-          status2.abort();
-        } else {
-          status2.dirty();
-        }
-      },
-      get path() {
-        return ctx.path;
-      }
-    };
-    checkCtx.addIssue = checkCtx.addIssue.bind(checkCtx);
-    if (effect.type === "preprocess") {
-      const processed = effect.transform(ctx.data, checkCtx);
-      if (ctx.common.async) {
-        return Promise.resolve(processed).then(async (processed2) => {
-          if (status2.value === "aborted")
-            return INVALID;
-          const result = await this._def.schema._parseAsync({
-            data: processed2,
-            path: ctx.path,
-            parent: ctx
-          });
-          if (result.status === "aborted")
-            return INVALID;
-          if (result.status === "dirty")
-            return DIRTY(result.value);
-          if (status2.value === "dirty")
-            return DIRTY(result.value);
-          return result;
-        });
-      } else {
-        if (status2.value === "aborted")
-          return INVALID;
-        const result = this._def.schema._parseSync({
-          data: processed,
-          path: ctx.path,
-          parent: ctx
-        });
-        if (result.status === "aborted")
-          return INVALID;
-        if (result.status === "dirty")
-          return DIRTY(result.value);
-        if (status2.value === "dirty")
-          return DIRTY(result.value);
-        return result;
-      }
-    }
-    if (effect.type === "refinement") {
-      const executeRefinement = (acc) => {
-        const result = effect.refinement(acc, checkCtx);
-        if (ctx.common.async) {
-          return Promise.resolve(result);
-        }
-        if (result instanceof Promise) {
-          throw new Error("Async refinement encountered during synchronous parse operation. Use .parseAsync instead.");
-        }
-        return acc;
-      };
-      if (ctx.common.async === false) {
-        const inner = this._def.schema._parseSync({
-          data: ctx.data,
-          path: ctx.path,
-          parent: ctx
-        });
-        if (inner.status === "aborted")
-          return INVALID;
-        if (inner.status === "dirty")
-          status2.dirty();
-        executeRefinement(inner.value);
-        return { status: status2.value, value: inner.value };
-      } else {
-        return this._def.schema._parseAsync({ data: ctx.data, path: ctx.path, parent: ctx }).then((inner) => {
-          if (inner.status === "aborted")
-            return INVALID;
-          if (inner.status === "dirty")
-            status2.dirty();
-          return executeRefinement(inner.value).then(() => {
-            return { status: status2.value, value: inner.value };
-          });
-        });
-      }
-    }
-    if (effect.type === "transform") {
-      if (ctx.common.async === false) {
-        const base = this._def.schema._parseSync({
-          data: ctx.data,
-          path: ctx.path,
-          parent: ctx
-        });
-        if (!isValid(base))
-          return base;
-        const result = effect.transform(base.value, checkCtx);
-        if (result instanceof Promise) {
-          throw new Error(`Asynchronous transform encountered during synchronous parse operation. Use .parseAsync instead.`);
-        }
-        return { status: status2.value, value: result };
-      } else {
-        return this._def.schema._parseAsync({ data: ctx.data, path: ctx.path, parent: ctx }).then((base) => {
-          if (!isValid(base))
-            return base;
-          return Promise.resolve(effect.transform(base.value, checkCtx)).then((result) => ({ status: status2.value, value: result }));
-        });
-      }
-    }
-    util.assertNever(effect);
-  }
-}
-ZodEffects.create = (schema2, effect, params) => {
-  return new ZodEffects({
-    schema: schema2,
-    typeName: ZodFirstPartyTypeKind.ZodEffects,
-    effect,
-    ...processCreateParams(params)
-  });
-};
-ZodEffects.createWithPreprocess = (preprocess, schema2, params) => {
-  return new ZodEffects({
-    schema: schema2,
-    effect: { type: "preprocess", transform: preprocess },
-    typeName: ZodFirstPartyTypeKind.ZodEffects,
-    ...processCreateParams(params)
-  });
-};
-class ZodOptional extends ZodType {
-  _parse(input) {
-    const parsedType = this._getType(input);
-    if (parsedType === ZodParsedType.undefined) {
-      return OK(void 0);
-    }
-    return this._def.innerType._parse(input);
-  }
-  unwrap() {
-    return this._def.innerType;
-  }
-}
-ZodOptional.create = (type2, params) => {
-  return new ZodOptional({
-    innerType: type2,
-    typeName: ZodFirstPartyTypeKind.ZodOptional,
-    ...processCreateParams(params)
-  });
-};
-class ZodNullable extends ZodType {
-  _parse(input) {
-    const parsedType = this._getType(input);
-    if (parsedType === ZodParsedType.null) {
-      return OK(null);
-    }
-    return this._def.innerType._parse(input);
-  }
-  unwrap() {
-    return this._def.innerType;
-  }
-}
-ZodNullable.create = (type2, params) => {
-  return new ZodNullable({
-    innerType: type2,
-    typeName: ZodFirstPartyTypeKind.ZodNullable,
-    ...processCreateParams(params)
-  });
-};
-class ZodDefault extends ZodType {
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    let data = ctx.data;
-    if (ctx.parsedType === ZodParsedType.undefined) {
-      data = this._def.defaultValue();
-    }
-    return this._def.innerType._parse({
-      data,
-      path: ctx.path,
-      parent: ctx
-    });
-  }
-  removeDefault() {
-    return this._def.innerType;
-  }
-}
-ZodDefault.create = (type2, params) => {
-  return new ZodDefault({
-    innerType: type2,
-    typeName: ZodFirstPartyTypeKind.ZodDefault,
-    defaultValue: typeof params.default === "function" ? params.default : () => params.default,
-    ...processCreateParams(params)
-  });
-};
-class ZodCatch extends ZodType {
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    const newCtx = {
-      ...ctx,
-      common: {
-        ...ctx.common,
-        issues: []
-      }
-    };
-    const result = this._def.innerType._parse({
-      data: newCtx.data,
-      path: newCtx.path,
-      parent: {
-        ...newCtx
-      }
-    });
-    if (isAsync(result)) {
-      return result.then((result2) => {
-        return {
-          status: "valid",
-          value: result2.status === "valid" ? result2.value : this._def.catchValue({
-            get error() {
-              return new ZodError(newCtx.common.issues);
-            },
-            input: newCtx.data
-          })
-        };
-      });
-    } else {
-      return {
-        status: "valid",
-        value: result.status === "valid" ? result.value : this._def.catchValue({
-          get error() {
-            return new ZodError(newCtx.common.issues);
-          },
-          input: newCtx.data
-        })
-      };
-    }
-  }
-  removeCatch() {
-    return this._def.innerType;
-  }
-}
-ZodCatch.create = (type2, params) => {
-  return new ZodCatch({
-    innerType: type2,
-    typeName: ZodFirstPartyTypeKind.ZodCatch,
-    catchValue: typeof params.catch === "function" ? params.catch : () => params.catch,
-    ...processCreateParams(params)
-  });
-};
-class ZodNaN extends ZodType {
-  _parse(input) {
-    const parsedType = this._getType(input);
-    if (parsedType !== ZodParsedType.nan) {
-      const ctx = this._getOrReturnCtx(input);
-      addIssueToContext(ctx, {
-        code: ZodIssueCode.invalid_type,
-        expected: ZodParsedType.nan,
-        received: ctx.parsedType
-      });
-      return INVALID;
-    }
-    return { status: "valid", value: input.data };
-  }
-}
-ZodNaN.create = (params) => {
-  return new ZodNaN({
-    typeName: ZodFirstPartyTypeKind.ZodNaN,
-    ...processCreateParams(params)
-  });
-};
-const BRAND = Symbol("zod_brand");
-class ZodBranded extends ZodType {
-  _parse(input) {
-    const { ctx } = this._processInputParams(input);
-    const data = ctx.data;
-    return this._def.type._parse({
-      data,
-      path: ctx.path,
-      parent: ctx
-    });
-  }
-  unwrap() {
-    return this._def.type;
-  }
-}
-class ZodPipeline extends ZodType {
-  _parse(input) {
-    const { status: status2, ctx } = this._processInputParams(input);
-    if (ctx.common.async) {
-      const handleAsync = async () => {
-        const inResult = await this._def.in._parseAsync({
-          data: ctx.data,
-          path: ctx.path,
-          parent: ctx
-        });
-        if (inResult.status === "aborted")
-          return INVALID;
-        if (inResult.status === "dirty") {
-          status2.dirty();
-          return DIRTY(inResult.value);
-        } else {
-          return this._def.out._parseAsync({
-            data: inResult.value,
-            path: ctx.path,
-            parent: ctx
-          });
-        }
-      };
-      return handleAsync();
-    } else {
-      const inResult = this._def.in._parseSync({
-        data: ctx.data,
-        path: ctx.path,
-        parent: ctx
-      });
-      if (inResult.status === "aborted")
-        return INVALID;
-      if (inResult.status === "dirty") {
-        status2.dirty();
-        return {
-          status: "dirty",
-          value: inResult.value
-        };
-      } else {
-        return this._def.out._parseSync({
-          data: inResult.value,
-          path: ctx.path,
-          parent: ctx
-        });
-      }
-    }
-  }
-  static create(a, b) {
-    return new ZodPipeline({
-      in: a,
-      out: b,
-      typeName: ZodFirstPartyTypeKind.ZodPipeline
-    });
-  }
-}
-class ZodReadonly extends ZodType {
-  _parse(input) {
-    const result = this._def.innerType._parse(input);
-    const freeze = (data) => {
-      if (isValid(data)) {
-        data.value = Object.freeze(data.value);
-      }
-      return data;
-    };
-    return isAsync(result) ? result.then((data) => freeze(data)) : freeze(result);
-  }
-  unwrap() {
-    return this._def.innerType;
-  }
-}
-ZodReadonly.create = (type2, params) => {
-  return new ZodReadonly({
-    innerType: type2,
-    typeName: ZodFirstPartyTypeKind.ZodReadonly,
-    ...processCreateParams(params)
-  });
-};
-function custom$2(check, params = {}, fatal) {
-  if (check)
-    return ZodAny.create().superRefine((data, ctx) => {
-      var _a, _b;
-      if (!check(data)) {
-        const p = typeof params === "function" ? params(data) : typeof params === "string" ? { message: params } : params;
-        const _fatal = (_b = (_a = p.fatal) !== null && _a !== void 0 ? _a : fatal) !== null && _b !== void 0 ? _b : true;
-        const p2 = typeof p === "string" ? { message: p } : p;
-        ctx.addIssue({ code: "custom", ...p2, fatal: _fatal });
-      }
-    });
-  return ZodAny.create();
-}
-const late = {
-  object: ZodObject.lazycreate
-};
-var ZodFirstPartyTypeKind;
-(function(ZodFirstPartyTypeKind2) {
-  ZodFirstPartyTypeKind2["ZodString"] = "ZodString";
-  ZodFirstPartyTypeKind2["ZodNumber"] = "ZodNumber";
-  ZodFirstPartyTypeKind2["ZodNaN"] = "ZodNaN";
-  ZodFirstPartyTypeKind2["ZodBigInt"] = "ZodBigInt";
-  ZodFirstPartyTypeKind2["ZodBoolean"] = "ZodBoolean";
-  ZodFirstPartyTypeKind2["ZodDate"] = "ZodDate";
-  ZodFirstPartyTypeKind2["ZodSymbol"] = "ZodSymbol";
-  ZodFirstPartyTypeKind2["ZodUndefined"] = "ZodUndefined";
-  ZodFirstPartyTypeKind2["ZodNull"] = "ZodNull";
-  ZodFirstPartyTypeKind2["ZodAny"] = "ZodAny";
-  ZodFirstPartyTypeKind2["ZodUnknown"] = "ZodUnknown";
-  ZodFirstPartyTypeKind2["ZodNever"] = "ZodNever";
-  ZodFirstPartyTypeKind2["ZodVoid"] = "ZodVoid";
-  ZodFirstPartyTypeKind2["ZodArray"] = "ZodArray";
-  ZodFirstPartyTypeKind2["ZodObject"] = "ZodObject";
-  ZodFirstPartyTypeKind2["ZodUnion"] = "ZodUnion";
-  ZodFirstPartyTypeKind2["ZodDiscriminatedUnion"] = "ZodDiscriminatedUnion";
-  ZodFirstPartyTypeKind2["ZodIntersection"] = "ZodIntersection";
-  ZodFirstPartyTypeKind2["ZodTuple"] = "ZodTuple";
-  ZodFirstPartyTypeKind2["ZodRecord"] = "ZodRecord";
-  ZodFirstPartyTypeKind2["ZodMap"] = "ZodMap";
-  ZodFirstPartyTypeKind2["ZodSet"] = "ZodSet";
-  ZodFirstPartyTypeKind2["ZodFunction"] = "ZodFunction";
-  ZodFirstPartyTypeKind2["ZodLazy"] = "ZodLazy";
-  ZodFirstPartyTypeKind2["ZodLiteral"] = "ZodLiteral";
-  ZodFirstPartyTypeKind2["ZodEnum"] = "ZodEnum";
-  ZodFirstPartyTypeKind2["ZodEffects"] = "ZodEffects";
-  ZodFirstPartyTypeKind2["ZodNativeEnum"] = "ZodNativeEnum";
-  ZodFirstPartyTypeKind2["ZodOptional"] = "ZodOptional";
-  ZodFirstPartyTypeKind2["ZodNullable"] = "ZodNullable";
-  ZodFirstPartyTypeKind2["ZodDefault"] = "ZodDefault";
-  ZodFirstPartyTypeKind2["ZodCatch"] = "ZodCatch";
-  ZodFirstPartyTypeKind2["ZodPromise"] = "ZodPromise";
-  ZodFirstPartyTypeKind2["ZodBranded"] = "ZodBranded";
-  ZodFirstPartyTypeKind2["ZodPipeline"] = "ZodPipeline";
-  ZodFirstPartyTypeKind2["ZodReadonly"] = "ZodReadonly";
-})(ZodFirstPartyTypeKind || (ZodFirstPartyTypeKind = {}));
-const instanceOfType = (cls, params = {
-  message: `Input not instance of ${cls.name}`
-}) => custom$2((data) => data instanceof cls, params);
-const stringType = ZodString.create;
-const numberType = ZodNumber.create;
-const nanType = ZodNaN.create;
-const bigIntType = ZodBigInt.create;
-const booleanType = ZodBoolean.create;
-const dateType = ZodDate.create;
-const symbolType = ZodSymbol.create;
-const undefinedType = ZodUndefined.create;
-const nullType = ZodNull.create;
-const anyType = ZodAny.create;
-const unknownType = ZodUnknown.create;
-const neverType = ZodNever.create;
-const voidType = ZodVoid.create;
-const arrayType = ZodArray.create;
-const objectType = ZodObject.create;
-const strictObjectType = ZodObject.strictCreate;
-const unionType = ZodUnion.create;
-const discriminatedUnionType = ZodDiscriminatedUnion.create;
-const intersectionType = ZodIntersection.create;
-const tupleType = ZodTuple.create;
-const recordType = ZodRecord.create;
-const mapType = ZodMap.create;
-const setType = ZodSet.create;
-const functionType = ZodFunction.create;
-const lazyType = ZodLazy.create;
-const literalType = ZodLiteral.create;
-const enumType = ZodEnum.create;
-const nativeEnumType = ZodNativeEnum.create;
-const promiseType = ZodPromise.create;
-const effectsType = ZodEffects.create;
-const optionalType = ZodOptional.create;
-const nullableType = ZodNullable.create;
-const preprocessType = ZodEffects.createWithPreprocess;
-const pipelineType = ZodPipeline.create;
-const ostring = () => stringType().optional();
-const onumber = () => numberType().optional();
-const oboolean = () => booleanType().optional();
-const coerce = {
-  string: (arg) => ZodString.create({ ...arg, coerce: true }),
-  number: (arg) => ZodNumber.create({ ...arg, coerce: true }),
-  boolean: (arg) => ZodBoolean.create({
-    ...arg,
-    coerce: true
-  }),
-  bigint: (arg) => ZodBigInt.create({ ...arg, coerce: true }),
-  date: (arg) => ZodDate.create({ ...arg, coerce: true })
-};
-const NEVER = INVALID;
-var z = /* @__PURE__ */ Object.freeze({
-  __proto__: null,
-  defaultErrorMap: errorMap,
-  setErrorMap,
-  getErrorMap,
-  makeIssue,
-  EMPTY_PATH,
-  addIssueToContext,
-  ParseStatus,
-  INVALID,
-  DIRTY,
-  OK,
-  isAborted,
-  isDirty,
-  isValid,
-  isAsync,
-  get util() {
-    return util;
-  },
-  get objectUtil() {
-    return objectUtil;
-  },
-  ZodParsedType,
-  getParsedType,
-  ZodType,
-  datetimeRegex,
-  ZodString,
-  ZodNumber,
-  ZodBigInt,
-  ZodBoolean,
-  ZodDate,
-  ZodSymbol,
-  ZodUndefined,
-  ZodNull,
-  ZodAny,
-  ZodUnknown,
-  ZodNever,
-  ZodVoid,
-  ZodArray,
-  ZodObject,
-  ZodUnion,
-  ZodDiscriminatedUnion,
-  ZodIntersection,
-  ZodTuple,
-  ZodRecord,
-  ZodMap,
-  ZodSet,
-  ZodFunction,
-  ZodLazy,
-  ZodLiteral,
-  ZodEnum,
-  ZodNativeEnum,
-  ZodPromise,
-  ZodEffects,
-  ZodTransformer: ZodEffects,
-  ZodOptional,
-  ZodNullable,
-  ZodDefault,
-  ZodCatch,
-  ZodNaN,
-  BRAND,
-  ZodBranded,
-  ZodPipeline,
-  ZodReadonly,
-  custom: custom$2,
-  Schema: ZodType,
-  ZodSchema: ZodType,
-  late,
-  get ZodFirstPartyTypeKind() {
-    return ZodFirstPartyTypeKind;
-  },
-  coerce,
-  any: anyType,
-  array: arrayType,
-  bigint: bigIntType,
-  boolean: booleanType,
-  date: dateType,
-  discriminatedUnion: discriminatedUnionType,
-  effect: effectsType,
-  "enum": enumType,
-  "function": functionType,
-  "instanceof": instanceOfType,
-  intersection: intersectionType,
-  lazy: lazyType,
-  literal: literalType,
-  map: mapType,
-  nan: nanType,
-  nativeEnum: nativeEnumType,
-  never: neverType,
-  "null": nullType,
-  nullable: nullableType,
-  number: numberType,
-  object: objectType,
-  oboolean,
-  onumber,
-  optional: optionalType,
-  ostring,
-  pipeline: pipelineType,
-  preprocess: preprocessType,
-  promise: promiseType,
-  record: recordType,
-  set: setType,
-  strictObject: strictObjectType,
-  string: stringType,
-  symbol: symbolType,
-  transformer: effectsType,
-  tuple: tupleType,
-  "undefined": undefinedType,
-  union: unionType,
-  unknown: unknownType,
-  "void": voidType,
-  NEVER,
-  ZodIssueCode,
-  quotelessJson,
-  ZodError
-});
 const fonts = [
   "SUIT-regular",
   "auto",
@@ -27524,11 +27486,15 @@ const useDataManager = () => {
      * @param {Object} dataMap - The current data map.
      * @param {Array} kpiData - The KPI data to overwrite.
      */
-    overwriteWithKpiData: (dataMap, kpiData) => {
+    overwriteWithKpiData: (dataMap, kpiData, u5sOrigin) => {
       kpiData.forEach(({ c8y_Kpi }) => {
-        const { fragment: fragment2, series: series2 } = c8y_Kpi;
+        let { fragment: fragment2, series: series2 } = c8y_Kpi;
+        let source2;
+        if (fragment2.includes("|")) {
+          [source2, fragment2] = fragment2.split("|");
+        }
         const key = `${fragment2}=>${series2}`;
-        if (dataMap[key]) {
+        if (u5sOrigin === source2 && dataMap[key]) {
           dataMap[key] = { ...dataMap[key], ...c8y_Kpi };
         }
       });
@@ -27661,7 +27627,7 @@ const AddData = ({
         target2
       );
       removeSelectedData(dataMap, data, checkedDataList);
-      overwriteWithKpiData(dataMap, kpis.data);
+      overwriteWithKpiData(dataMap, kpis.data, u5sOrigin);
       overwriteWithPresetData(dataMap, presets, u5sOrigin);
     } else {
       if (dataType === "link") {
@@ -27838,10 +27804,7 @@ const AddData = ({
           dataList.length > 0 ? dataList.sort((a, b) => a.label.localeCompare(b.label)).map((data2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
             "div",
             {
-              className: cn(
-                "my-1 flex items-center gap-2",
-                `${data2.__selected ? "hidden" : ""}`
-              ),
+              className: "my-1 flex items-center gap-2",
               children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx(
                   Checkbox,
@@ -28989,11 +28952,11 @@ function getElementRef(element) {
   return element.props.ref || element.ref;
 }
 var useReactId = React["useId".toString()] || (() => void 0);
-var count$4 = 0;
+var count$3 = 0;
 function useId$1(deterministicId) {
   const [id2, setId] = React.useState(useReactId());
   useLayoutEffect2(() => {
-    setId((reactId) => reactId ?? String(count$4++));
+    setId((reactId) => reactId ?? String(count$3++));
   }, [deterministicId]);
   return id2 ? `radix-${id2}` : "";
 }
@@ -33024,7 +32987,7 @@ var Checkbox$1 = React.forwardRef(
       name: name2,
       checked: checkedProp,
       defaultChecked,
-      required,
+      required: required2,
       disabled,
       value: value2 = "on",
       onCheckedChange,
@@ -33056,7 +33019,7 @@ var Checkbox$1 = React.forwardRef(
           type: "button",
           role: "checkbox",
           "aria-checked": isIndeterminate$1(checked) ? "mixed" : checked,
-          "aria-required": required,
+          "aria-required": required2,
           "data-state": getState$4(checked),
           "data-disabled": disabled ? "" : void 0,
           disabled,
@@ -33083,7 +33046,7 @@ var Checkbox$1 = React.forwardRef(
           name: name2,
           value: value2,
           checked,
-          required,
+          required: required2,
           disabled,
           form,
           style: { transform: "translateX(-100%)" },
@@ -33602,18 +33565,18 @@ var Portal$4 = React.forwardRef((props, forwardedRef) => {
   return container ? ReactDOM__default.createPortal(/* @__PURE__ */ jsxRuntimeExports.jsx(Primitive.div, { ...portalProps, ref: forwardedRef }), container) : null;
 });
 Portal$4.displayName = PORTAL_NAME$6;
-var count$3 = 0;
+var count$2 = 0;
 function useFocusGuards() {
   React.useEffect(() => {
     const edgeGuards = document.querySelectorAll("[data-radix-focus-guard]");
     document.body.insertAdjacentElement("afterbegin", edgeGuards[0] ?? createFocusGuard());
     document.body.insertAdjacentElement("beforeend", edgeGuards[1] ?? createFocusGuard());
-    count$3++;
+    count$2++;
     return () => {
-      if (count$3 === 1) {
+      if (count$2 === 1) {
         document.querySelectorAll("[data-radix-focus-guard]").forEach((node) => node.remove());
       }
-      count$3--;
+      count$2--;
     };
   }, []);
 }
@@ -33965,22 +33928,22 @@ var RemoveScrollBar = function(_a) {
   }, [gapMode]);
   return React.createElement(Style, { styles: getStyles(gap, !noRelative, gapMode, !noImportant ? "!important" : "") });
 };
-var passiveSupported$1 = false;
+var passiveSupported = false;
 if (typeof window !== "undefined") {
   try {
     var options = Object.defineProperty({}, "passive", {
       get: function() {
-        passiveSupported$1 = true;
+        passiveSupported = true;
         return true;
       }
     });
     window.addEventListener("test", options, options);
     window.removeEventListener("test", options, options);
   } catch (err) {
-    passiveSupported$1 = false;
+    passiveSupported = false;
   }
 }
-var nonPassive = passiveSupported$1 ? { passive: false } : false;
+var nonPassive = passiveSupported ? { passive: false } : false;
 var alwaysContainsScroll = function(node) {
   return node.tagName === "TEXTAREA";
 };
@@ -34055,10 +34018,10 @@ var handleScroll = function(axis, endTarget, event, sourceDelta, noOverscroll) {
   var availableScrollTop = 0;
   do {
     var _a = getScrollVariables(axis, target2), position2 = _a[0], scroll_1 = _a[1], capacity = _a[2];
-    var elementScroll = scroll_1 - capacity - directionFactor * position2;
-    if (position2 || elementScroll) {
+    var elementScroll2 = scroll_1 - capacity - directionFactor * position2;
+    if (position2 || elementScroll2) {
       if (elementCouldBeScrolled(axis, target2)) {
-        availableScroll += elementScroll;
+        availableScroll += elementScroll2;
         availableScrollTop += position2;
       }
     }
@@ -34764,8 +34727,8 @@ const DialogDescription = forwardRef(({ className, ...props }, ref) => /* @__PUR
 ));
 DialogDescription.displayName = Description$1.displayName;
 const sides = ["top", "right", "bottom", "left"];
-const min$3 = Math.min;
-const max$3 = Math.max;
+const min$2 = Math.min;
+const max$2 = Math.max;
 const round = Math.round;
 const floor = Math.floor;
 const createCoords = (v) => ({
@@ -34783,7 +34746,7 @@ const oppositeAlignmentMap = {
   end: "start"
 };
 function clamp$1(start2, value2, end2) {
-  return max$3(start2, min$3(value2, end2));
+  return max$2(start2, min$2(value2, end2));
 }
 function evaluate(value2, param) {
   return typeof value2 === "function" ? value2(param) : value2;
@@ -35127,8 +35090,8 @@ const arrow$3 = (options) => ({
     }
     const centerToReference = endDiff / 2 - startDiff / 2;
     const largestPossiblePadding = clientSize / 2 - arrowDimensions[length] / 2 - 1;
-    const minPadding = min$3(paddingObject[minProp], largestPossiblePadding);
-    const maxPadding = min$3(paddingObject[maxProp], largestPossiblePadding);
+    const minPadding = min$2(paddingObject[minProp], largestPossiblePadding);
+    const maxPadding = min$2(paddingObject[maxProp], largestPossiblePadding);
     const min$12 = minPadding;
     const max2 = clientSize - arrowDimensions[length] - maxPadding;
     const center2 = clientSize / 2 - arrowDimensions[length] / 2 + centerToReference;
@@ -35555,8 +35518,8 @@ const size$2 = function(options) {
       }
       const maximumClippingHeight = height - overflow.top - overflow.bottom;
       const maximumClippingWidth = width - overflow.left - overflow.right;
-      const overflowAvailableHeight = min$3(height - overflow[heightSide], maximumClippingHeight);
-      const overflowAvailableWidth = min$3(width - overflow[widthSide], maximumClippingWidth);
+      const overflowAvailableHeight = min$2(height - overflow[heightSide], maximumClippingHeight);
+      const overflowAvailableWidth = min$2(width - overflow[widthSide], maximumClippingWidth);
       const noShift = !state.middlewareData.shift;
       let availableHeight = overflowAvailableHeight;
       let availableWidth = overflowAvailableWidth;
@@ -35567,14 +35530,14 @@ const size$2 = function(options) {
         availableHeight = maximumClippingHeight;
       }
       if (noShift && !alignment) {
-        const xMin = max$3(overflow.left, 0);
-        const xMax = max$3(overflow.right, 0);
-        const yMin = max$3(overflow.top, 0);
-        const yMax = max$3(overflow.bottom, 0);
+        const xMin = max$2(overflow.left, 0);
+        const xMax = max$2(overflow.right, 0);
+        const yMin = max$2(overflow.top, 0);
+        const yMax = max$2(overflow.bottom, 0);
         if (isYAxis) {
-          availableWidth = width - 2 * (xMin !== 0 || xMax !== 0 ? xMin + xMax : max$3(overflow.left, overflow.right));
+          availableWidth = width - 2 * (xMin !== 0 || xMax !== 0 ? xMin + xMax : max$2(overflow.left, overflow.right));
         } else {
-          availableHeight = height - 2 * (yMin !== 0 || yMax !== 0 ? yMin + yMax : max$3(overflow.top, overflow.bottom));
+          availableHeight = height - 2 * (yMin !== 0 || yMax !== 0 ? yMin + yMax : max$2(overflow.top, overflow.bottom));
         }
       }
       await apply2({
@@ -35923,12 +35886,12 @@ function getDocumentRect(element) {
   const html = getDocumentElement(element);
   const scroll = getNodeScroll(element);
   const body = element.ownerDocument.body;
-  const width = max$3(html.scrollWidth, html.clientWidth, body.scrollWidth, body.clientWidth);
-  const height = max$3(html.scrollHeight, html.clientHeight, body.scrollHeight, body.clientHeight);
+  const width = max$2(html.scrollWidth, html.clientWidth, body.scrollWidth, body.clientWidth);
+  const height = max$2(html.scrollHeight, html.clientHeight, body.scrollHeight, body.clientHeight);
   let x = -scroll.scrollLeft + getWindowScrollBarX(element);
   const y = -scroll.scrollTop;
   if (getComputedStyle$1(body).direction === "rtl") {
-    x += max$3(html.clientWidth, body.clientWidth) - width;
+    x += max$2(html.clientWidth, body.clientWidth) - width;
   }
   return {
     width,
@@ -36041,10 +36004,10 @@ function getClippingRect(_ref) {
   const firstClippingAncestor = clippingAncestors[0];
   const clippingRect = clippingAncestors.reduce((accRect, clippingAncestor) => {
     const rect = getClientRectFromClippingAncestor(element, clippingAncestor, strategy);
-    accRect.top = max$3(rect.top, accRect.top);
-    accRect.right = min$3(rect.right, accRect.right);
-    accRect.bottom = min$3(rect.bottom, accRect.bottom);
-    accRect.left = max$3(rect.left, accRect.left);
+    accRect.top = max$2(rect.top, accRect.top);
+    accRect.right = min$2(rect.right, accRect.right);
+    accRect.bottom = min$2(rect.bottom, accRect.bottom);
+    accRect.left = max$2(rect.left, accRect.left);
     return accRect;
   }, getClientRectFromClippingAncestor(element, firstClippingAncestor, strategy));
   return {
@@ -36202,7 +36165,7 @@ function observeMove(element, onMove) {
     const rootMargin = -insetTop + "px " + -insetRight + "px " + -insetBottom + "px " + -insetLeft + "px";
     const options = {
       rootMargin,
-      threshold: max$3(0, min$3(1, threshold2)) || 1
+      threshold: max$2(0, min$2(1, threshold2)) || 1
     };
     let isFirstUpdate = true;
     function handleObserve(entries) {
@@ -39657,7 +39620,7 @@ var Radio = React.forwardRef(
       __scopeRadio,
       name: name2,
       checked = false,
-      required,
+      required: required2,
       disabled,
       value: value2 = "on",
       onCheck,
@@ -39698,7 +39661,7 @@ var Radio = React.forwardRef(
           name: name2,
           value: value2,
           checked,
-          required,
+          required: required2,
           disabled,
           form,
           style: { transform: "translateX(-100%)" }
@@ -39780,7 +39743,7 @@ var RadioGroup$1 = React.forwardRef(
       name: name2,
       defaultValue,
       value: valueProp,
-      required = false,
+      required: required2 = false,
       disabled = false,
       orientation,
       dir,
@@ -39800,7 +39763,7 @@ var RadioGroup$1 = React.forwardRef(
       {
         scope: __scopeRadioGroup,
         name: name2,
-        required,
+        required: required2,
         disabled,
         value: value2,
         onValueChange: setValue,
@@ -39816,7 +39779,7 @@ var RadioGroup$1 = React.forwardRef(
               Primitive.div,
               {
                 role: "radiogroup",
-                "aria-required": required,
+                "aria-required": required2,
                 "aria-orientation": orientation,
                 "data-disabled": disabled ? "" : void 0,
                 dir: direction,
@@ -40637,21 +40600,14 @@ var Root$2 = ScrollArea$1;
 var Viewport$2 = ScrollAreaViewport;
 var Corner = ScrollAreaCorner;
 const ScrollArea = forwardRef(
-  ({ className, children, scrollBar = true, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+  ({ className, children, scrollBar = true, innerClassName, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
     Root$2,
     {
       ref,
-      className: cn("relative overflow-hidden", className),
+      className: cn("x] relative overflow-hidden", className),
       ...props,
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Viewport$2,
-          {
-            className: "!block h-full w-full rounded",
-            asChild: true,
-            children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-full w-full rounded", children })
-          }
-        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Viewport$2, { className: "block h-full w-full rounded [&>div]:h-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("h-full w-full rounded", innerClassName), children }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollBar, { visible: scrollBar }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(Corner, {})
       ]
@@ -40703,7 +40659,7 @@ var Select$1 = (props) => {
     name: name2,
     autoComplete,
     disabled,
-    required,
+    required: required2,
     form
   } = props;
   const popperScope = usePopperScope$1(__scopeSelect);
@@ -40728,7 +40684,7 @@ var Select$1 = (props) => {
   return /* @__PURE__ */ jsxRuntimeExports.jsx(Root2$7, { ...popperScope, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
     SelectProvider,
     {
-      required,
+      required: required2,
       scope: __scopeSelect,
       trigger,
       onTriggerChange: setTrigger,
@@ -40766,7 +40722,7 @@ var Select$1 = (props) => {
           BubbleSelect,
           {
             "aria-hidden": true,
-            required,
+            required: required2,
             tabIndex: -1,
             name: name2,
             autoComplete,
@@ -42008,7 +41964,7 @@ var Switch$1 = React.forwardRef(
       name: name2,
       checked: checkedProp,
       defaultChecked,
-      required,
+      required: required2,
       disabled,
       value: value2 = "on",
       onCheckedChange,
@@ -42031,7 +41987,7 @@ var Switch$1 = React.forwardRef(
           type: "button",
           role: "switch",
           "aria-checked": checked,
-          "aria-required": required,
+          "aria-required": required2,
           "data-state": getState(checked),
           "data-disabled": disabled ? "" : void 0,
           disabled,
@@ -42055,7 +42011,7 @@ var Switch$1 = React.forwardRef(
           name: name2,
           value: value2,
           checked,
-          required,
+          required: required2,
           disabled,
           form,
           style: { transform: "translateX(-100%)" }
@@ -42441,7 +42397,7 @@ const Textarea = forwardRef(({ className, ...props }, ref) => {
     "textarea",
     {
       className: cn(
-        "flex min-h-[80px] w-full rounded-md border border-grayscale-600 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50  dark:bg-dark-bg-444 dark:text-dark-grayscale-100 dark:placeholder:text-dark-grayscale-400",
+        "flex min-h-[80px] w-full rounded-md border border-grayscale-600 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50  dark:bg-dark-bg-444 dark:text-dark-grayscale-100 dark:placeholder:text-dark-grayscale-400",
         className
       ),
       ref,
@@ -43085,7 +43041,7 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground",
+        default: "border bg-background text-foreground dark:text-black",
         destructive: "destructive group bg-system-fail text-grayscale-1000",
         success: "destructive group  bg-primary text-grayscale-1000"
       }
@@ -44848,7 +44804,7 @@ function requireReactIs_development() {
       var ContextProvider = REACT_PROVIDER_TYPE;
       var Element2 = REACT_ELEMENT_TYPE;
       var ForwardRef = REACT_FORWARD_REF_TYPE;
-      var Fragment = REACT_FRAGMENT_TYPE;
+      var Fragment2 = REACT_FRAGMENT_TYPE;
       var Lazy = REACT_LAZY_TYPE;
       var Memo = REACT_MEMO_TYPE;
       var Portal3 = REACT_PORTAL_TYPE;
@@ -44907,7 +44863,7 @@ function requireReactIs_development() {
       reactIs_development.ContextProvider = ContextProvider;
       reactIs_development.Element = Element2;
       reactIs_development.ForwardRef = ForwardRef;
-      reactIs_development.Fragment = Fragment;
+      reactIs_development.Fragment = Fragment2;
       reactIs_development.Lazy = Lazy;
       reactIs_development.Memo = Memo;
       reactIs_development.Portal = Portal3;
@@ -49855,56 +49811,6 @@ function requireReactGridLayout() {
   return reactGridLayout.exports;
 }
 var reactGridLayoutExports = requireReactGridLayout();
-const StaticWidgetWrapper = forwardRef(({ style, className, widget: widget2 }, ref) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      style: { ...style },
-      className: cn(
-        `flex flex-col rounded-2xl bg-grayscale-1000 font-bold text-grayscale-100 shadow-sm dark:bg-dark-bg-333 dark:text-dark-grayscale-100`,
-        className
-      ),
-      ref,
-      children: [
-        widget2.title && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "dashboard-item-header flex items-center justify-between px-6 py-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "line-clamp-1 text-lg", children: widget2.title }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            className: `dashboard-item-content relative flex h-full flex-col overflow-auto`,
-            children: /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "h-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { children: widget2.content }) }) })
-          }
-        )
-      ]
-    }
-  ) });
-});
-StaticWidgetWrapper.displayName = "StaticWidgetWrapper";
-const ResGridLayout = reactGridLayoutExports.WidthProvider(reactGridLayoutExports.Responsive);
-const StaticDashboard = ({ widgets = [], widgetMargin = 24 }) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    ResGridLayout,
-    {
-      breakpoints: { md: 820, sm: 768 },
-      cols: { md: 20, sm: 1 },
-      rowHeight: 24,
-      isBounded: true,
-      margin: [widgetMargin, widgetMargin],
-      draggableCancel: ".dashboard-item-content",
-      draggableHandle: ".dashboard-item-header",
-      containerPadding: [0, 0],
-      resizeHandle: null,
-      useCSSTransforms: false,
-      children: widgets.map((widget2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        StaticWidgetWrapper,
-        {
-          widget: widget2,
-          "data-grid": { ...widget2 }
-        },
-        widget2.i
-      ))
-    }
-  );
-};
 const useRoleStore = create((set2, get2) => {
   return {
     roles: [],
@@ -49932,16 +49838,47 @@ const useUserAgentStore = create((set2) => {
     }
   };
 });
+const useDashboardStore = create((set2) => ({
+  isDashboard: false,
+  isFullScreen: document.fullscreenElement,
+  dashboardModalIsOpen: false,
+  editModalIsOpen: false,
+  widgetModalIsOpen: false,
+  deleteModalIsOpen: false,
+  containerWidth: null,
+  setIsDashboard: (isDashboard) => set2(() => ({ isDashboard })),
+  setDashboardModalIsOpen: () => set2((state) => ({ dashboardModalIsOpen: !state.dashboardModalIsOpen })),
+  setEditModalIsOpen: () => set2((state) => ({ editModalIsOpen: !state.editModalIsOpen })),
+  setWidgetModalIsOpen: () => set2((state) => ({ widgetModalIsOpen: !state.widgetModalIsOpen })),
+  setDeleteModalIsOpen: () => set2((state) => ({ deleteModalIsOpen: !state.deleteModalIsOpen })),
+  setIsFullScreen: () => set2(() => ({ isFullScreen: document.fullscreenElement })),
+  setContainerWidth: (width) => set2(() => ({ containerWidth: width }))
+}));
+const getWindowSize = (width) => {
+  if (width > 1280) return 12;
+  if (width > 768) return 6;
+  if (width > 480) return 4;
+  return 1;
+};
 const useDashboard = () => {
   const { appName } = useRoutingContext();
   const { postChildInventory, postInventory, putInventory } = useApi();
-  const getWindowSize = () => {
-    const width = window.innerWidth;
-    if (width >= 1200) return 12;
-    if (width >= 996) return 10;
-    if (width >= 768) return 6;
-    if (width >= 480) return 4;
-    return 2;
+  const containerWidth = useDashboardStore((state) => state.containerWidth);
+  const breakpoints = {
+    xl: 1280,
+    lg: 1024,
+    md: 768,
+    sm: 576,
+    xs: 480,
+    xss: 0
+  };
+  const cols = {
+    xl: 12,
+    lg: 6,
+    md: 6,
+    sm: 4,
+    xs: 4,
+    xss: 1
   };
   const methods = {
     /**
@@ -50041,15 +49978,28 @@ const useDashboard = () => {
      */
     postWidget: async ({ dashboard: dashboard2, obj }) => {
       const cloneDashboard = cloneDeep(dashboard2);
-      const widgetsLength = Object.keys(
-        dashboard2["u5s_Dashboard"]["children"] ?? {}
-      ).length;
       const id2 = String(Math.random()).substring(2);
+      const widgets = Object.values(
+        dashboard2["u5s_Dashboard"]["children"] ?? []
+      );
+      const { maxYPosition, maxRowIndex } = widgets.reduce(
+        (acc, widget3) => {
+          return {
+            maxYPosition: Math.max(acc.maxYPosition, widget3.y),
+            maxRowIndex: Math.max(acc.maxRowIndex, widget3.y + widget3.h)
+          };
+        },
+        { maxYPosition: 0, maxRowIndex: 0 }
+      );
+      const maxXPositionInRow = widgets.reduce((maxX, widget3) => {
+        return widget3.y === maxYPosition ? Math.max(maxX, widget3.x + widget3.w) : maxX;
+      }, 0);
+      const isOver = maxXPositionInRow + 4 <= getWindowSize(containerWidth);
       const widget2 = {
         ...obj,
         i: id2,
-        x: widgetsLength * 4 % getWindowSize(),
-        y: 0,
+        x: isOver ? maxXPositionInRow : 0,
+        y: isOver ? maxYPosition : maxRowIndex,
         w: 4,
         h: 4
       };
@@ -50111,9 +50061,20 @@ const useDashboard = () => {
         }
       });
       await putInventory(dashboard2.id, updatedDashboard);
+    },
+    calculateBreakpoint: (width) => {
+      if (width > 1280) return { breakpoint: "xl", cols: 12 };
+      if (width > 1024) return { breakpoint: "lg", cols: 6 };
+      if (width > 768) return { breakpoint: "md", cols: 6 };
+      if (width > 576) return { breakpoint: "sm", cols: 4 };
+      if (width > 480) return { breakpoint: "xs", cols: 4 };
+      return { breakpoint: "xss", cols: 1 };
+    },
+    getWidgetWidth: (maxCols, widget2) => {
+      return maxCols > widget2.w ? widget2.w : maxCols;
     }
   };
-  return methods;
+  return { breakpoints, cols, ...methods };
 };
 const useQueryStore = create((set2) => ({
   isQueryInvalidated: 0,
@@ -50396,6 +50357,7 @@ const DashboardModal = ({
     }
   });
   useEffect(() => {
+    if (mode2 === "dashboard") return;
     const widgetMargin = initializeState(dashboard2, "widgetMargin", 24);
     const initialHeaderStyle = headerStyle;
     const priority = initializeState(dashboard2, "priority", 1e4);
@@ -50488,14 +50450,25 @@ const DashboardModal = ({
     }
   ) }) });
 };
-const RemoveModal = ({ open, onOpenChange, title: title2, onDelete, children }) => {
+const RemoveModal = ({
+  open,
+  onOpenChange,
+  title: title2,
+  removeTitle = "Delete",
+  onDelete,
+  children,
+  className
+}) => {
   const { t: t2 } = useTranslation();
   return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open, onOpenChange, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
     DialogContent,
     {
       overlay: true,
       closeButton: false,
-      className: "w-full max-w-[335px] gap-0 rounded-2xl p-6 sm:max-w-[400px] sm:p-7",
+      className: cn(
+        "w-full max-w-[335px] gap-0 rounded-2xl p-6 sm:max-w-[400px] sm:p-7",
+        className
+      ),
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { className: "mb-3 text-start", children: /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { className: "pb-3 pt-0 text-xl font-bold", children: title2 }) }),
         children,
@@ -50509,7 +50482,7 @@ const RemoveModal = ({ open, onOpenChange, title: title2, onDelete, children }) 
               children: t2("Cancel")
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Button$1, { onClick: onDelete, className: "rounded-lg", children: t2("Delete") })
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Button$1, { onClick: onDelete, className: "rounded-lg", children: t2(removeTitle) })
         ] })
       ]
     }
@@ -50623,7 +50596,7 @@ const DynamicWidget = ({ widgetId, searchQuery, type: type2, onSelect, ...props 
   const Widget = widgetComponent && widgetComponent[type2];
   return Widget ? /* @__PURE__ */ jsxRuntimeExports.jsx(Widget, { ...props }) : null;
 };
-const DynamicWidget$1 = memo$1(DynamicWidget);
+const DynamicWidget$1 = memo$2(DynamicWidget);
 const SelectWidget = ({ widgetList, handleSelectWidget }) => {
   const { t: t2 } = useTranslation();
   const { control } = useFormContext();
@@ -50896,7 +50869,7 @@ const WidgetModal = ({
                   TabsTrigger,
                   {
                     value: "configuration",
-                    className: "flex w-full gap-x-1 text-[18px] disabled:!cursor-not-allowed",
+                    className: "flex w-full gap-x-1 text-[18px] disabled:cursor-not-allowed",
                     disabled: !selectedWidget,
                     children: [
                       /* @__PURE__ */ jsxRuntimeExports.jsx(SvgComposition, { className: "h-5 w-5 " }),
@@ -50908,7 +50881,7 @@ const WidgetModal = ({
                   TabsTrigger,
                   {
                     value: "appearance",
-                    className: "flex w-full gap-x-1 text-[18px] disabled:!cursor-not-allowed",
+                    className: "flex w-full gap-x-1 text-[18px] disabled:cursor-not-allowed",
                     disabled: !selectedWidget,
                     children: [
                       /* @__PURE__ */ jsxRuntimeExports.jsx(SvgStyle, { className: "h-5 w-5" }),
@@ -51275,7 +51248,8 @@ const ContextWidgetWrapper = forwardRef(
 ContextWidgetWrapper.displayName = "ContextWidgetWrapper";
 const ContextGrid = ({ dashboard: dashboard2, sourceId }) => {
   const minSize = { minH: 4, minW: 2 };
-  const { putLayout } = useDashboard();
+  const { containerWidth, setContainerWidth } = useDashboardStore();
+  const { breakpoints, cols, putLayout, calculateBreakpoint, getWidgetWidth } = useDashboard();
   const ResGridLayout2 = useMemo(() => reactGridLayoutExports.WidthProvider(reactGridLayoutExports.Responsive), []);
   const containerRef = useRef(null);
   const access = useRoleStore((state) => state.access);
@@ -51283,13 +51257,12 @@ const ContextGrid = ({ dashboard: dashboard2, sourceId }) => {
     const widgets2 = Object.values(dashboard2["u5s_Dashboard"]["children"]);
     return orderBy(widgets2, ["y", "x"], ["asc", "asc"]);
   }, [dashboard2["u5s_Dashboard"]["children"], dashboard2.id]);
-  const [updatedWidgets, setUpdatedWidgets] = useState([]);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [updatedWidgets, setUpdatedWidgets] = useState(widgets);
   const widgetMargin = Number(dashboard2.u5s_Dashboard.widgetMargin);
-  const isFrozen = !access || dashboard2["u5s_Dashboard"]["isFrozen"] || windowWidth <= 1024;
+  const isFrozen = !access || dashboard2["u5s_Dashboard"]["isFrozen"] || containerWidth < 1280;
   const queryClient = useQueryClient();
   const [isDragging, setIsDragging] = useState(false);
-  const [preLayout, setPreLayout] = useState([]);
+  const [preLayout, setPreLayout] = useState(widgets);
   const { mutate: handleDrag } = useMutation({
     mutationFn: ({ newLayout }) => putLayout(dashboard2, newLayout),
     onSettled: async () => {
@@ -51307,123 +51280,78 @@ const ContextGrid = ({ dashboard: dashboard2, sourceId }) => {
     setIsDragging(false);
     handleDrag({ newLayout });
   };
-  const onBreakpointChange = (newBreakpoint, newCols) => {
-    calculateGrid(newBreakpoint, newCols);
+  const updateGridLayout = () => {
+    const newUpdatedWidgets = calculateGrid();
+    if (!isEqual(updatedWidgets, newUpdatedWidgets)) {
+      setUpdatedWidgets(newUpdatedWidgets);
+    }
   };
-  useEffect(() => {
-    const updateWindowWidth = () => {
-      setWindowWidth(window.innerWidth);
-    };
-    window.addEventListener("resize", updateWindowWidth);
-    return () => {
-      window.removeEventListener("resize", updateWindowWidth);
-    };
-  }, []);
-  const calculateGrid = (breakpoint, maxColumns) => {
-    if (breakpoint === "xl") return setUpdatedWidgets(widgets);
+  const calculateGrid = () => {
+    if (!containerRef.current) return;
+    const { breakpoint, cols: maxCols } = calculateBreakpoint(
+      containerRef.current.state.width
+    );
+    if (breakpoint === "xl") return widgets;
+    const calculatedWidgets = [];
     const totalWidgets = widgets.length;
-    const updatedWidgets2 = [];
-    let currentRowY = 0;
-    for (let i2 = 0; i2 < totalWidgets; i2++) {
-      const currentWidget = widgets[i2];
-      const { w: widgetWidth, h: widgetHeight } = currentWidget;
-      let maxRowHeight = widgetHeight;
-      if (widgetWidth >= maxColumns) {
-        updatedWidgets2.push({
-          ...currentWidget,
-          y: currentRowY,
-          w: widgetWidth > maxColumns ? maxColumns : widgetWidth
-        });
-        currentRowY += widgetHeight;
-        continue;
-      }
-      let currentRowWidth = 0;
-      let startWidgetIndex = i2;
-      let nextWidgetIndex = i2;
-      while (nextWidgetIndex < totalWidgets && currentRowWidth + widgets[nextWidgetIndex].w <= maxColumns) {
-        const nextWidget = widgets[nextWidgetIndex];
-        currentRowWidth += nextWidget.w;
-        maxRowHeight = Math.max(maxRowHeight, nextWidget.h);
-        nextWidgetIndex++;
-      }
-      if (currentRowWidth > maxColumns) {
-        nextWidgetIndex--;
-      }
-      if (nextWidgetIndex - startWidgetIndex === 1) {
-        const singleWidget = widgets[startWidgetIndex];
-        updatedWidgets2.push({
-          ...singleWidget,
-          h: maxRowHeight,
-          w: maxColumns,
-          // 행 전체를 차지하도록 너비 설정
-          y: currentRowY,
-          x: 0
-          // 왼쪽부터 시작
-        });
-        currentRowY += maxRowHeight;
-        continue;
-      }
-      let convertW = Math.floor(
-        maxColumns / (nextWidgetIndex - startWidgetIndex)
-      );
-      let remainingColumns = maxColumns - convertW * (nextWidgetIndex - startWidgetIndex);
-      let currentX = 0;
-      while (startWidgetIndex < nextWidgetIndex) {
-        const widget2 = widgets[startWidgetIndex];
-        let widgetW = convertW;
-        if (remainingColumns > 0) {
-          widgetW++;
-          remainingColumns--;
+    let start2 = 0, curr = 0, maxH = 0, row = 0;
+    for (let end2 = 0; end2 < totalWidgets; end2++) {
+      const widget2 = widgets[end2];
+      const widgetW = getWidgetWidth(maxCols, widget2);
+      curr += widgetW;
+      let widgetX2 = 0;
+      if (curr > maxCols) {
+        const emptyCols = maxCols - (curr - widgetW) >= 0 ? maxCols - (curr - widgetW) : 0;
+        let widgetsInCurrentRow = end2 - start2;
+        const increaseWidthPerWidget = Math.floor(
+          emptyCols / widgetsInCurrentRow
+        );
+        while (start2 < end2) {
+          const prevWidget = widgets[start2];
+          const prevWidgetW = getWidgetWidth(maxCols, prevWidget);
+          let updatedWidgetW = prevWidgetW + increaseWidthPerWidget;
+          if (start2 === end2 - 1) {
+            updatedWidgetW += emptyCols % widgetsInCurrentRow;
+          }
+          const updatedWidget = {
+            ...prevWidget,
+            h: maxH,
+            y: row,
+            x: widgetX2,
+            w: updatedWidgetW
+          };
+          calculatedWidgets.push(updatedWidget);
+          curr -= prevWidgetW;
+          widgetX2 += updatedWidgetW;
+          start2++;
         }
-        updatedWidgets2.push({
-          ...widget2,
-          h: maxRowHeight,
-          w: widgetW,
-          y: currentRowY,
-          x: currentX
-        });
-        currentX += widgetW;
-        startWidgetIndex++;
+        row += maxH;
+        maxH = 0;
       }
-      currentRowY += maxRowHeight;
-      i2 = nextWidgetIndex - 1;
+      maxH = Math.max(maxH, widget2.h);
     }
-    setUpdatedWidgets(updatedWidgets2);
+    let widgetX = 0;
+    while (start2 < totalWidgets) {
+      const prevWidget = widgets[start2];
+      const updatedWidget = { ...prevWidget, x: widgetX, y: row };
+      calculatedWidgets.push(updatedWidget);
+      widgetX += prevWidget.w;
+      start2++;
+    }
+    return calculatedWidgets;
   };
   useEffect(() => {
-    const calculateBreakpoint = (width) => {
-      if (width >= 1440) return { breakpoint: "xl", cols: 12 };
-      if (width >= 1024) return { breakpoint: "lg", cols: 6 };
-      if (width >= 768) return { breakpoint: "md", cols: 6 };
-      if (width >= 576) return { breakpoint: "sm", cols: 4 };
-      if (width >= 480) return { breakpoint: "xs", cols: 4 };
-      return { breakpoint: "xss", cols: 1 };
-    };
-    if (containerRef.current) {
-      const width = containerRef.current.state.width;
-      const { breakpoint, cols } = calculateBreakpoint(width);
-      onBreakpointChange(breakpoint, cols);
-    }
-  }, [dashboard2.iId]);
+    updateGridLayout();
+  }, [dashboard2]);
+  const debouncedSetContainerWidth = useCallback(
+    debounce$1(setContainerWidth, 200),
+    [setContainerWidth]
+  );
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     ResGridLayout2,
     {
-      breakpoints: {
-        xl: 1440,
-        lg: 1024,
-        md: 768,
-        sm: 576,
-        xs: 480,
-        xss: 0
-      },
-      cols: {
-        xl: 12,
-        lg: 6,
-        md: 6,
-        sm: 4,
-        xs: 4,
-        xss: 1
-      },
+      breakpoints,
+      cols,
       ref: containerRef,
       rowHeight: 24,
       isResizable: !isFrozen,
@@ -51438,9 +51366,9 @@ const ContextGrid = ({ dashboard: dashboard2, sourceId }) => {
       draggableHandle: ".dashboard-item-header",
       containerPadding: [0, 0],
       resizeHandle: null,
-      onBreakpointChange,
-      useCSSTransforms: false,
-      children: widgets.map((widget2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      onBreakpointChange: updateGridLayout,
+      onWidthChange: (containerWidth2) => debouncedSetContainerWidth(containerWidth2),
+      children: updatedWidgets.map((widget2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
         ContextWidgetWrapper,
         {
           widget: widget2,
@@ -51454,7 +51382,7 @@ const ContextGrid = ({ dashboard: dashboard2, sourceId }) => {
     }
   );
 };
-const ContextGrid$1 = memo$1(ContextGrid);
+const ContextGrid$1 = memo$2(ContextGrid);
 const RenderEmptyStateMessage = ({
   title: title2,
   description: description2,
@@ -51480,20 +51408,6 @@ const RenderEmptyStateMessage = ({
     ] })
   ] });
 };
-const useDashboardStore = create((set2) => ({
-  isDashboard: false,
-  isFullScreen: document.fullscreenElement,
-  dashboardModalIsOpen: false,
-  editModalIsOpen: false,
-  widgetModalIsOpen: false,
-  deleteModalIsOpen: false,
-  setIsDashboard: (isDashboard) => set2(() => ({ isDashboard })),
-  setDashboardModalIsOpen: () => set2((state) => ({ dashboardModalIsOpen: !state.dashboardModalIsOpen })),
-  setEditModalIsOpen: () => set2((state) => ({ editModalIsOpen: !state.editModalIsOpen })),
-  setWidgetModalIsOpen: () => set2((state) => ({ widgetModalIsOpen: !state.widgetModalIsOpen })),
-  setDeleteModalIsOpen: () => set2((state) => ({ deleteModalIsOpen: !state.deleteModalIsOpen })),
-  setIsFullScreen: () => set2(() => ({ isFullScreen: document.fullscreenElement }))
-}));
 const useDashboardActions = (dashboard2) => {
   const access = useRoleStore((state) => state.access);
   const { dashboardId, sourceId } = useRoutingContext();
@@ -51557,7 +51471,7 @@ const useDashboardActions = (dashboard2) => {
     }
   };
   const handleFullScreen = () => {
-    const element = document.querySelector(".fullscreen");
+    const element = document.documentElement;
     if (!document.fullscreenElement) {
       if (element.requestFullscreen) {
         element.requestFullscreen();
@@ -51714,8 +51628,58 @@ const ContextDashboard = () => {
         }) })
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "h-full pb-15", scrollBar: false, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-grayscale-900 dark:bg-dark-grayscale-900", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { children: renderContent() }) }) }) })
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "h-full", innerClassName: "px-5", scrollBar: false, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-grayscale-900 dark:bg-dark-grayscale-900", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { children: renderContent() }) }) }) })
   ] });
+};
+const StaticWidgetWrapper = forwardRef(({ style, className, widget: widget2 }, ref) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      style: { ...style },
+      className: cn(
+        `flex flex-col rounded-2xl bg-grayscale-1000 font-bold text-grayscale-100 shadow-sm dark:bg-dark-bg-333 dark:text-dark-grayscale-100`,
+        className
+      ),
+      ref,
+      children: [
+        widget2.title && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "dashboard-item-header flex items-center justify-between px-6 py-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "line-clamp-1 text-lg", children: widget2.title }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: `dashboard-item-content relative flex h-full flex-col overflow-auto`,
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "h-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { children: widget2.content }) }) })
+          }
+        )
+      ]
+    }
+  ) });
+});
+StaticWidgetWrapper.displayName = "StaticWidgetWrapper";
+const ResGridLayout = reactGridLayoutExports.WidthProvider(reactGridLayoutExports.Responsive);
+const StaticDashboard = ({ widgets = [], widgetMargin = 24 }) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    ResGridLayout,
+    {
+      breakpoints: { md: 820, sm: 768 },
+      cols: { md: 20, sm: 1 },
+      rowHeight: 24,
+      isBounded: true,
+      margin: [widgetMargin, widgetMargin],
+      draggableCancel: ".dashboard-item-content",
+      draggableHandle: ".dashboard-item-header",
+      containerPadding: [0, 0],
+      resizeHandle: null,
+      useCSSTransforms: false,
+      children: widgets.map((widget2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        StaticWidgetWrapper,
+        {
+          widget: widget2,
+          "data-grid": { ...widget2 }
+        },
+        widget2.i
+      ))
+    }
+  );
 };
 var uaParser$1 = { exports: {} };
 var uaParser = uaParser$1.exports;
@@ -53125,15 +53089,16 @@ const useSidebarStore = create((set2, get2) => {
 });
 const Header = ({ pageTitle, headerItems }) => {
   const { toggleSidebar, sidebarIsOpen, headerIsOpen, toggleHeader } = useSidebarStore((state) => state);
+  const isFullScreen = useDashboardStore((state) => state.isFullScreen);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "header",
     {
-      className: `fixed top-0  flex w-full flex-col border-b bg-grayscale-1000 shadow-2 dark:bg-dark-bg-444 dark:drop-shadow-none sm:flex-row ${headerIsOpen ? "z-50 max-h-32 shadow-none" : "z-50"}`,
+      className: `${isFullScreen ? "hidden" : "flex"} fixed top-0 w-full flex-col border-b bg-grayscale-1000 shadow-2 dark:bg-dark-bg-444 dark:drop-shadow-none sm:flex-row ${headerIsOpen ? "z-50 max-h-32 shadow-none" : "z-50"}`,
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "div",
           {
-            className: `${headerIsOpen ? "max-h-32" : "max-h-16 overflow-hidden"} ease flex w-full flex-col justify-start px-4 transition-[max-height] duration-150 sm:flex-row sm:items-center sm:justify-between sm:overflow-visible sm:border-none lg:px-12`,
+            className: `${headerIsOpen ? "max-h-32" : "max-h-16 overflow-hidden"} ease flex w-full flex-col justify-start px-5 transition-[max-height] duration-150 sm:flex-row sm:items-center sm:justify-between sm:overflow-visible sm:border-none`,
             children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "my-auto flex min-h-16 items-center gap-3 sm:gap-4", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -53169,7 +53134,7 @@ const Header = ({ pageTitle, headerItems }) => {
                     NavigationMenu,
                     {
                       className: "w-full max-w-full  justify-evenly sm:justify-end",
-                      viewportClassNames: "right-auto sm:-right-4 lg:-right-12",
+                      viewportClassNames: "right-auto sm:-right-4 lg:-right-5",
                       children: headerItems
                     }
                   ) })
@@ -53238,7 +53203,7 @@ const AppSwitcher = ({ applications }) => {
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       NavigationMenuTrigger,
       {
-        className: "group h-13 w-full px-0 text-lg font-bold focus:!bg-inherit disabled:!pointer-events-auto disabled:cursor-not-allowed disabled:text-grayscale-500  dark:bg-dark-bg-444",
+        className: "group h-13 w-full px-0 text-lg font-bold disabled:pointer-events-auto disabled:cursor-not-allowed disabled:text-grayscale-500  dark:bg-dark-bg-444",
         onPointerMove: (event) => event.preventDefault(),
         onPointerLeave: (event) => event.preventDefault(),
         children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(SvgAppSwitch, { className: "h-6 w-6 group-data-[state=open]:text-primary" }) })
@@ -53268,76 +53233,91 @@ const UserMenuItem = forwardRef(
 UserMenuItem.displayName = "UserMenuItem";
 const UserMenu = () => {
   const { i18n, t: t2 } = useTranslation();
+  const [isUserSettingOpen, setIsUserSettingOpen] = useState(false);
   const { toggleTheme } = useDark();
+  const themeMode = useDark().dark;
   const { currentUser, tenant: tenant2, logout: logout2 } = useAuth();
   const toggleLanguage = () => {
     const newLang = i18n.language === "en" ? "ko" : "en";
     i18n.changeLanguage(newLang);
   };
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(NavigationMenuItem, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      NavigationMenuTrigger,
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(NavigationMenuItem, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        NavigationMenuTrigger,
+        {
+          className: "group h-13 bg-white px-0 text-lg hover:font-bold disabled:pointer-events-auto disabled:cursor-not-allowed disabled:text-grayscale-500  dark:bg-dark-bg-444",
+          onPointerMove: (event) => event.preventDefault(),
+          onPointerLeave: (event) => event.preventDefault(),
+          children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(SvgProfile, { className: "h-6 w-6 group-data-[state=open]:text-primary" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "my-auto hidden text-grayscale-300 group-data-[state=open]:text-primary dark:text-dark-grayscale-200 sm:flex", children: currentUser.userName })
+          ] })
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        NavigationMenuContent,
+        {
+          onPointerEnter: (event) => event.preventDefault(),
+          onPointerLeave: (event) => event.preventDefault(),
+          children: /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: "h-[calc(100vh-8rem)] w-[100vw] sm:h-fit sm:w-full", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              UserMenuItem,
+              {
+                icon: SvgProfile,
+                className: "cursor-pointer",
+                onClick: () => setIsUserSettingOpen((pre) => !pre),
+                title: t2("User settings")
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              UserMenuItem,
+              {
+                icon: SvgMoonNight,
+                className: "cursor-pointer",
+                onClick: toggleTheme,
+                title: themeMode === true ? t2("light mode") : t2("dark mode")
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              UserMenuItem,
+              {
+                icon: SvgTranslate,
+                className: "cursor-pointer",
+                onClick: toggleLanguage,
+                title: i18n.language === "en" ? t2("korean") : t2("english")
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              UserMenuItem,
+              {
+                icon: SvgLogOut,
+                className: "cursor-pointer",
+                onClick: logout2,
+                title: t2("logout")
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(UserMenuItem, { title: `${t2("Tenant")} ID: ${tenant2}` })
+          ] })
+        }
+      )
+    ] }),
+    isUserSettingOpen && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      UserSetting,
       {
-        className: "group h-13 !bg-inherit bg-white px-0 text-lg focus:!bg-inherit data-[state=open]:text-primary  dark:bg-dark-bg-444 dark:text-dark-grayscale-300 dark:data-[state=open]:text-dark-primary",
-        onPointerMove: (event) => event.preventDefault(),
-        onPointerLeave: (event) => event.preventDefault(),
-        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(SvgProfile, { className: "h-6 w-6 group-data-[state=open]:text-primary" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "my-auto hidden text-grayscale-300 group-data-[state=open]:text-primary dark:text-dark-grayscale-200 sm:flex", children: currentUser.userName })
-        ] })
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      NavigationMenuContent,
-      {
-        onPointerEnter: (event) => event.preventDefault(),
-        onPointerLeave: (event) => event.preventDefault(),
-        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: "h-[calc(100vh-8rem)] w-[100vw] sm:h-fit sm:w-full", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            UserMenuItem,
-            {
-              icon: SvgMoonNight,
-              className: "cursor-pointer",
-              onClick: toggleTheme,
-              title: t2("dark mode")
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            UserMenuItem,
-            {
-              icon: SvgTranslate,
-              className: "cursor-pointer",
-              onClick: toggleLanguage,
-              title: i18n.language === "en" ? t2("korean") : t2("english")
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            UserMenuItem,
-            {
-              icon: SvgLogOut,
-              className: "cursor-pointer",
-              onClick: logout2,
-              title: t2("logout")
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(UserMenuItem, { title: `${t2("Tenant")} ID: ${tenant2}` })
-        ] })
+        open: isUserSettingOpen,
+        onOpenChange: () => setIsUserSettingOpen((pre) => !pre)
       }
     )
-  ] }) });
+  ] });
 };
 const Sidebar = ({ children }) => {
-  const { sidebarIsOpen, responsiveSidebar } = useSidebarStore(
-    (state) => state
-  );
-  useEffect(() => {
-    window.addEventListener("resize", responsiveSidebar, { passive: true });
-    return () => window.removeEventListener("resize", responsiveSidebar);
-  }, []);
+  const { sidebarIsOpen } = useSidebarStore((state) => state);
+  const isFullScreen = useDashboardStore((state) => state.isFullScreen);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     "aside",
     {
-      className: `z-0 mb-5 mt-5 flex w-full flex-col rounded-2xl border border-solid border-grayscale-700 bg-grayscale-1000 text-lg font-medium shadow-lg duration-300 dark:border-grayscale-300 dark:border-opacity-10 dark:bg-dark-bg-444 ${sidebarIsOpen ? "ml-5 min-w-[calc(100%-40px)] max-w-[calc(100%-40px)]  xs:min-w-[280px] xs:max-w-[280px]" : "min-w-0 max-w-0 border-0 duration-100"}`,
+      className: `${isFullScreen ? "hidden" : "flex"} z-0 mb-5 mt-5 w-full flex-col rounded-2xl border border-solid border-grayscale-700 bg-grayscale-1000 text-lg font-medium shadow-lg duration-300 dark:border-dark-grayscale-700 dark:bg-dark-bg-444 dark:shadow-md dark:shadow-dark-grayscale-900 ${sidebarIsOpen ? "ml-5 min-w-[calc(100%-40px)] max-w-[calc(100%-40px)]  xs:min-w-[280px] xs:max-w-[280px]" : "min-w-0 max-w-0 border-0 duration-100"}`,
       children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "no-scrollbar flex flex-col overflow-y-auto duration-300 ease-linear", children: /* @__PURE__ */ jsxRuntimeExports.jsx("nav", { className: "p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-1.5", children }) }) }) })
     }
   );
@@ -53355,7 +53335,8 @@ const SidebarAccordionItem = ({
   const { goTo } = useTransitionNavigate();
   const [open, setOpen] = useState(false);
   const Icon2 = icon2 ? icon2 : open ? SvgFolderOpen : SvgFolder;
-  const match2 = useMatch(`${to}/*`);
+  const pathSegments = to ? to.split("/").filter(Boolean).length : 0;
+  const match2 = useMatch(pathSegments === 1 ? to : `${to}/*`);
   const accordionTriggerClasses = cn(
     "p-0 w-full",
     `${match2 ? "active-sidebar-item" : "sidebar-item"}`,
@@ -53488,7 +53469,7 @@ const GroupAccordion = ({ managedObject = null, onlyGroup = false, depth }) => {
   });
   return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: deviceList.map(
     (device2) => (device2 == null ? void 0 : device2.c8y_IsDeviceGroup) ? (
-      // group
+      // If the device is a group, render an expandable sidebar item
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         SidebarAccordionItem,
         {
@@ -53506,34 +53487,37 @@ const GroupAccordion = ({ managedObject = null, onlyGroup = false, depth }) => {
         },
         device2.id
       )
-    ) : device2.childDevices.references.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-      SidebarAccordionItem,
-      {
-        icon: SvgDevice,
-        label: device2 == null ? void 0 : device2.name,
-        to: `/device/${device2.id}`,
-        depth,
-        asChild: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          GroupAccordion,
+    ) : (
+      // If the device has child devices, render an expandable sidebar item
+      device2.childDevices.references.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+        SidebarAccordionItem,
+        {
+          icon: SvgDevice,
+          label: device2 == null ? void 0 : device2.name,
+          to: `/device/${device2.id}`,
+          depth,
+          asChild: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            GroupAccordion,
+            {
+              managedObject: device2,
+              depth: depth + 1
+            },
+            device2.id
+          )
+        },
+        device2.id
+      ) : (
+        // If the device is a leaf node (no child devices), render a simple sidebar item
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          SidebarItem,
           {
-            managedObject: device2,
-            depth: depth + 1
+            icon: SvgDevice,
+            to: `/device/${device2.id}`,
+            label: device2 == null ? void 0 : device2.name,
+            className: "h-10 text-sm text-grayscale-400"
           },
           device2.id
         )
-      },
-      device2.id
-    ) : (
-      // 최 하위 device
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        SidebarItem,
-        {
-          icon: SvgDevice,
-          to: `/device/${device2.id}`,
-          label: device2 == null ? void 0 : device2.name,
-          className: "h-10 text-sm text-grayscale-400"
-        },
-        device2.id
       )
     )
   ) });
@@ -53542,22 +53526,25 @@ const Layout = ({ headerItems, sidebarItems, pageTitle }) => {
   const isFullScreen = useDashboardStore((state) => state.isFullScreen);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-screen bg-grayscale-900 dark:bg-dark-grayscale-900", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(Header, { pageTitle: pageTitle(), headerItems }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative top-16 flex h-full max-h-[calc(100vh-4rem)] flex-1 overflow-hidden", children: [
-      sidebarItems && /* @__PURE__ */ jsxRuntimeExports.jsx(Sidebar, { children: sidebarItems }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "fullscreen mt-5 flex h-full w-full flex-col bg-grayscale-900 duration-300 dark:bg-dark-grayscale-900 tablet:pb-10", children: [
-        !isFullScreen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "ml-2 hidden w-full px-5 py-3 text-3xl font-bold  text-grayscale-100 dark:text-dark-grayscale-200 tablet:block", children: pageTitle() }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            style: { height: "inherit" },
-            className: `relative flex flex-col px-5
-             ${isFullScreen ? "flex-1" : ""}
-            `,
-            children: /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {})
-          }
-        )
-      ] })
-    ] })
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: `${isFullScreen ? "top-0 max-h-full" : "top-16 max-h-[calc(100vh-4rem)]"} relative flex h-full flex-1 overflow-hidden`,
+        children: [
+          sidebarItems && /* @__PURE__ */ jsxRuntimeExports.jsx(Sidebar, { children: sidebarItems }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "main",
+            {
+              className: `flex h-full w-full min-w-0 flex-col bg-grayscale-900 py-5 duration-300 dark:bg-dark-grayscale-900`,
+              children: [
+                !isFullScreen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "hidden w-full py-3 pl-5 text-3xl font-bold text-grayscale-100 dark:text-dark-grayscale-200 tablet:block", children: pageTitle() }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `relative flex min-h-0 flex-1 flex-col`, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {}) })
+              ]
+            }
+          )
+        ]
+      }
+    )
   ] });
 };
 const ConetextDashboardActionItems = () => {
@@ -53705,6 +53692,7 @@ const ActionBar = ({ children }) => {
 };
 const Tabs = ({ context, children }) => {
   const sourceRef = useRef();
+  const location2 = useLocation();
   const { goTo } = useTransitionNavigate();
   const { dashboardId, sourceId, category, subCategory } = useRoutingContext();
   const isDevice = useUserAgentStore((state) => state.isDevice);
@@ -53738,7 +53726,7 @@ const Tabs = ({ context, children }) => {
   useEffect(() => {
     if (newDashboardId || subCategory) return;
     goTo(tabList[0], true);
-  }, [tabList]);
+  }, [tabList, location2]);
   useEffect(() => {
     if (isQueryDeleteInvalidated || isQueryAddInvalidated && newDashboardId) {
       const targetPath = isQueryAddInvalidated && newDashboardId ? `dashboard/${newDashboardId}` : tabList[0];
@@ -53755,9 +53743,9 @@ const Tabs = ({ context, children }) => {
     }
   }, [isQueryDeleteInvalidated, isQueryAddInvalidated]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: "items-cente flex h-10 w-full", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: "flex h-10 w-full items-center overflow-x-hidden pr-5", children: [
       context && access && !isDevice && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: "relative h-10 cursor-pointer pb-2 pt-3  text-grayscale-300 dark:text-dark-grayscale-300", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: "relative h-10 cursor-pointer pb-2 pt-3 text-grayscale-300 dark:text-dark-grayscale-300", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
           {
             type: "button",
@@ -53783,7 +53771,7 @@ const Tabs = ({ context, children }) => {
             skipSnaps: true
           },
           className: "w-full",
-          children: /* @__PURE__ */ jsxRuntimeExports.jsx(CarouselContent, { className: "flex max-w-full whitespace-nowrap lg:max-w-[400px] tablet:max-w-[600px] 3xl:max-w-[980px]", children })
+          children: /* @__PURE__ */ jsxRuntimeExports.jsx(CarouselContent, { className: "flex max-w-full whitespace-nowrap pr-5", children })
         }
       )
     ] }),
@@ -53806,7 +53794,7 @@ const Tabs = ({ context, children }) => {
 };
 const MenuBar = ({ context = true, tabItems = null, actionItems = null }) => {
   const isFullScreen = useDashboardStore((state) => state.isFullScreen);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sticky top-0 z-[48] flex flex-wrap bg-grayscale-900 pb-4 pl-2 dark:bg-dark-grayscale-900 xl:flex-nowrap xl:justify-between", children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sticky top-0 z-[48] flex flex-wrap px-5 pb-4 xl:flex-nowrap xl:justify-between", children: [
     tabItems && !isFullScreen && /* @__PURE__ */ jsxRuntimeExports.jsx(Tabs, { context, children: tabItems }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ActionBar, { children: actionItems })
   ] });
@@ -54285,13 +54273,25 @@ function hasArrayChanged() {
   let b = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : [];
   return a.length !== b.length || a.some((item, index2) => !Object.is(item, b[index2]));
 }
+const NotAuth = () => {
+  const { t: t2 } = useTranslation();
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-screen items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-160 flex h-125 flex-col gap-10", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(SvgEmergencyAlert, { className: "h-32 w-full " }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-center text-lg font-bold", children: t2("Requested data denied access.") }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Button$1, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: "/", children: t2("Go to homepage") }) })
+  ] }) });
+};
 const FallbackUi = ({ children, customRetryUi, fullScreen }) => {
   const { t: t2 } = useTranslation();
   const FallbackComponent = /* @__PURE__ */ jsxRuntimeExports.jsx(QueryErrorResetBoundary, { children: ({ reset }) => /* @__PURE__ */ jsxRuntimeExports.jsx(
     ErrorBoundary,
     {
       onReset: reset,
-      fallbackRender: ({ resetErrorBoundary }) => {
+      fallbackRender: ({ error: error2, resetErrorBoundary }) => {
+        var _a;
+        if (((_a = error2 == null ? void 0 : error2.res) == null ? void 0 : _a.status) === 403) {
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(NotAuth, {});
+        }
         if (customRetryUi)
           return /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => resetErrorBoundary(), children: customRetryUi });
         return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 gap-2.5 text-lg font-bold", children: [
@@ -54317,6 +54317,7 @@ const FormInputField$1 = ({
   suffix,
   suffixPosition = "right",
   className,
+  labelClassName,
   ...props
 }) => /* @__PURE__ */ jsxRuntimeExports.jsx(
   FormField,
@@ -54324,7 +54325,7 @@ const FormInputField$1 = ({
     control,
     name: name2,
     render: ({ field, fieldState: { error: error2 } }) => /* @__PURE__ */ jsxRuntimeExports.jsxs(FormItem, { children: [
-      label2 && /* @__PURE__ */ jsxRuntimeExports.jsx(FormLabel, { children: label2 }),
+      label2 && /* @__PURE__ */ jsxRuntimeExports.jsx(FormLabel, { className: cn(labelClassName), children: label2 }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "relative flex justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FormControl, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex w-full items-center ", children: [
         suffix && suffixPosition === "left" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: " text h-14 w-14 rounded-md rounded-e-none border border-grayscale-400 bg-grayscale-400  py-3.5 text-center dark:text-dark-grayscale-200", children: suffix }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -54594,7 +54595,7 @@ const FormColorField = ({ control, name: name2, label: label2, className, ...pro
             type: "color",
             value: value2,
             onChange: (e) => onChange(e.target.value),
-            className: "h-6 w-6 border-none p-0"
+            className: cn("h-6 w-6 border-none p-0", className)
           }
         ) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(FormControl, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -54611,6 +54612,74 @@ const FormColorField = ({ control, name: name2, label: label2, className, ...pro
     ] })
   }
 );
+const EditableField = ({
+  name: name2,
+  control,
+  defaultValue,
+  placeholder: placeholder2,
+  onUpdate,
+  InputComponent = Input,
+  className,
+  ...props
+}) => {
+  const inputRef = useRef(null);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "group flex w-full gap-x-1", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+    FormField,
+    {
+      control,
+      name: name2,
+      render: ({ field, formState }) => {
+        const isEdited = formState.isDirty && field.value !== defaultValue;
+        return /* @__PURE__ */ jsxRuntimeExports.jsx(
+          FormItem,
+          {
+            className: `group-focus-within:w-full ${isEdited ? "w-full" : ""} `,
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(FormControl, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex w-full gap-x-1", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex w-full items-center", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  InputComponent,
+                  {
+                    ref: inputRef,
+                    ...field,
+                    ...props,
+                    placeholder: placeholder2 ?? defaultValue,
+                    className: cn(
+                      "h-auto w-full px-2 leading-6",
+                      "border-none !bg-transparent",
+                      {
+                        "ring-2": isEdited
+                      },
+                      className
+                    )
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  SvgEdit,
+                  {
+                    className: `${isEdited ? "hidden" : ""} group-focus-within:hidden`
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                Button$1,
+                {
+                  disabled: defaultValue === field.value || !field.value.length,
+                  type: "button",
+                  onClick: () => {
+                    onUpdate({ [name2]: field.value });
+                    inputRef.current.blur();
+                  },
+                  className: `invisible self-end group-focus-within:visible ${isEdited ? "visible" : ""}`,
+                  children: "저장"
+                }
+              )
+            ] }) })
+          }
+        );
+      }
+    }
+  ) });
+};
 const LastUpdated = ({
   fontFamily = "SUIT-regular",
   timeWeight = "700",
@@ -54815,2858 +54884,6 @@ const NotFound = () => {
     /* @__PURE__ */ jsxRuntimeExports.jsx(Button$1, { onClick: goToHome, children: t2("Go to homepage") })
   ] }) });
 };
-/**
-   * table-core
-   *
-   * Copyright (c) TanStack
-   *
-   * This source code is licensed under the MIT license found in the
-   * LICENSE.md file in the root directory of this source tree.
-   *
-   * @license MIT
-   */
-function functionalUpdate(updater, input) {
-  return typeof updater === "function" ? updater(input) : updater;
-}
-function makeStateUpdater(key, instance2) {
-  return (updater) => {
-    instance2.setState((old) => {
-      return {
-        ...old,
-        [key]: functionalUpdate(updater, old[key])
-      };
-    });
-  };
-}
-function isFunction(d) {
-  return d instanceof Function;
-}
-function isNumberArray(d) {
-  return Array.isArray(d) && d.every((val) => typeof val === "number");
-}
-function flattenBy(arr, getChildren) {
-  const flat = [];
-  const recurse = (subArr) => {
-    subArr.forEach((item) => {
-      flat.push(item);
-      const children = getChildren(item);
-      if (children != null && children.length) {
-        recurse(children);
-      }
-    });
-  };
-  recurse(arr);
-  return flat;
-}
-function memo(getDeps, fn, opts) {
-  let deps = [];
-  let result;
-  return (depArgs) => {
-    let depTime;
-    if (opts.key && opts.debug) depTime = Date.now();
-    const newDeps = getDeps(depArgs);
-    const depsChanged = newDeps.length !== deps.length || newDeps.some((dep, index2) => deps[index2] !== dep);
-    if (!depsChanged) {
-      return result;
-    }
-    deps = newDeps;
-    let resultTime;
-    if (opts.key && opts.debug) resultTime = Date.now();
-    result = fn(...newDeps);
-    opts == null || opts.onChange == null || opts.onChange(result);
-    if (opts.key && opts.debug) {
-      if (opts != null && opts.debug()) {
-        const depEndTime = Math.round((Date.now() - depTime) * 100) / 100;
-        const resultEndTime = Math.round((Date.now() - resultTime) * 100) / 100;
-        const resultFpsPercentage = resultEndTime / 16;
-        const pad = (str, num) => {
-          str = String(str);
-          while (str.length < num) {
-            str = " " + str;
-          }
-          return str;
-        };
-        console.info(`%c⏱ ${pad(resultEndTime, 5)} /${pad(depEndTime, 5)} ms`, `
-            font-size: .6rem;
-            font-weight: bold;
-            color: hsl(${Math.max(0, Math.min(120 - 120 * resultFpsPercentage, 120))}deg 100% 31%);`, opts == null ? void 0 : opts.key);
-      }
-    }
-    return result;
-  };
-}
-function getMemoOptions(tableOptions, debugLevel, key, onChange) {
-  return {
-    debug: () => {
-      var _tableOptions$debugAl;
-      return (_tableOptions$debugAl = tableOptions == null ? void 0 : tableOptions.debugAll) != null ? _tableOptions$debugAl : tableOptions[debugLevel];
-    },
-    key: process.env.NODE_ENV === "development" && key,
-    onChange
-  };
-}
-function createCell(table, row, column, columnId) {
-  const getRenderValue = () => {
-    var _cell$getValue;
-    return (_cell$getValue = cell.getValue()) != null ? _cell$getValue : table.options.renderFallbackValue;
-  };
-  const cell = {
-    id: `${row.id}_${column.id}`,
-    row,
-    column,
-    getValue: () => row.getValue(columnId),
-    renderValue: getRenderValue,
-    getContext: memo(() => [table, column, row, cell], (table2, column2, row2, cell2) => ({
-      table: table2,
-      column: column2,
-      row: row2,
-      cell: cell2,
-      getValue: cell2.getValue,
-      renderValue: cell2.renderValue
-    }), getMemoOptions(table.options, "debugCells", "cell.getContext"))
-  };
-  table._features.forEach((feature) => {
-    feature.createCell == null || feature.createCell(cell, column, row, table);
-  }, {});
-  return cell;
-}
-function createColumn(table, columnDef, depth, parent) {
-  var _ref, _resolvedColumnDef$id;
-  const defaultColumn = table._getDefaultColumnDef();
-  const resolvedColumnDef = {
-    ...defaultColumn,
-    ...columnDef
-  };
-  const accessorKey = resolvedColumnDef.accessorKey;
-  let id2 = (_ref = (_resolvedColumnDef$id = resolvedColumnDef.id) != null ? _resolvedColumnDef$id : accessorKey ? typeof String.prototype.replaceAll === "function" ? accessorKey.replaceAll(".", "_") : accessorKey.replace(/\./g, "_") : void 0) != null ? _ref : typeof resolvedColumnDef.header === "string" ? resolvedColumnDef.header : void 0;
-  let accessorFn;
-  if (resolvedColumnDef.accessorFn) {
-    accessorFn = resolvedColumnDef.accessorFn;
-  } else if (accessorKey) {
-    if (accessorKey.includes(".")) {
-      accessorFn = (originalRow) => {
-        let result = originalRow;
-        for (const key of accessorKey.split(".")) {
-          var _result;
-          result = (_result = result) == null ? void 0 : _result[key];
-          if (process.env.NODE_ENV !== "production" && result === void 0) {
-            console.warn(`"${key}" in deeply nested key "${accessorKey}" returned undefined.`);
-          }
-        }
-        return result;
-      };
-    } else {
-      accessorFn = (originalRow) => originalRow[resolvedColumnDef.accessorKey];
-    }
-  }
-  if (!id2) {
-    if (process.env.NODE_ENV !== "production") {
-      throw new Error(resolvedColumnDef.accessorFn ? `Columns require an id when using an accessorFn` : `Columns require an id when using a non-string header`);
-    }
-    throw new Error();
-  }
-  let column = {
-    id: `${String(id2)}`,
-    accessorFn,
-    parent,
-    depth,
-    columnDef: resolvedColumnDef,
-    columns: [],
-    getFlatColumns: memo(() => [true], () => {
-      var _column$columns;
-      return [column, ...(_column$columns = column.columns) == null ? void 0 : _column$columns.flatMap((d) => d.getFlatColumns())];
-    }, getMemoOptions(table.options, "debugColumns", "column.getFlatColumns")),
-    getLeafColumns: memo(() => [table._getOrderColumnsFn()], (orderColumns2) => {
-      var _column$columns2;
-      if ((_column$columns2 = column.columns) != null && _column$columns2.length) {
-        let leafColumns = column.columns.flatMap((column2) => column2.getLeafColumns());
-        return orderColumns2(leafColumns);
-      }
-      return [column];
-    }, getMemoOptions(table.options, "debugColumns", "column.getLeafColumns"))
-  };
-  for (const feature of table._features) {
-    feature.createColumn == null || feature.createColumn(column, table);
-  }
-  return column;
-}
-const debug = "debugHeaders";
-function createHeader(table, column, options) {
-  var _options$id;
-  const id2 = (_options$id = options.id) != null ? _options$id : column.id;
-  let header = {
-    id: id2,
-    column,
-    index: options.index,
-    isPlaceholder: !!options.isPlaceholder,
-    placeholderId: options.placeholderId,
-    depth: options.depth,
-    subHeaders: [],
-    colSpan: 0,
-    rowSpan: 0,
-    headerGroup: null,
-    getLeafHeaders: () => {
-      const leafHeaders = [];
-      const recurseHeader = (h) => {
-        if (h.subHeaders && h.subHeaders.length) {
-          h.subHeaders.map(recurseHeader);
-        }
-        leafHeaders.push(h);
-      };
-      recurseHeader(header);
-      return leafHeaders;
-    },
-    getContext: () => ({
-      table,
-      header,
-      column
-    })
-  };
-  table._features.forEach((feature) => {
-    feature.createHeader == null || feature.createHeader(header, table);
-  });
-  return header;
-}
-const Headers = {
-  createTable: (table) => {
-    table.getHeaderGroups = memo(() => [table.getAllColumns(), table.getVisibleLeafColumns(), table.getState().columnPinning.left, table.getState().columnPinning.right], (allColumns, leafColumns, left2, right2) => {
-      var _left$map$filter, _right$map$filter;
-      const leftColumns = (_left$map$filter = left2 == null ? void 0 : left2.map((columnId) => leafColumns.find((d) => d.id === columnId)).filter(Boolean)) != null ? _left$map$filter : [];
-      const rightColumns = (_right$map$filter = right2 == null ? void 0 : right2.map((columnId) => leafColumns.find((d) => d.id === columnId)).filter(Boolean)) != null ? _right$map$filter : [];
-      const centerColumns = leafColumns.filter((column) => !(left2 != null && left2.includes(column.id)) && !(right2 != null && right2.includes(column.id)));
-      const headerGroups = buildHeaderGroups(allColumns, [...leftColumns, ...centerColumns, ...rightColumns], table);
-      return headerGroups;
-    }, getMemoOptions(table.options, debug, "getHeaderGroups"));
-    table.getCenterHeaderGroups = memo(() => [table.getAllColumns(), table.getVisibleLeafColumns(), table.getState().columnPinning.left, table.getState().columnPinning.right], (allColumns, leafColumns, left2, right2) => {
-      leafColumns = leafColumns.filter((column) => !(left2 != null && left2.includes(column.id)) && !(right2 != null && right2.includes(column.id)));
-      return buildHeaderGroups(allColumns, leafColumns, table, "center");
-    }, getMemoOptions(table.options, debug, "getCenterHeaderGroups"));
-    table.getLeftHeaderGroups = memo(() => [table.getAllColumns(), table.getVisibleLeafColumns(), table.getState().columnPinning.left], (allColumns, leafColumns, left2) => {
-      var _left$map$filter2;
-      const orderedLeafColumns = (_left$map$filter2 = left2 == null ? void 0 : left2.map((columnId) => leafColumns.find((d) => d.id === columnId)).filter(Boolean)) != null ? _left$map$filter2 : [];
-      return buildHeaderGroups(allColumns, orderedLeafColumns, table, "left");
-    }, getMemoOptions(table.options, debug, "getLeftHeaderGroups"));
-    table.getRightHeaderGroups = memo(() => [table.getAllColumns(), table.getVisibleLeafColumns(), table.getState().columnPinning.right], (allColumns, leafColumns, right2) => {
-      var _right$map$filter2;
-      const orderedLeafColumns = (_right$map$filter2 = right2 == null ? void 0 : right2.map((columnId) => leafColumns.find((d) => d.id === columnId)).filter(Boolean)) != null ? _right$map$filter2 : [];
-      return buildHeaderGroups(allColumns, orderedLeafColumns, table, "right");
-    }, getMemoOptions(table.options, debug, "getRightHeaderGroups"));
-    table.getFooterGroups = memo(() => [table.getHeaderGroups()], (headerGroups) => {
-      return [...headerGroups].reverse();
-    }, getMemoOptions(table.options, debug, "getFooterGroups"));
-    table.getLeftFooterGroups = memo(() => [table.getLeftHeaderGroups()], (headerGroups) => {
-      return [...headerGroups].reverse();
-    }, getMemoOptions(table.options, debug, "getLeftFooterGroups"));
-    table.getCenterFooterGroups = memo(() => [table.getCenterHeaderGroups()], (headerGroups) => {
-      return [...headerGroups].reverse();
-    }, getMemoOptions(table.options, debug, "getCenterFooterGroups"));
-    table.getRightFooterGroups = memo(() => [table.getRightHeaderGroups()], (headerGroups) => {
-      return [...headerGroups].reverse();
-    }, getMemoOptions(table.options, debug, "getRightFooterGroups"));
-    table.getFlatHeaders = memo(() => [table.getHeaderGroups()], (headerGroups) => {
-      return headerGroups.map((headerGroup) => {
-        return headerGroup.headers;
-      }).flat();
-    }, getMemoOptions(table.options, debug, "getFlatHeaders"));
-    table.getLeftFlatHeaders = memo(() => [table.getLeftHeaderGroups()], (left2) => {
-      return left2.map((headerGroup) => {
-        return headerGroup.headers;
-      }).flat();
-    }, getMemoOptions(table.options, debug, "getLeftFlatHeaders"));
-    table.getCenterFlatHeaders = memo(() => [table.getCenterHeaderGroups()], (left2) => {
-      return left2.map((headerGroup) => {
-        return headerGroup.headers;
-      }).flat();
-    }, getMemoOptions(table.options, debug, "getCenterFlatHeaders"));
-    table.getRightFlatHeaders = memo(() => [table.getRightHeaderGroups()], (left2) => {
-      return left2.map((headerGroup) => {
-        return headerGroup.headers;
-      }).flat();
-    }, getMemoOptions(table.options, debug, "getRightFlatHeaders"));
-    table.getCenterLeafHeaders = memo(() => [table.getCenterFlatHeaders()], (flatHeaders) => {
-      return flatHeaders.filter((header) => {
-        var _header$subHeaders;
-        return !((_header$subHeaders = header.subHeaders) != null && _header$subHeaders.length);
-      });
-    }, getMemoOptions(table.options, debug, "getCenterLeafHeaders"));
-    table.getLeftLeafHeaders = memo(() => [table.getLeftFlatHeaders()], (flatHeaders) => {
-      return flatHeaders.filter((header) => {
-        var _header$subHeaders2;
-        return !((_header$subHeaders2 = header.subHeaders) != null && _header$subHeaders2.length);
-      });
-    }, getMemoOptions(table.options, debug, "getLeftLeafHeaders"));
-    table.getRightLeafHeaders = memo(() => [table.getRightFlatHeaders()], (flatHeaders) => {
-      return flatHeaders.filter((header) => {
-        var _header$subHeaders3;
-        return !((_header$subHeaders3 = header.subHeaders) != null && _header$subHeaders3.length);
-      });
-    }, getMemoOptions(table.options, debug, "getRightLeafHeaders"));
-    table.getLeafHeaders = memo(() => [table.getLeftHeaderGroups(), table.getCenterHeaderGroups(), table.getRightHeaderGroups()], (left2, center2, right2) => {
-      var _left$0$headers, _left$, _center$0$headers, _center$, _right$0$headers, _right$;
-      return [...(_left$0$headers = (_left$ = left2[0]) == null ? void 0 : _left$.headers) != null ? _left$0$headers : [], ...(_center$0$headers = (_center$ = center2[0]) == null ? void 0 : _center$.headers) != null ? _center$0$headers : [], ...(_right$0$headers = (_right$ = right2[0]) == null ? void 0 : _right$.headers) != null ? _right$0$headers : []].map((header) => {
-        return header.getLeafHeaders();
-      }).flat();
-    }, getMemoOptions(table.options, debug, "getLeafHeaders"));
-  }
-};
-function buildHeaderGroups(allColumns, columnsToGroup, table, headerFamily) {
-  var _headerGroups$0$heade, _headerGroups$;
-  let maxDepth = 0;
-  const findMaxDepth = function(columns, depth) {
-    if (depth === void 0) {
-      depth = 1;
-    }
-    maxDepth = Math.max(maxDepth, depth);
-    columns.filter((column) => column.getIsVisible()).forEach((column) => {
-      var _column$columns;
-      if ((_column$columns = column.columns) != null && _column$columns.length) {
-        findMaxDepth(column.columns, depth + 1);
-      }
-    }, 0);
-  };
-  findMaxDepth(allColumns);
-  let headerGroups = [];
-  const createHeaderGroup = (headersToGroup, depth) => {
-    const headerGroup = {
-      depth,
-      id: [headerFamily, `${depth}`].filter(Boolean).join("_"),
-      headers: []
-    };
-    const pendingParentHeaders = [];
-    headersToGroup.forEach((headerToGroup) => {
-      const latestPendingParentHeader = [...pendingParentHeaders].reverse()[0];
-      const isLeafHeader = headerToGroup.column.depth === headerGroup.depth;
-      let column;
-      let isPlaceholder = false;
-      if (isLeafHeader && headerToGroup.column.parent) {
-        column = headerToGroup.column.parent;
-      } else {
-        column = headerToGroup.column;
-        isPlaceholder = true;
-      }
-      if (latestPendingParentHeader && (latestPendingParentHeader == null ? void 0 : latestPendingParentHeader.column) === column) {
-        latestPendingParentHeader.subHeaders.push(headerToGroup);
-      } else {
-        const header = createHeader(table, column, {
-          id: [headerFamily, depth, column.id, headerToGroup == null ? void 0 : headerToGroup.id].filter(Boolean).join("_"),
-          isPlaceholder,
-          placeholderId: isPlaceholder ? `${pendingParentHeaders.filter((d) => d.column === column).length}` : void 0,
-          depth,
-          index: pendingParentHeaders.length
-        });
-        header.subHeaders.push(headerToGroup);
-        pendingParentHeaders.push(header);
-      }
-      headerGroup.headers.push(headerToGroup);
-      headerToGroup.headerGroup = headerGroup;
-    });
-    headerGroups.push(headerGroup);
-    if (depth > 0) {
-      createHeaderGroup(pendingParentHeaders, depth - 1);
-    }
-  };
-  const bottomHeaders = columnsToGroup.map((column, index2) => createHeader(table, column, {
-    depth: maxDepth,
-    index: index2
-  }));
-  createHeaderGroup(bottomHeaders, maxDepth - 1);
-  headerGroups.reverse();
-  const recurseHeadersForSpans = (headers) => {
-    const filteredHeaders = headers.filter((header) => header.column.getIsVisible());
-    return filteredHeaders.map((header) => {
-      let colSpan = 0;
-      let rowSpan = 0;
-      let childRowSpans = [0];
-      if (header.subHeaders && header.subHeaders.length) {
-        childRowSpans = [];
-        recurseHeadersForSpans(header.subHeaders).forEach((_ref) => {
-          let {
-            colSpan: childColSpan,
-            rowSpan: childRowSpan
-          } = _ref;
-          colSpan += childColSpan;
-          childRowSpans.push(childRowSpan);
-        });
-      } else {
-        colSpan = 1;
-      }
-      const minChildRowSpan = Math.min(...childRowSpans);
-      rowSpan = rowSpan + minChildRowSpan;
-      header.colSpan = colSpan;
-      header.rowSpan = rowSpan;
-      return {
-        colSpan,
-        rowSpan
-      };
-    });
-  };
-  recurseHeadersForSpans((_headerGroups$0$heade = (_headerGroups$ = headerGroups[0]) == null ? void 0 : _headerGroups$.headers) != null ? _headerGroups$0$heade : []);
-  return headerGroups;
-}
-const createRow = (table, id2, original, rowIndex, depth, subRows, parentId) => {
-  let row = {
-    id: id2,
-    index: rowIndex,
-    original,
-    depth,
-    parentId,
-    _valuesCache: {},
-    _uniqueValuesCache: {},
-    getValue: (columnId) => {
-      if (row._valuesCache.hasOwnProperty(columnId)) {
-        return row._valuesCache[columnId];
-      }
-      const column = table.getColumn(columnId);
-      if (!(column != null && column.accessorFn)) {
-        return void 0;
-      }
-      row._valuesCache[columnId] = column.accessorFn(row.original, rowIndex);
-      return row._valuesCache[columnId];
-    },
-    getUniqueValues: (columnId) => {
-      if (row._uniqueValuesCache.hasOwnProperty(columnId)) {
-        return row._uniqueValuesCache[columnId];
-      }
-      const column = table.getColumn(columnId);
-      if (!(column != null && column.accessorFn)) {
-        return void 0;
-      }
-      if (!column.columnDef.getUniqueValues) {
-        row._uniqueValuesCache[columnId] = [row.getValue(columnId)];
-        return row._uniqueValuesCache[columnId];
-      }
-      row._uniqueValuesCache[columnId] = column.columnDef.getUniqueValues(row.original, rowIndex);
-      return row._uniqueValuesCache[columnId];
-    },
-    renderValue: (columnId) => {
-      var _row$getValue;
-      return (_row$getValue = row.getValue(columnId)) != null ? _row$getValue : table.options.renderFallbackValue;
-    },
-    subRows: [],
-    getLeafRows: () => flattenBy(row.subRows, (d) => d.subRows),
-    getParentRow: () => row.parentId ? table.getRow(row.parentId, true) : void 0,
-    getParentRows: () => {
-      let parentRows = [];
-      let currentRow = row;
-      while (true) {
-        const parentRow = currentRow.getParentRow();
-        if (!parentRow) break;
-        parentRows.push(parentRow);
-        currentRow = parentRow;
-      }
-      return parentRows.reverse();
-    },
-    getAllCells: memo(() => [table.getAllLeafColumns()], (leafColumns) => {
-      return leafColumns.map((column) => {
-        return createCell(table, row, column, column.id);
-      });
-    }, getMemoOptions(table.options, "debugRows", "getAllCells")),
-    _getAllCellsByColumnId: memo(() => [row.getAllCells()], (allCells) => {
-      return allCells.reduce((acc, cell) => {
-        acc[cell.column.id] = cell;
-        return acc;
-      }, {});
-    }, getMemoOptions(table.options, "debugRows", "getAllCellsByColumnId"))
-  };
-  for (let i2 = 0; i2 < table._features.length; i2++) {
-    const feature = table._features[i2];
-    feature == null || feature.createRow == null || feature.createRow(row, table);
-  }
-  return row;
-};
-const ColumnFaceting = {
-  createColumn: (column, table) => {
-    column._getFacetedRowModel = table.options.getFacetedRowModel && table.options.getFacetedRowModel(table, column.id);
-    column.getFacetedRowModel = () => {
-      if (!column._getFacetedRowModel) {
-        return table.getPreFilteredRowModel();
-      }
-      return column._getFacetedRowModel();
-    };
-    column._getFacetedUniqueValues = table.options.getFacetedUniqueValues && table.options.getFacetedUniqueValues(table, column.id);
-    column.getFacetedUniqueValues = () => {
-      if (!column._getFacetedUniqueValues) {
-        return /* @__PURE__ */ new Map();
-      }
-      return column._getFacetedUniqueValues();
-    };
-    column._getFacetedMinMaxValues = table.options.getFacetedMinMaxValues && table.options.getFacetedMinMaxValues(table, column.id);
-    column.getFacetedMinMaxValues = () => {
-      if (!column._getFacetedMinMaxValues) {
-        return void 0;
-      }
-      return column._getFacetedMinMaxValues();
-    };
-  }
-};
-const includesString = (row, columnId, filterValue) => {
-  var _filterValue$toString, _row$getValue;
-  const search = filterValue == null || (_filterValue$toString = filterValue.toString()) == null ? void 0 : _filterValue$toString.toLowerCase();
-  return Boolean((_row$getValue = row.getValue(columnId)) == null || (_row$getValue = _row$getValue.toString()) == null || (_row$getValue = _row$getValue.toLowerCase()) == null ? void 0 : _row$getValue.includes(search));
-};
-includesString.autoRemove = (val) => testFalsey(val);
-const includesStringSensitive = (row, columnId, filterValue) => {
-  var _row$getValue2;
-  return Boolean((_row$getValue2 = row.getValue(columnId)) == null || (_row$getValue2 = _row$getValue2.toString()) == null ? void 0 : _row$getValue2.includes(filterValue));
-};
-includesStringSensitive.autoRemove = (val) => testFalsey(val);
-const equalsString = (row, columnId, filterValue) => {
-  var _row$getValue3;
-  return ((_row$getValue3 = row.getValue(columnId)) == null || (_row$getValue3 = _row$getValue3.toString()) == null ? void 0 : _row$getValue3.toLowerCase()) === (filterValue == null ? void 0 : filterValue.toLowerCase());
-};
-equalsString.autoRemove = (val) => testFalsey(val);
-const arrIncludes = (row, columnId, filterValue) => {
-  var _row$getValue4;
-  return (_row$getValue4 = row.getValue(columnId)) == null ? void 0 : _row$getValue4.includes(filterValue);
-};
-arrIncludes.autoRemove = (val) => testFalsey(val) || !(val != null && val.length);
-const arrIncludesAll = (row, columnId, filterValue) => {
-  return !filterValue.some((val) => {
-    var _row$getValue5;
-    return !((_row$getValue5 = row.getValue(columnId)) != null && _row$getValue5.includes(val));
-  });
-};
-arrIncludesAll.autoRemove = (val) => testFalsey(val) || !(val != null && val.length);
-const arrIncludesSome = (row, columnId, filterValue) => {
-  return filterValue.some((val) => {
-    var _row$getValue6;
-    return (_row$getValue6 = row.getValue(columnId)) == null ? void 0 : _row$getValue6.includes(val);
-  });
-};
-arrIncludesSome.autoRemove = (val) => testFalsey(val) || !(val != null && val.length);
-const equals = (row, columnId, filterValue) => {
-  return row.getValue(columnId) === filterValue;
-};
-equals.autoRemove = (val) => testFalsey(val);
-const weakEquals = (row, columnId, filterValue) => {
-  return row.getValue(columnId) == filterValue;
-};
-weakEquals.autoRemove = (val) => testFalsey(val);
-const inNumberRange = (row, columnId, filterValue) => {
-  let [min2, max2] = filterValue;
-  const rowValue = row.getValue(columnId);
-  return rowValue >= min2 && rowValue <= max2;
-};
-inNumberRange.resolveFilterValue = (val) => {
-  let [unsafeMin, unsafeMax] = val;
-  let parsedMin = typeof unsafeMin !== "number" ? parseFloat(unsafeMin) : unsafeMin;
-  let parsedMax = typeof unsafeMax !== "number" ? parseFloat(unsafeMax) : unsafeMax;
-  let min2 = unsafeMin === null || Number.isNaN(parsedMin) ? -Infinity : parsedMin;
-  let max2 = unsafeMax === null || Number.isNaN(parsedMax) ? Infinity : parsedMax;
-  if (min2 > max2) {
-    const temp = min2;
-    min2 = max2;
-    max2 = temp;
-  }
-  return [min2, max2];
-};
-inNumberRange.autoRemove = (val) => testFalsey(val) || testFalsey(val[0]) && testFalsey(val[1]);
-const filterFns = {
-  includesString,
-  includesStringSensitive,
-  equalsString,
-  arrIncludes,
-  arrIncludesAll,
-  arrIncludesSome,
-  equals,
-  weakEquals,
-  inNumberRange
-};
-function testFalsey(val) {
-  return val === void 0 || val === null || val === "";
-}
-const ColumnFiltering = {
-  getDefaultColumnDef: () => {
-    return {
-      filterFn: "auto"
-    };
-  },
-  getInitialState: (state) => {
-    return {
-      columnFilters: [],
-      ...state
-    };
-  },
-  getDefaultOptions: (table) => {
-    return {
-      onColumnFiltersChange: makeStateUpdater("columnFilters", table),
-      filterFromLeafRows: false,
-      maxLeafRowFilterDepth: 100
-    };
-  },
-  createColumn: (column, table) => {
-    column.getAutoFilterFn = () => {
-      const firstRow = table.getCoreRowModel().flatRows[0];
-      const value2 = firstRow == null ? void 0 : firstRow.getValue(column.id);
-      if (typeof value2 === "string") {
-        return filterFns.includesString;
-      }
-      if (typeof value2 === "number") {
-        return filterFns.inNumberRange;
-      }
-      if (typeof value2 === "boolean") {
-        return filterFns.equals;
-      }
-      if (value2 !== null && typeof value2 === "object") {
-        return filterFns.equals;
-      }
-      if (Array.isArray(value2)) {
-        return filterFns.arrIncludes;
-      }
-      return filterFns.weakEquals;
-    };
-    column.getFilterFn = () => {
-      var _table$options$filter, _table$options$filter2;
-      return isFunction(column.columnDef.filterFn) ? column.columnDef.filterFn : column.columnDef.filterFn === "auto" ? column.getAutoFilterFn() : (
-        // @ts-ignore
-        (_table$options$filter = (_table$options$filter2 = table.options.filterFns) == null ? void 0 : _table$options$filter2[column.columnDef.filterFn]) != null ? _table$options$filter : filterFns[column.columnDef.filterFn]
-      );
-    };
-    column.getCanFilter = () => {
-      var _column$columnDef$ena, _table$options$enable, _table$options$enable2;
-      return ((_column$columnDef$ena = column.columnDef.enableColumnFilter) != null ? _column$columnDef$ena : true) && ((_table$options$enable = table.options.enableColumnFilters) != null ? _table$options$enable : true) && ((_table$options$enable2 = table.options.enableFilters) != null ? _table$options$enable2 : true) && !!column.accessorFn;
-    };
-    column.getIsFiltered = () => column.getFilterIndex() > -1;
-    column.getFilterValue = () => {
-      var _table$getState$colum;
-      return (_table$getState$colum = table.getState().columnFilters) == null || (_table$getState$colum = _table$getState$colum.find((d) => d.id === column.id)) == null ? void 0 : _table$getState$colum.value;
-    };
-    column.getFilterIndex = () => {
-      var _table$getState$colum2, _table$getState$colum3;
-      return (_table$getState$colum2 = (_table$getState$colum3 = table.getState().columnFilters) == null ? void 0 : _table$getState$colum3.findIndex((d) => d.id === column.id)) != null ? _table$getState$colum2 : -1;
-    };
-    column.setFilterValue = (value2) => {
-      table.setColumnFilters((old) => {
-        const filterFn = column.getFilterFn();
-        const previousFilter = old == null ? void 0 : old.find((d) => d.id === column.id);
-        const newFilter = functionalUpdate(value2, previousFilter ? previousFilter.value : void 0);
-        if (shouldAutoRemoveFilter(filterFn, newFilter, column)) {
-          var _old$filter;
-          return (_old$filter = old == null ? void 0 : old.filter((d) => d.id !== column.id)) != null ? _old$filter : [];
-        }
-        const newFilterObj = {
-          id: column.id,
-          value: newFilter
-        };
-        if (previousFilter) {
-          var _old$map;
-          return (_old$map = old == null ? void 0 : old.map((d) => {
-            if (d.id === column.id) {
-              return newFilterObj;
-            }
-            return d;
-          })) != null ? _old$map : [];
-        }
-        if (old != null && old.length) {
-          return [...old, newFilterObj];
-        }
-        return [newFilterObj];
-      });
-    };
-  },
-  createRow: (row, _table) => {
-    row.columnFilters = {};
-    row.columnFiltersMeta = {};
-  },
-  createTable: (table) => {
-    table.setColumnFilters = (updater) => {
-      const leafColumns = table.getAllLeafColumns();
-      const updateFn = (old) => {
-        var _functionalUpdate;
-        return (_functionalUpdate = functionalUpdate(updater, old)) == null ? void 0 : _functionalUpdate.filter((filter2) => {
-          const column = leafColumns.find((d) => d.id === filter2.id);
-          if (column) {
-            const filterFn = column.getFilterFn();
-            if (shouldAutoRemoveFilter(filterFn, filter2.value, column)) {
-              return false;
-            }
-          }
-          return true;
-        });
-      };
-      table.options.onColumnFiltersChange == null || table.options.onColumnFiltersChange(updateFn);
-    };
-    table.resetColumnFilters = (defaultState) => {
-      var _table$initialState$c, _table$initialState;
-      table.setColumnFilters(defaultState ? [] : (_table$initialState$c = (_table$initialState = table.initialState) == null ? void 0 : _table$initialState.columnFilters) != null ? _table$initialState$c : []);
-    };
-    table.getPreFilteredRowModel = () => table.getCoreRowModel();
-    table.getFilteredRowModel = () => {
-      if (!table._getFilteredRowModel && table.options.getFilteredRowModel) {
-        table._getFilteredRowModel = table.options.getFilteredRowModel(table);
-      }
-      if (table.options.manualFiltering || !table._getFilteredRowModel) {
-        return table.getPreFilteredRowModel();
-      }
-      return table._getFilteredRowModel();
-    };
-  }
-};
-function shouldAutoRemoveFilter(filterFn, value2, column) {
-  return (filterFn && filterFn.autoRemove ? filterFn.autoRemove(value2, column) : false) || typeof value2 === "undefined" || typeof value2 === "string" && !value2;
-}
-const sum = (columnId, _leafRows, childRows) => {
-  return childRows.reduce((sum2, next) => {
-    const nextValue = next.getValue(columnId);
-    return sum2 + (typeof nextValue === "number" ? nextValue : 0);
-  }, 0);
-};
-const min$2 = (columnId, _leafRows, childRows) => {
-  let min2;
-  childRows.forEach((row) => {
-    const value2 = row.getValue(columnId);
-    if (value2 != null && (min2 > value2 || min2 === void 0 && value2 >= value2)) {
-      min2 = value2;
-    }
-  });
-  return min2;
-};
-const max$2 = (columnId, _leafRows, childRows) => {
-  let max2;
-  childRows.forEach((row) => {
-    const value2 = row.getValue(columnId);
-    if (value2 != null && (max2 < value2 || max2 === void 0 && value2 >= value2)) {
-      max2 = value2;
-    }
-  });
-  return max2;
-};
-const extent = (columnId, _leafRows, childRows) => {
-  let min2;
-  let max2;
-  childRows.forEach((row) => {
-    const value2 = row.getValue(columnId);
-    if (value2 != null) {
-      if (min2 === void 0) {
-        if (value2 >= value2) min2 = max2 = value2;
-      } else {
-        if (min2 > value2) min2 = value2;
-        if (max2 < value2) max2 = value2;
-      }
-    }
-  });
-  return [min2, max2];
-};
-const mean = (columnId, leafRows) => {
-  let count2 = 0;
-  let sum2 = 0;
-  leafRows.forEach((row) => {
-    let value2 = row.getValue(columnId);
-    if (value2 != null && (value2 = +value2) >= value2) {
-      ++count2, sum2 += value2;
-    }
-  });
-  if (count2) return sum2 / count2;
-  return;
-};
-const median = (columnId, leafRows) => {
-  if (!leafRows.length) {
-    return;
-  }
-  const values = leafRows.map((row) => row.getValue(columnId));
-  if (!isNumberArray(values)) {
-    return;
-  }
-  if (values.length === 1) {
-    return values[0];
-  }
-  const mid = Math.floor(values.length / 2);
-  const nums = values.sort((a, b) => a - b);
-  return values.length % 2 !== 0 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
-};
-const unique = (columnId, leafRows) => {
-  return Array.from(new Set(leafRows.map((d) => d.getValue(columnId))).values());
-};
-const uniqueCount = (columnId, leafRows) => {
-  return new Set(leafRows.map((d) => d.getValue(columnId))).size;
-};
-const count$2 = (_columnId, leafRows) => {
-  return leafRows.length;
-};
-const aggregationFns = {
-  sum,
-  min: min$2,
-  max: max$2,
-  extent,
-  mean,
-  median,
-  unique,
-  uniqueCount,
-  count: count$2
-};
-const ColumnGrouping = {
-  getDefaultColumnDef: () => {
-    return {
-      aggregatedCell: (props) => {
-        var _toString, _props$getValue;
-        return (_toString = (_props$getValue = props.getValue()) == null || _props$getValue.toString == null ? void 0 : _props$getValue.toString()) != null ? _toString : null;
-      },
-      aggregationFn: "auto"
-    };
-  },
-  getInitialState: (state) => {
-    return {
-      grouping: [],
-      ...state
-    };
-  },
-  getDefaultOptions: (table) => {
-    return {
-      onGroupingChange: makeStateUpdater("grouping", table),
-      groupedColumnMode: "reorder"
-    };
-  },
-  createColumn: (column, table) => {
-    column.toggleGrouping = () => {
-      table.setGrouping((old) => {
-        if (old != null && old.includes(column.id)) {
-          return old.filter((d) => d !== column.id);
-        }
-        return [...old != null ? old : [], column.id];
-      });
-    };
-    column.getCanGroup = () => {
-      var _column$columnDef$ena, _table$options$enable;
-      return ((_column$columnDef$ena = column.columnDef.enableGrouping) != null ? _column$columnDef$ena : true) && ((_table$options$enable = table.options.enableGrouping) != null ? _table$options$enable : true) && (!!column.accessorFn || !!column.columnDef.getGroupingValue);
-    };
-    column.getIsGrouped = () => {
-      var _table$getState$group;
-      return (_table$getState$group = table.getState().grouping) == null ? void 0 : _table$getState$group.includes(column.id);
-    };
-    column.getGroupedIndex = () => {
-      var _table$getState$group2;
-      return (_table$getState$group2 = table.getState().grouping) == null ? void 0 : _table$getState$group2.indexOf(column.id);
-    };
-    column.getToggleGroupingHandler = () => {
-      const canGroup = column.getCanGroup();
-      return () => {
-        if (!canGroup) return;
-        column.toggleGrouping();
-      };
-    };
-    column.getAutoAggregationFn = () => {
-      const firstRow = table.getCoreRowModel().flatRows[0];
-      const value2 = firstRow == null ? void 0 : firstRow.getValue(column.id);
-      if (typeof value2 === "number") {
-        return aggregationFns.sum;
-      }
-      if (Object.prototype.toString.call(value2) === "[object Date]") {
-        return aggregationFns.extent;
-      }
-    };
-    column.getAggregationFn = () => {
-      var _table$options$aggreg, _table$options$aggreg2;
-      if (!column) {
-        throw new Error();
-      }
-      return isFunction(column.columnDef.aggregationFn) ? column.columnDef.aggregationFn : column.columnDef.aggregationFn === "auto" ? column.getAutoAggregationFn() : (_table$options$aggreg = (_table$options$aggreg2 = table.options.aggregationFns) == null ? void 0 : _table$options$aggreg2[column.columnDef.aggregationFn]) != null ? _table$options$aggreg : aggregationFns[column.columnDef.aggregationFn];
-    };
-  },
-  createTable: (table) => {
-    table.setGrouping = (updater) => table.options.onGroupingChange == null ? void 0 : table.options.onGroupingChange(updater);
-    table.resetGrouping = (defaultState) => {
-      var _table$initialState$g, _table$initialState;
-      table.setGrouping(defaultState ? [] : (_table$initialState$g = (_table$initialState = table.initialState) == null ? void 0 : _table$initialState.grouping) != null ? _table$initialState$g : []);
-    };
-    table.getPreGroupedRowModel = () => table.getFilteredRowModel();
-    table.getGroupedRowModel = () => {
-      if (!table._getGroupedRowModel && table.options.getGroupedRowModel) {
-        table._getGroupedRowModel = table.options.getGroupedRowModel(table);
-      }
-      if (table.options.manualGrouping || !table._getGroupedRowModel) {
-        return table.getPreGroupedRowModel();
-      }
-      return table._getGroupedRowModel();
-    };
-  },
-  createRow: (row, table) => {
-    row.getIsGrouped = () => !!row.groupingColumnId;
-    row.getGroupingValue = (columnId) => {
-      if (row._groupingValuesCache.hasOwnProperty(columnId)) {
-        return row._groupingValuesCache[columnId];
-      }
-      const column = table.getColumn(columnId);
-      if (!(column != null && column.columnDef.getGroupingValue)) {
-        return row.getValue(columnId);
-      }
-      row._groupingValuesCache[columnId] = column.columnDef.getGroupingValue(row.original);
-      return row._groupingValuesCache[columnId];
-    };
-    row._groupingValuesCache = {};
-  },
-  createCell: (cell, column, row, table) => {
-    cell.getIsGrouped = () => column.getIsGrouped() && column.id === row.groupingColumnId;
-    cell.getIsPlaceholder = () => !cell.getIsGrouped() && column.getIsGrouped();
-    cell.getIsAggregated = () => {
-      var _row$subRows;
-      return !cell.getIsGrouped() && !cell.getIsPlaceholder() && !!((_row$subRows = row.subRows) != null && _row$subRows.length);
-    };
-  }
-};
-function orderColumns(leafColumns, grouping, groupedColumnMode) {
-  if (!(grouping != null && grouping.length) || !groupedColumnMode) {
-    return leafColumns;
-  }
-  const nonGroupingColumns = leafColumns.filter((col) => !grouping.includes(col.id));
-  if (groupedColumnMode === "remove") {
-    return nonGroupingColumns;
-  }
-  const groupingColumns = grouping.map((g) => leafColumns.find((col) => col.id === g)).filter(Boolean);
-  return [...groupingColumns, ...nonGroupingColumns];
-}
-const ColumnOrdering = {
-  getInitialState: (state) => {
-    return {
-      columnOrder: [],
-      ...state
-    };
-  },
-  getDefaultOptions: (table) => {
-    return {
-      onColumnOrderChange: makeStateUpdater("columnOrder", table)
-    };
-  },
-  createColumn: (column, table) => {
-    column.getIndex = memo((position2) => [_getVisibleLeafColumns(table, position2)], (columns) => columns.findIndex((d) => d.id === column.id), getMemoOptions(table.options, "debugColumns", "getIndex"));
-    column.getIsFirstColumn = (position2) => {
-      var _columns$;
-      const columns = _getVisibleLeafColumns(table, position2);
-      return ((_columns$ = columns[0]) == null ? void 0 : _columns$.id) === column.id;
-    };
-    column.getIsLastColumn = (position2) => {
-      var _columns;
-      const columns = _getVisibleLeafColumns(table, position2);
-      return ((_columns = columns[columns.length - 1]) == null ? void 0 : _columns.id) === column.id;
-    };
-  },
-  createTable: (table) => {
-    table.setColumnOrder = (updater) => table.options.onColumnOrderChange == null ? void 0 : table.options.onColumnOrderChange(updater);
-    table.resetColumnOrder = (defaultState) => {
-      var _table$initialState$c;
-      table.setColumnOrder(defaultState ? [] : (_table$initialState$c = table.initialState.columnOrder) != null ? _table$initialState$c : []);
-    };
-    table._getOrderColumnsFn = memo(() => [table.getState().columnOrder, table.getState().grouping, table.options.groupedColumnMode], (columnOrder, grouping, groupedColumnMode) => (columns) => {
-      let orderedColumns = [];
-      if (!(columnOrder != null && columnOrder.length)) {
-        orderedColumns = columns;
-      } else {
-        const columnOrderCopy = [...columnOrder];
-        const columnsCopy = [...columns];
-        while (columnsCopy.length && columnOrderCopy.length) {
-          const targetColumnId = columnOrderCopy.shift();
-          const foundIndex = columnsCopy.findIndex((d) => d.id === targetColumnId);
-          if (foundIndex > -1) {
-            orderedColumns.push(columnsCopy.splice(foundIndex, 1)[0]);
-          }
-        }
-        orderedColumns = [...orderedColumns, ...columnsCopy];
-      }
-      return orderColumns(orderedColumns, grouping, groupedColumnMode);
-    }, getMemoOptions(table.options, "debugTable", "_getOrderColumnsFn"));
-  }
-};
-const getDefaultColumnPinningState = () => ({
-  left: [],
-  right: []
-});
-const ColumnPinning = {
-  getInitialState: (state) => {
-    return {
-      columnPinning: getDefaultColumnPinningState(),
-      ...state
-    };
-  },
-  getDefaultOptions: (table) => {
-    return {
-      onColumnPinningChange: makeStateUpdater("columnPinning", table)
-    };
-  },
-  createColumn: (column, table) => {
-    column.pin = (position2) => {
-      const columnIds = column.getLeafColumns().map((d) => d.id).filter(Boolean);
-      table.setColumnPinning((old) => {
-        var _old$left3, _old$right3;
-        if (position2 === "right") {
-          var _old$left, _old$right;
-          return {
-            left: ((_old$left = old == null ? void 0 : old.left) != null ? _old$left : []).filter((d) => !(columnIds != null && columnIds.includes(d))),
-            right: [...((_old$right = old == null ? void 0 : old.right) != null ? _old$right : []).filter((d) => !(columnIds != null && columnIds.includes(d))), ...columnIds]
-          };
-        }
-        if (position2 === "left") {
-          var _old$left2, _old$right2;
-          return {
-            left: [...((_old$left2 = old == null ? void 0 : old.left) != null ? _old$left2 : []).filter((d) => !(columnIds != null && columnIds.includes(d))), ...columnIds],
-            right: ((_old$right2 = old == null ? void 0 : old.right) != null ? _old$right2 : []).filter((d) => !(columnIds != null && columnIds.includes(d)))
-          };
-        }
-        return {
-          left: ((_old$left3 = old == null ? void 0 : old.left) != null ? _old$left3 : []).filter((d) => !(columnIds != null && columnIds.includes(d))),
-          right: ((_old$right3 = old == null ? void 0 : old.right) != null ? _old$right3 : []).filter((d) => !(columnIds != null && columnIds.includes(d)))
-        };
-      });
-    };
-    column.getCanPin = () => {
-      const leafColumns = column.getLeafColumns();
-      return leafColumns.some((d) => {
-        var _d$columnDef$enablePi, _ref, _table$options$enable;
-        return ((_d$columnDef$enablePi = d.columnDef.enablePinning) != null ? _d$columnDef$enablePi : true) && ((_ref = (_table$options$enable = table.options.enableColumnPinning) != null ? _table$options$enable : table.options.enablePinning) != null ? _ref : true);
-      });
-    };
-    column.getIsPinned = () => {
-      const leafColumnIds = column.getLeafColumns().map((d) => d.id);
-      const {
-        left: left2,
-        right: right2
-      } = table.getState().columnPinning;
-      const isLeft = leafColumnIds.some((d) => left2 == null ? void 0 : left2.includes(d));
-      const isRight = leafColumnIds.some((d) => right2 == null ? void 0 : right2.includes(d));
-      return isLeft ? "left" : isRight ? "right" : false;
-    };
-    column.getPinnedIndex = () => {
-      var _table$getState$colum, _table$getState$colum2;
-      const position2 = column.getIsPinned();
-      return position2 ? (_table$getState$colum = (_table$getState$colum2 = table.getState().columnPinning) == null || (_table$getState$colum2 = _table$getState$colum2[position2]) == null ? void 0 : _table$getState$colum2.indexOf(column.id)) != null ? _table$getState$colum : -1 : 0;
-    };
-  },
-  createRow: (row, table) => {
-    row.getCenterVisibleCells = memo(() => [row._getAllVisibleCells(), table.getState().columnPinning.left, table.getState().columnPinning.right], (allCells, left2, right2) => {
-      const leftAndRight = [...left2 != null ? left2 : [], ...right2 != null ? right2 : []];
-      return allCells.filter((d) => !leftAndRight.includes(d.column.id));
-    }, getMemoOptions(table.options, "debugRows", "getCenterVisibleCells"));
-    row.getLeftVisibleCells = memo(() => [row._getAllVisibleCells(), table.getState().columnPinning.left], (allCells, left2) => {
-      const cells = (left2 != null ? left2 : []).map((columnId) => allCells.find((cell) => cell.column.id === columnId)).filter(Boolean).map((d) => ({
-        ...d,
-        position: "left"
-      }));
-      return cells;
-    }, getMemoOptions(table.options, "debugRows", "getLeftVisibleCells"));
-    row.getRightVisibleCells = memo(() => [row._getAllVisibleCells(), table.getState().columnPinning.right], (allCells, right2) => {
-      const cells = (right2 != null ? right2 : []).map((columnId) => allCells.find((cell) => cell.column.id === columnId)).filter(Boolean).map((d) => ({
-        ...d,
-        position: "right"
-      }));
-      return cells;
-    }, getMemoOptions(table.options, "debugRows", "getRightVisibleCells"));
-  },
-  createTable: (table) => {
-    table.setColumnPinning = (updater) => table.options.onColumnPinningChange == null ? void 0 : table.options.onColumnPinningChange(updater);
-    table.resetColumnPinning = (defaultState) => {
-      var _table$initialState$c, _table$initialState;
-      return table.setColumnPinning(defaultState ? getDefaultColumnPinningState() : (_table$initialState$c = (_table$initialState = table.initialState) == null ? void 0 : _table$initialState.columnPinning) != null ? _table$initialState$c : getDefaultColumnPinningState());
-    };
-    table.getIsSomeColumnsPinned = (position2) => {
-      var _pinningState$positio;
-      const pinningState = table.getState().columnPinning;
-      if (!position2) {
-        var _pinningState$left, _pinningState$right;
-        return Boolean(((_pinningState$left = pinningState.left) == null ? void 0 : _pinningState$left.length) || ((_pinningState$right = pinningState.right) == null ? void 0 : _pinningState$right.length));
-      }
-      return Boolean((_pinningState$positio = pinningState[position2]) == null ? void 0 : _pinningState$positio.length);
-    };
-    table.getLeftLeafColumns = memo(() => [table.getAllLeafColumns(), table.getState().columnPinning.left], (allColumns, left2) => {
-      return (left2 != null ? left2 : []).map((columnId) => allColumns.find((column) => column.id === columnId)).filter(Boolean);
-    }, getMemoOptions(table.options, "debugColumns", "getLeftLeafColumns"));
-    table.getRightLeafColumns = memo(() => [table.getAllLeafColumns(), table.getState().columnPinning.right], (allColumns, right2) => {
-      return (right2 != null ? right2 : []).map((columnId) => allColumns.find((column) => column.id === columnId)).filter(Boolean);
-    }, getMemoOptions(table.options, "debugColumns", "getRightLeafColumns"));
-    table.getCenterLeafColumns = memo(() => [table.getAllLeafColumns(), table.getState().columnPinning.left, table.getState().columnPinning.right], (allColumns, left2, right2) => {
-      const leftAndRight = [...left2 != null ? left2 : [], ...right2 != null ? right2 : []];
-      return allColumns.filter((d) => !leftAndRight.includes(d.id));
-    }, getMemoOptions(table.options, "debugColumns", "getCenterLeafColumns"));
-  }
-};
-const defaultColumnSizing = {
-  size: 150,
-  minSize: 20,
-  maxSize: Number.MAX_SAFE_INTEGER
-};
-const getDefaultColumnSizingInfoState = () => ({
-  startOffset: null,
-  startSize: null,
-  deltaOffset: null,
-  deltaPercentage: null,
-  isResizingColumn: false,
-  columnSizingStart: []
-});
-const ColumnSizing = {
-  getDefaultColumnDef: () => {
-    return defaultColumnSizing;
-  },
-  getInitialState: (state) => {
-    return {
-      columnSizing: {},
-      columnSizingInfo: getDefaultColumnSizingInfoState(),
-      ...state
-    };
-  },
-  getDefaultOptions: (table) => {
-    return {
-      columnResizeMode: "onEnd",
-      columnResizeDirection: "ltr",
-      onColumnSizingChange: makeStateUpdater("columnSizing", table),
-      onColumnSizingInfoChange: makeStateUpdater("columnSizingInfo", table)
-    };
-  },
-  createColumn: (column, table) => {
-    column.getSize = () => {
-      var _column$columnDef$min, _ref, _column$columnDef$max;
-      const columnSize = table.getState().columnSizing[column.id];
-      return Math.min(Math.max((_column$columnDef$min = column.columnDef.minSize) != null ? _column$columnDef$min : defaultColumnSizing.minSize, (_ref = columnSize != null ? columnSize : column.columnDef.size) != null ? _ref : defaultColumnSizing.size), (_column$columnDef$max = column.columnDef.maxSize) != null ? _column$columnDef$max : defaultColumnSizing.maxSize);
-    };
-    column.getStart = memo((position2) => [position2, _getVisibleLeafColumns(table, position2), table.getState().columnSizing], (position2, columns) => columns.slice(0, column.getIndex(position2)).reduce((sum2, column2) => sum2 + column2.getSize(), 0), getMemoOptions(table.options, "debugColumns", "getStart"));
-    column.getAfter = memo((position2) => [position2, _getVisibleLeafColumns(table, position2), table.getState().columnSizing], (position2, columns) => columns.slice(column.getIndex(position2) + 1).reduce((sum2, column2) => sum2 + column2.getSize(), 0), getMemoOptions(table.options, "debugColumns", "getAfter"));
-    column.resetSize = () => {
-      table.setColumnSizing((_ref2) => {
-        let {
-          [column.id]: _,
-          ...rest
-        } = _ref2;
-        return rest;
-      });
-    };
-    column.getCanResize = () => {
-      var _column$columnDef$ena, _table$options$enable;
-      return ((_column$columnDef$ena = column.columnDef.enableResizing) != null ? _column$columnDef$ena : true) && ((_table$options$enable = table.options.enableColumnResizing) != null ? _table$options$enable : true);
-    };
-    column.getIsResizing = () => {
-      return table.getState().columnSizingInfo.isResizingColumn === column.id;
-    };
-  },
-  createHeader: (header, table) => {
-    header.getSize = () => {
-      let sum2 = 0;
-      const recurse = (header2) => {
-        if (header2.subHeaders.length) {
-          header2.subHeaders.forEach(recurse);
-        } else {
-          var _header$column$getSiz;
-          sum2 += (_header$column$getSiz = header2.column.getSize()) != null ? _header$column$getSiz : 0;
-        }
-      };
-      recurse(header);
-      return sum2;
-    };
-    header.getStart = () => {
-      if (header.index > 0) {
-        const prevSiblingHeader = header.headerGroup.headers[header.index - 1];
-        return prevSiblingHeader.getStart() + prevSiblingHeader.getSize();
-      }
-      return 0;
-    };
-    header.getResizeHandler = (_contextDocument) => {
-      const column = table.getColumn(header.column.id);
-      const canResize = column == null ? void 0 : column.getCanResize();
-      return (e) => {
-        if (!column || !canResize) {
-          return;
-        }
-        e.persist == null || e.persist();
-        if (isTouchStartEvent(e)) {
-          if (e.touches && e.touches.length > 1) {
-            return;
-          }
-        }
-        const startSize = header.getSize();
-        const columnSizingStart = header ? header.getLeafHeaders().map((d) => [d.column.id, d.column.getSize()]) : [[column.id, column.getSize()]];
-        const clientX = isTouchStartEvent(e) ? Math.round(e.touches[0].clientX) : e.clientX;
-        const newColumnSizing = {};
-        const updateOffset = (eventType, clientXPos) => {
-          if (typeof clientXPos !== "number") {
-            return;
-          }
-          table.setColumnSizingInfo((old) => {
-            var _old$startOffset, _old$startSize;
-            const deltaDirection = table.options.columnResizeDirection === "rtl" ? -1 : 1;
-            const deltaOffset = (clientXPos - ((_old$startOffset = old == null ? void 0 : old.startOffset) != null ? _old$startOffset : 0)) * deltaDirection;
-            const deltaPercentage = Math.max(deltaOffset / ((_old$startSize = old == null ? void 0 : old.startSize) != null ? _old$startSize : 0), -0.999999);
-            old.columnSizingStart.forEach((_ref3) => {
-              let [columnId, headerSize] = _ref3;
-              newColumnSizing[columnId] = Math.round(Math.max(headerSize + headerSize * deltaPercentage, 0) * 100) / 100;
-            });
-            return {
-              ...old,
-              deltaOffset,
-              deltaPercentage
-            };
-          });
-          if (table.options.columnResizeMode === "onChange" || eventType === "end") {
-            table.setColumnSizing((old) => ({
-              ...old,
-              ...newColumnSizing
-            }));
-          }
-        };
-        const onMove = (clientXPos) => updateOffset("move", clientXPos);
-        const onEnd = (clientXPos) => {
-          updateOffset("end", clientXPos);
-          table.setColumnSizingInfo((old) => ({
-            ...old,
-            isResizingColumn: false,
-            startOffset: null,
-            startSize: null,
-            deltaOffset: null,
-            deltaPercentage: null,
-            columnSizingStart: []
-          }));
-        };
-        const contextDocument = _contextDocument || typeof document !== "undefined" ? document : null;
-        const mouseEvents = {
-          moveHandler: (e2) => onMove(e2.clientX),
-          upHandler: (e2) => {
-            contextDocument == null || contextDocument.removeEventListener("mousemove", mouseEvents.moveHandler);
-            contextDocument == null || contextDocument.removeEventListener("mouseup", mouseEvents.upHandler);
-            onEnd(e2.clientX);
-          }
-        };
-        const touchEvents = {
-          moveHandler: (e2) => {
-            if (e2.cancelable) {
-              e2.preventDefault();
-              e2.stopPropagation();
-            }
-            onMove(e2.touches[0].clientX);
-            return false;
-          },
-          upHandler: (e2) => {
-            var _e$touches$;
-            contextDocument == null || contextDocument.removeEventListener("touchmove", touchEvents.moveHandler);
-            contextDocument == null || contextDocument.removeEventListener("touchend", touchEvents.upHandler);
-            if (e2.cancelable) {
-              e2.preventDefault();
-              e2.stopPropagation();
-            }
-            onEnd((_e$touches$ = e2.touches[0]) == null ? void 0 : _e$touches$.clientX);
-          }
-        };
-        const passiveIfSupported = passiveEventSupported() ? {
-          passive: false
-        } : false;
-        if (isTouchStartEvent(e)) {
-          contextDocument == null || contextDocument.addEventListener("touchmove", touchEvents.moveHandler, passiveIfSupported);
-          contextDocument == null || contextDocument.addEventListener("touchend", touchEvents.upHandler, passiveIfSupported);
-        } else {
-          contextDocument == null || contextDocument.addEventListener("mousemove", mouseEvents.moveHandler, passiveIfSupported);
-          contextDocument == null || contextDocument.addEventListener("mouseup", mouseEvents.upHandler, passiveIfSupported);
-        }
-        table.setColumnSizingInfo((old) => ({
-          ...old,
-          startOffset: clientX,
-          startSize,
-          deltaOffset: 0,
-          deltaPercentage: 0,
-          columnSizingStart,
-          isResizingColumn: column.id
-        }));
-      };
-    };
-  },
-  createTable: (table) => {
-    table.setColumnSizing = (updater) => table.options.onColumnSizingChange == null ? void 0 : table.options.onColumnSizingChange(updater);
-    table.setColumnSizingInfo = (updater) => table.options.onColumnSizingInfoChange == null ? void 0 : table.options.onColumnSizingInfoChange(updater);
-    table.resetColumnSizing = (defaultState) => {
-      var _table$initialState$c;
-      table.setColumnSizing(defaultState ? {} : (_table$initialState$c = table.initialState.columnSizing) != null ? _table$initialState$c : {});
-    };
-    table.resetHeaderSizeInfo = (defaultState) => {
-      var _table$initialState$c2;
-      table.setColumnSizingInfo(defaultState ? getDefaultColumnSizingInfoState() : (_table$initialState$c2 = table.initialState.columnSizingInfo) != null ? _table$initialState$c2 : getDefaultColumnSizingInfoState());
-    };
-    table.getTotalSize = () => {
-      var _table$getHeaderGroup, _table$getHeaderGroup2;
-      return (_table$getHeaderGroup = (_table$getHeaderGroup2 = table.getHeaderGroups()[0]) == null ? void 0 : _table$getHeaderGroup2.headers.reduce((sum2, header) => {
-        return sum2 + header.getSize();
-      }, 0)) != null ? _table$getHeaderGroup : 0;
-    };
-    table.getLeftTotalSize = () => {
-      var _table$getLeftHeaderG, _table$getLeftHeaderG2;
-      return (_table$getLeftHeaderG = (_table$getLeftHeaderG2 = table.getLeftHeaderGroups()[0]) == null ? void 0 : _table$getLeftHeaderG2.headers.reduce((sum2, header) => {
-        return sum2 + header.getSize();
-      }, 0)) != null ? _table$getLeftHeaderG : 0;
-    };
-    table.getCenterTotalSize = () => {
-      var _table$getCenterHeade, _table$getCenterHeade2;
-      return (_table$getCenterHeade = (_table$getCenterHeade2 = table.getCenterHeaderGroups()[0]) == null ? void 0 : _table$getCenterHeade2.headers.reduce((sum2, header) => {
-        return sum2 + header.getSize();
-      }, 0)) != null ? _table$getCenterHeade : 0;
-    };
-    table.getRightTotalSize = () => {
-      var _table$getRightHeader, _table$getRightHeader2;
-      return (_table$getRightHeader = (_table$getRightHeader2 = table.getRightHeaderGroups()[0]) == null ? void 0 : _table$getRightHeader2.headers.reduce((sum2, header) => {
-        return sum2 + header.getSize();
-      }, 0)) != null ? _table$getRightHeader : 0;
-    };
-  }
-};
-let passiveSupported = null;
-function passiveEventSupported() {
-  if (typeof passiveSupported === "boolean") return passiveSupported;
-  let supported = false;
-  try {
-    const options = {
-      get passive() {
-        supported = true;
-        return false;
-      }
-    };
-    const noop2 = () => {
-    };
-    window.addEventListener("test", noop2, options);
-    window.removeEventListener("test", noop2);
-  } catch (err) {
-    supported = false;
-  }
-  passiveSupported = supported;
-  return passiveSupported;
-}
-function isTouchStartEvent(e) {
-  return e.type === "touchstart";
-}
-const ColumnVisibility = {
-  getInitialState: (state) => {
-    return {
-      columnVisibility: {},
-      ...state
-    };
-  },
-  getDefaultOptions: (table) => {
-    return {
-      onColumnVisibilityChange: makeStateUpdater("columnVisibility", table)
-    };
-  },
-  createColumn: (column, table) => {
-    column.toggleVisibility = (value2) => {
-      if (column.getCanHide()) {
-        table.setColumnVisibility((old) => ({
-          ...old,
-          [column.id]: value2 != null ? value2 : !column.getIsVisible()
-        }));
-      }
-    };
-    column.getIsVisible = () => {
-      var _ref, _table$getState$colum;
-      const childColumns = column.columns;
-      return (_ref = childColumns.length ? childColumns.some((c) => c.getIsVisible()) : (_table$getState$colum = table.getState().columnVisibility) == null ? void 0 : _table$getState$colum[column.id]) != null ? _ref : true;
-    };
-    column.getCanHide = () => {
-      var _column$columnDef$ena, _table$options$enable;
-      return ((_column$columnDef$ena = column.columnDef.enableHiding) != null ? _column$columnDef$ena : true) && ((_table$options$enable = table.options.enableHiding) != null ? _table$options$enable : true);
-    };
-    column.getToggleVisibilityHandler = () => {
-      return (e) => {
-        column.toggleVisibility == null || column.toggleVisibility(e.target.checked);
-      };
-    };
-  },
-  createRow: (row, table) => {
-    row._getAllVisibleCells = memo(() => [row.getAllCells(), table.getState().columnVisibility], (cells) => {
-      return cells.filter((cell) => cell.column.getIsVisible());
-    }, getMemoOptions(table.options, "debugRows", "_getAllVisibleCells"));
-    row.getVisibleCells = memo(() => [row.getLeftVisibleCells(), row.getCenterVisibleCells(), row.getRightVisibleCells()], (left2, center2, right2) => [...left2, ...center2, ...right2], getMemoOptions(table.options, "debugRows", "getVisibleCells"));
-  },
-  createTable: (table) => {
-    const makeVisibleColumnsMethod = (key, getColumns) => {
-      return memo(() => [getColumns(), getColumns().filter((d) => d.getIsVisible()).map((d) => d.id).join("_")], (columns) => {
-        return columns.filter((d) => d.getIsVisible == null ? void 0 : d.getIsVisible());
-      }, getMemoOptions(table.options, "debugColumns", key));
-    };
-    table.getVisibleFlatColumns = makeVisibleColumnsMethod("getVisibleFlatColumns", () => table.getAllFlatColumns());
-    table.getVisibleLeafColumns = makeVisibleColumnsMethod("getVisibleLeafColumns", () => table.getAllLeafColumns());
-    table.getLeftVisibleLeafColumns = makeVisibleColumnsMethod("getLeftVisibleLeafColumns", () => table.getLeftLeafColumns());
-    table.getRightVisibleLeafColumns = makeVisibleColumnsMethod("getRightVisibleLeafColumns", () => table.getRightLeafColumns());
-    table.getCenterVisibleLeafColumns = makeVisibleColumnsMethod("getCenterVisibleLeafColumns", () => table.getCenterLeafColumns());
-    table.setColumnVisibility = (updater) => table.options.onColumnVisibilityChange == null ? void 0 : table.options.onColumnVisibilityChange(updater);
-    table.resetColumnVisibility = (defaultState) => {
-      var _table$initialState$c;
-      table.setColumnVisibility(defaultState ? {} : (_table$initialState$c = table.initialState.columnVisibility) != null ? _table$initialState$c : {});
-    };
-    table.toggleAllColumnsVisible = (value2) => {
-      var _value;
-      value2 = (_value = value2) != null ? _value : !table.getIsAllColumnsVisible();
-      table.setColumnVisibility(table.getAllLeafColumns().reduce((obj, column) => ({
-        ...obj,
-        [column.id]: !value2 ? !(column.getCanHide != null && column.getCanHide()) : value2
-      }), {}));
-    };
-    table.getIsAllColumnsVisible = () => !table.getAllLeafColumns().some((column) => !(column.getIsVisible != null && column.getIsVisible()));
-    table.getIsSomeColumnsVisible = () => table.getAllLeafColumns().some((column) => column.getIsVisible == null ? void 0 : column.getIsVisible());
-    table.getToggleAllColumnsVisibilityHandler = () => {
-      return (e) => {
-        var _target;
-        table.toggleAllColumnsVisible((_target = e.target) == null ? void 0 : _target.checked);
-      };
-    };
-  }
-};
-function _getVisibleLeafColumns(table, position2) {
-  return !position2 ? table.getVisibleLeafColumns() : position2 === "center" ? table.getCenterVisibleLeafColumns() : position2 === "left" ? table.getLeftVisibleLeafColumns() : table.getRightVisibleLeafColumns();
-}
-const GlobalFaceting = {
-  createTable: (table) => {
-    table._getGlobalFacetedRowModel = table.options.getFacetedRowModel && table.options.getFacetedRowModel(table, "__global__");
-    table.getGlobalFacetedRowModel = () => {
-      if (table.options.manualFiltering || !table._getGlobalFacetedRowModel) {
-        return table.getPreFilteredRowModel();
-      }
-      return table._getGlobalFacetedRowModel();
-    };
-    table._getGlobalFacetedUniqueValues = table.options.getFacetedUniqueValues && table.options.getFacetedUniqueValues(table, "__global__");
-    table.getGlobalFacetedUniqueValues = () => {
-      if (!table._getGlobalFacetedUniqueValues) {
-        return /* @__PURE__ */ new Map();
-      }
-      return table._getGlobalFacetedUniqueValues();
-    };
-    table._getGlobalFacetedMinMaxValues = table.options.getFacetedMinMaxValues && table.options.getFacetedMinMaxValues(table, "__global__");
-    table.getGlobalFacetedMinMaxValues = () => {
-      if (!table._getGlobalFacetedMinMaxValues) {
-        return;
-      }
-      return table._getGlobalFacetedMinMaxValues();
-    };
-  }
-};
-const GlobalFiltering = {
-  getInitialState: (state) => {
-    return {
-      globalFilter: void 0,
-      ...state
-    };
-  },
-  getDefaultOptions: (table) => {
-    return {
-      onGlobalFilterChange: makeStateUpdater("globalFilter", table),
-      globalFilterFn: "auto",
-      getColumnCanGlobalFilter: (column) => {
-        var _table$getCoreRowMode;
-        const value2 = (_table$getCoreRowMode = table.getCoreRowModel().flatRows[0]) == null || (_table$getCoreRowMode = _table$getCoreRowMode._getAllCellsByColumnId()[column.id]) == null ? void 0 : _table$getCoreRowMode.getValue();
-        return typeof value2 === "string" || typeof value2 === "number";
-      }
-    };
-  },
-  createColumn: (column, table) => {
-    column.getCanGlobalFilter = () => {
-      var _column$columnDef$ena, _table$options$enable, _table$options$enable2, _table$options$getCol;
-      return ((_column$columnDef$ena = column.columnDef.enableGlobalFilter) != null ? _column$columnDef$ena : true) && ((_table$options$enable = table.options.enableGlobalFilter) != null ? _table$options$enable : true) && ((_table$options$enable2 = table.options.enableFilters) != null ? _table$options$enable2 : true) && ((_table$options$getCol = table.options.getColumnCanGlobalFilter == null ? void 0 : table.options.getColumnCanGlobalFilter(column)) != null ? _table$options$getCol : true) && !!column.accessorFn;
-    };
-  },
-  createTable: (table) => {
-    table.getGlobalAutoFilterFn = () => {
-      return filterFns.includesString;
-    };
-    table.getGlobalFilterFn = () => {
-      var _table$options$filter, _table$options$filter2;
-      const {
-        globalFilterFn
-      } = table.options;
-      return isFunction(globalFilterFn) ? globalFilterFn : globalFilterFn === "auto" ? table.getGlobalAutoFilterFn() : (_table$options$filter = (_table$options$filter2 = table.options.filterFns) == null ? void 0 : _table$options$filter2[globalFilterFn]) != null ? _table$options$filter : filterFns[globalFilterFn];
-    };
-    table.setGlobalFilter = (updater) => {
-      table.options.onGlobalFilterChange == null || table.options.onGlobalFilterChange(updater);
-    };
-    table.resetGlobalFilter = (defaultState) => {
-      table.setGlobalFilter(defaultState ? void 0 : table.initialState.globalFilter);
-    };
-  }
-};
-const RowExpanding = {
-  getInitialState: (state) => {
-    return {
-      expanded: {},
-      ...state
-    };
-  },
-  getDefaultOptions: (table) => {
-    return {
-      onExpandedChange: makeStateUpdater("expanded", table),
-      paginateExpandedRows: true
-    };
-  },
-  createTable: (table) => {
-    let registered = false;
-    let queued = false;
-    table._autoResetExpanded = () => {
-      var _ref, _table$options$autoRe;
-      if (!registered) {
-        table._queue(() => {
-          registered = true;
-        });
-        return;
-      }
-      if ((_ref = (_table$options$autoRe = table.options.autoResetAll) != null ? _table$options$autoRe : table.options.autoResetExpanded) != null ? _ref : !table.options.manualExpanding) {
-        if (queued) return;
-        queued = true;
-        table._queue(() => {
-          table.resetExpanded();
-          queued = false;
-        });
-      }
-    };
-    table.setExpanded = (updater) => table.options.onExpandedChange == null ? void 0 : table.options.onExpandedChange(updater);
-    table.toggleAllRowsExpanded = (expanded) => {
-      if (expanded != null ? expanded : !table.getIsAllRowsExpanded()) {
-        table.setExpanded(true);
-      } else {
-        table.setExpanded({});
-      }
-    };
-    table.resetExpanded = (defaultState) => {
-      var _table$initialState$e, _table$initialState;
-      table.setExpanded(defaultState ? {} : (_table$initialState$e = (_table$initialState = table.initialState) == null ? void 0 : _table$initialState.expanded) != null ? _table$initialState$e : {});
-    };
-    table.getCanSomeRowsExpand = () => {
-      return table.getPrePaginationRowModel().flatRows.some((row) => row.getCanExpand());
-    };
-    table.getToggleAllRowsExpandedHandler = () => {
-      return (e) => {
-        e.persist == null || e.persist();
-        table.toggleAllRowsExpanded();
-      };
-    };
-    table.getIsSomeRowsExpanded = () => {
-      const expanded = table.getState().expanded;
-      return expanded === true || Object.values(expanded).some(Boolean);
-    };
-    table.getIsAllRowsExpanded = () => {
-      const expanded = table.getState().expanded;
-      if (typeof expanded === "boolean") {
-        return expanded === true;
-      }
-      if (!Object.keys(expanded).length) {
-        return false;
-      }
-      if (table.getRowModel().flatRows.some((row) => !row.getIsExpanded())) {
-        return false;
-      }
-      return true;
-    };
-    table.getExpandedDepth = () => {
-      let maxDepth = 0;
-      const rowIds = table.getState().expanded === true ? Object.keys(table.getRowModel().rowsById) : Object.keys(table.getState().expanded);
-      rowIds.forEach((id2) => {
-        const splitId = id2.split(".");
-        maxDepth = Math.max(maxDepth, splitId.length);
-      });
-      return maxDepth;
-    };
-    table.getPreExpandedRowModel = () => table.getSortedRowModel();
-    table.getExpandedRowModel = () => {
-      if (!table._getExpandedRowModel && table.options.getExpandedRowModel) {
-        table._getExpandedRowModel = table.options.getExpandedRowModel(table);
-      }
-      if (table.options.manualExpanding || !table._getExpandedRowModel) {
-        return table.getPreExpandedRowModel();
-      }
-      return table._getExpandedRowModel();
-    };
-  },
-  createRow: (row, table) => {
-    row.toggleExpanded = (expanded) => {
-      table.setExpanded((old) => {
-        var _expanded;
-        const exists = old === true ? true : !!(old != null && old[row.id]);
-        let oldExpanded = {};
-        if (old === true) {
-          Object.keys(table.getRowModel().rowsById).forEach((rowId) => {
-            oldExpanded[rowId] = true;
-          });
-        } else {
-          oldExpanded = old;
-        }
-        expanded = (_expanded = expanded) != null ? _expanded : !exists;
-        if (!exists && expanded) {
-          return {
-            ...oldExpanded,
-            [row.id]: true
-          };
-        }
-        if (exists && !expanded) {
-          const {
-            [row.id]: _,
-            ...rest
-          } = oldExpanded;
-          return rest;
-        }
-        return old;
-      });
-    };
-    row.getIsExpanded = () => {
-      var _table$options$getIsR;
-      const expanded = table.getState().expanded;
-      return !!((_table$options$getIsR = table.options.getIsRowExpanded == null ? void 0 : table.options.getIsRowExpanded(row)) != null ? _table$options$getIsR : expanded === true || (expanded == null ? void 0 : expanded[row.id]));
-    };
-    row.getCanExpand = () => {
-      var _table$options$getRow, _table$options$enable, _row$subRows;
-      return (_table$options$getRow = table.options.getRowCanExpand == null ? void 0 : table.options.getRowCanExpand(row)) != null ? _table$options$getRow : ((_table$options$enable = table.options.enableExpanding) != null ? _table$options$enable : true) && !!((_row$subRows = row.subRows) != null && _row$subRows.length);
-    };
-    row.getIsAllParentsExpanded = () => {
-      let isFullyExpanded = true;
-      let currentRow = row;
-      while (isFullyExpanded && currentRow.parentId) {
-        currentRow = table.getRow(currentRow.parentId, true);
-        isFullyExpanded = currentRow.getIsExpanded();
-      }
-      return isFullyExpanded;
-    };
-    row.getToggleExpandedHandler = () => {
-      const canExpand = row.getCanExpand();
-      return () => {
-        if (!canExpand) return;
-        row.toggleExpanded();
-      };
-    };
-  }
-};
-const defaultPageIndex = 0;
-const defaultPageSize = 10;
-const getDefaultPaginationState = () => ({
-  pageIndex: defaultPageIndex,
-  pageSize: defaultPageSize
-});
-const RowPagination = {
-  getInitialState: (state) => {
-    return {
-      ...state,
-      pagination: {
-        ...getDefaultPaginationState(),
-        ...state == null ? void 0 : state.pagination
-      }
-    };
-  },
-  getDefaultOptions: (table) => {
-    return {
-      onPaginationChange: makeStateUpdater("pagination", table)
-    };
-  },
-  createTable: (table) => {
-    let registered = false;
-    let queued = false;
-    table._autoResetPageIndex = () => {
-      var _ref, _table$options$autoRe;
-      if (!registered) {
-        table._queue(() => {
-          registered = true;
-        });
-        return;
-      }
-      if ((_ref = (_table$options$autoRe = table.options.autoResetAll) != null ? _table$options$autoRe : table.options.autoResetPageIndex) != null ? _ref : !table.options.manualPagination) {
-        if (queued) return;
-        queued = true;
-        table._queue(() => {
-          table.resetPageIndex();
-          queued = false;
-        });
-      }
-    };
-    table.setPagination = (updater) => {
-      const safeUpdater = (old) => {
-        let newState = functionalUpdate(updater, old);
-        return newState;
-      };
-      return table.options.onPaginationChange == null ? void 0 : table.options.onPaginationChange(safeUpdater);
-    };
-    table.resetPagination = (defaultState) => {
-      var _table$initialState$p;
-      table.setPagination(defaultState ? getDefaultPaginationState() : (_table$initialState$p = table.initialState.pagination) != null ? _table$initialState$p : getDefaultPaginationState());
-    };
-    table.setPageIndex = (updater) => {
-      table.setPagination((old) => {
-        let pageIndex = functionalUpdate(updater, old.pageIndex);
-        const maxPageIndex = typeof table.options.pageCount === "undefined" || table.options.pageCount === -1 ? Number.MAX_SAFE_INTEGER : table.options.pageCount - 1;
-        pageIndex = Math.max(0, Math.min(pageIndex, maxPageIndex));
-        return {
-          ...old,
-          pageIndex
-        };
-      });
-    };
-    table.resetPageIndex = (defaultState) => {
-      var _table$initialState$p2, _table$initialState;
-      table.setPageIndex(defaultState ? defaultPageIndex : (_table$initialState$p2 = (_table$initialState = table.initialState) == null || (_table$initialState = _table$initialState.pagination) == null ? void 0 : _table$initialState.pageIndex) != null ? _table$initialState$p2 : defaultPageIndex);
-    };
-    table.resetPageSize = (defaultState) => {
-      var _table$initialState$p3, _table$initialState2;
-      table.setPageSize(defaultState ? defaultPageSize : (_table$initialState$p3 = (_table$initialState2 = table.initialState) == null || (_table$initialState2 = _table$initialState2.pagination) == null ? void 0 : _table$initialState2.pageSize) != null ? _table$initialState$p3 : defaultPageSize);
-    };
-    table.setPageSize = (updater) => {
-      table.setPagination((old) => {
-        const pageSize = Math.max(1, functionalUpdate(updater, old.pageSize));
-        const topRowIndex = old.pageSize * old.pageIndex;
-        const pageIndex = Math.floor(topRowIndex / pageSize);
-        return {
-          ...old,
-          pageIndex,
-          pageSize
-        };
-      });
-    };
-    table.setPageCount = (updater) => table.setPagination((old) => {
-      var _table$options$pageCo;
-      let newPageCount = functionalUpdate(updater, (_table$options$pageCo = table.options.pageCount) != null ? _table$options$pageCo : -1);
-      if (typeof newPageCount === "number") {
-        newPageCount = Math.max(-1, newPageCount);
-      }
-      return {
-        ...old,
-        pageCount: newPageCount
-      };
-    });
-    table.getPageOptions = memo(() => [table.getPageCount()], (pageCount) => {
-      let pageOptions = [];
-      if (pageCount && pageCount > 0) {
-        pageOptions = [...new Array(pageCount)].fill(null).map((_, i2) => i2);
-      }
-      return pageOptions;
-    }, getMemoOptions(table.options, "debugTable", "getPageOptions"));
-    table.getCanPreviousPage = () => table.getState().pagination.pageIndex > 0;
-    table.getCanNextPage = () => {
-      const {
-        pageIndex
-      } = table.getState().pagination;
-      const pageCount = table.getPageCount();
-      if (pageCount === -1) {
-        return true;
-      }
-      if (pageCount === 0) {
-        return false;
-      }
-      return pageIndex < pageCount - 1;
-    };
-    table.previousPage = () => {
-      return table.setPageIndex((old) => old - 1);
-    };
-    table.nextPage = () => {
-      return table.setPageIndex((old) => {
-        return old + 1;
-      });
-    };
-    table.firstPage = () => {
-      return table.setPageIndex(0);
-    };
-    table.lastPage = () => {
-      return table.setPageIndex(table.getPageCount() - 1);
-    };
-    table.getPrePaginationRowModel = () => table.getExpandedRowModel();
-    table.getPaginationRowModel = () => {
-      if (!table._getPaginationRowModel && table.options.getPaginationRowModel) {
-        table._getPaginationRowModel = table.options.getPaginationRowModel(table);
-      }
-      if (table.options.manualPagination || !table._getPaginationRowModel) {
-        return table.getPrePaginationRowModel();
-      }
-      return table._getPaginationRowModel();
-    };
-    table.getPageCount = () => {
-      var _table$options$pageCo2;
-      return (_table$options$pageCo2 = table.options.pageCount) != null ? _table$options$pageCo2 : Math.ceil(table.getRowCount() / table.getState().pagination.pageSize);
-    };
-    table.getRowCount = () => {
-      var _table$options$rowCou;
-      return (_table$options$rowCou = table.options.rowCount) != null ? _table$options$rowCou : table.getPrePaginationRowModel().rows.length;
-    };
-  }
-};
-const getDefaultRowPinningState = () => ({
-  top: [],
-  bottom: []
-});
-const RowPinning = {
-  getInitialState: (state) => {
-    return {
-      rowPinning: getDefaultRowPinningState(),
-      ...state
-    };
-  },
-  getDefaultOptions: (table) => {
-    return {
-      onRowPinningChange: makeStateUpdater("rowPinning", table)
-    };
-  },
-  createRow: (row, table) => {
-    row.pin = (position2, includeLeafRows, includeParentRows) => {
-      const leafRowIds = includeLeafRows ? row.getLeafRows().map((_ref) => {
-        let {
-          id: id2
-        } = _ref;
-        return id2;
-      }) : [];
-      const parentRowIds = includeParentRows ? row.getParentRows().map((_ref2) => {
-        let {
-          id: id2
-        } = _ref2;
-        return id2;
-      }) : [];
-      const rowIds = /* @__PURE__ */ new Set([...parentRowIds, row.id, ...leafRowIds]);
-      table.setRowPinning((old) => {
-        var _old$top3, _old$bottom3;
-        if (position2 === "bottom") {
-          var _old$top, _old$bottom;
-          return {
-            top: ((_old$top = old == null ? void 0 : old.top) != null ? _old$top : []).filter((d) => !(rowIds != null && rowIds.has(d))),
-            bottom: [...((_old$bottom = old == null ? void 0 : old.bottom) != null ? _old$bottom : []).filter((d) => !(rowIds != null && rowIds.has(d))), ...Array.from(rowIds)]
-          };
-        }
-        if (position2 === "top") {
-          var _old$top2, _old$bottom2;
-          return {
-            top: [...((_old$top2 = old == null ? void 0 : old.top) != null ? _old$top2 : []).filter((d) => !(rowIds != null && rowIds.has(d))), ...Array.from(rowIds)],
-            bottom: ((_old$bottom2 = old == null ? void 0 : old.bottom) != null ? _old$bottom2 : []).filter((d) => !(rowIds != null && rowIds.has(d)))
-          };
-        }
-        return {
-          top: ((_old$top3 = old == null ? void 0 : old.top) != null ? _old$top3 : []).filter((d) => !(rowIds != null && rowIds.has(d))),
-          bottom: ((_old$bottom3 = old == null ? void 0 : old.bottom) != null ? _old$bottom3 : []).filter((d) => !(rowIds != null && rowIds.has(d)))
-        };
-      });
-    };
-    row.getCanPin = () => {
-      var _ref3;
-      const {
-        enableRowPinning,
-        enablePinning
-      } = table.options;
-      if (typeof enableRowPinning === "function") {
-        return enableRowPinning(row);
-      }
-      return (_ref3 = enableRowPinning != null ? enableRowPinning : enablePinning) != null ? _ref3 : true;
-    };
-    row.getIsPinned = () => {
-      const rowIds = [row.id];
-      const {
-        top,
-        bottom
-      } = table.getState().rowPinning;
-      const isTop = rowIds.some((d) => top == null ? void 0 : top.includes(d));
-      const isBottom = rowIds.some((d) => bottom == null ? void 0 : bottom.includes(d));
-      return isTop ? "top" : isBottom ? "bottom" : false;
-    };
-    row.getPinnedIndex = () => {
-      var _ref4, _visiblePinnedRowIds$;
-      const position2 = row.getIsPinned();
-      if (!position2) return -1;
-      const visiblePinnedRowIds = (_ref4 = position2 === "top" ? table.getTopRows() : table.getBottomRows()) == null ? void 0 : _ref4.map((_ref5) => {
-        let {
-          id: id2
-        } = _ref5;
-        return id2;
-      });
-      return (_visiblePinnedRowIds$ = visiblePinnedRowIds == null ? void 0 : visiblePinnedRowIds.indexOf(row.id)) != null ? _visiblePinnedRowIds$ : -1;
-    };
-  },
-  createTable: (table) => {
-    table.setRowPinning = (updater) => table.options.onRowPinningChange == null ? void 0 : table.options.onRowPinningChange(updater);
-    table.resetRowPinning = (defaultState) => {
-      var _table$initialState$r, _table$initialState;
-      return table.setRowPinning(defaultState ? getDefaultRowPinningState() : (_table$initialState$r = (_table$initialState = table.initialState) == null ? void 0 : _table$initialState.rowPinning) != null ? _table$initialState$r : getDefaultRowPinningState());
-    };
-    table.getIsSomeRowsPinned = (position2) => {
-      var _pinningState$positio;
-      const pinningState = table.getState().rowPinning;
-      if (!position2) {
-        var _pinningState$top, _pinningState$bottom;
-        return Boolean(((_pinningState$top = pinningState.top) == null ? void 0 : _pinningState$top.length) || ((_pinningState$bottom = pinningState.bottom) == null ? void 0 : _pinningState$bottom.length));
-      }
-      return Boolean((_pinningState$positio = pinningState[position2]) == null ? void 0 : _pinningState$positio.length);
-    };
-    table._getPinnedRows = (visibleRows, pinnedRowIds, position2) => {
-      var _table$options$keepPi;
-      const rows = ((_table$options$keepPi = table.options.keepPinnedRows) != null ? _table$options$keepPi : true) ? (
-        //get all rows that are pinned even if they would not be otherwise visible
-        //account for expanded parent rows, but not pagination or filtering
-        (pinnedRowIds != null ? pinnedRowIds : []).map((rowId) => {
-          const row = table.getRow(rowId, true);
-          return row.getIsAllParentsExpanded() ? row : null;
-        })
-      ) : (
-        //else get only visible rows that are pinned
-        (pinnedRowIds != null ? pinnedRowIds : []).map((rowId) => visibleRows.find((row) => row.id === rowId))
-      );
-      return rows.filter(Boolean).map((d) => ({
-        ...d,
-        position: position2
-      }));
-    };
-    table.getTopRows = memo(() => [table.getRowModel().rows, table.getState().rowPinning.top], (allRows, topPinnedRowIds) => table._getPinnedRows(allRows, topPinnedRowIds, "top"), getMemoOptions(table.options, "debugRows", "getTopRows"));
-    table.getBottomRows = memo(() => [table.getRowModel().rows, table.getState().rowPinning.bottom], (allRows, bottomPinnedRowIds) => table._getPinnedRows(allRows, bottomPinnedRowIds, "bottom"), getMemoOptions(table.options, "debugRows", "getBottomRows"));
-    table.getCenterRows = memo(() => [table.getRowModel().rows, table.getState().rowPinning.top, table.getState().rowPinning.bottom], (allRows, top, bottom) => {
-      const topAndBottom = /* @__PURE__ */ new Set([...top != null ? top : [], ...bottom != null ? bottom : []]);
-      return allRows.filter((d) => !topAndBottom.has(d.id));
-    }, getMemoOptions(table.options, "debugRows", "getCenterRows"));
-  }
-};
-const RowSelection = {
-  getInitialState: (state) => {
-    return {
-      rowSelection: {},
-      ...state
-    };
-  },
-  getDefaultOptions: (table) => {
-    return {
-      onRowSelectionChange: makeStateUpdater("rowSelection", table),
-      enableRowSelection: true,
-      enableMultiRowSelection: true,
-      enableSubRowSelection: true
-      // enableGroupingRowSelection: false,
-      // isAdditiveSelectEvent: (e: unknown) => !!e.metaKey,
-      // isInclusiveSelectEvent: (e: unknown) => !!e.shiftKey,
-    };
-  },
-  createTable: (table) => {
-    table.setRowSelection = (updater) => table.options.onRowSelectionChange == null ? void 0 : table.options.onRowSelectionChange(updater);
-    table.resetRowSelection = (defaultState) => {
-      var _table$initialState$r;
-      return table.setRowSelection(defaultState ? {} : (_table$initialState$r = table.initialState.rowSelection) != null ? _table$initialState$r : {});
-    };
-    table.toggleAllRowsSelected = (value2) => {
-      table.setRowSelection((old) => {
-        value2 = typeof value2 !== "undefined" ? value2 : !table.getIsAllRowsSelected();
-        const rowSelection = {
-          ...old
-        };
-        const preGroupedFlatRows = table.getPreGroupedRowModel().flatRows;
-        if (value2) {
-          preGroupedFlatRows.forEach((row) => {
-            if (!row.getCanSelect()) {
-              return;
-            }
-            rowSelection[row.id] = true;
-          });
-        } else {
-          preGroupedFlatRows.forEach((row) => {
-            delete rowSelection[row.id];
-          });
-        }
-        return rowSelection;
-      });
-    };
-    table.toggleAllPageRowsSelected = (value2) => table.setRowSelection((old) => {
-      const resolvedValue = typeof value2 !== "undefined" ? value2 : !table.getIsAllPageRowsSelected();
-      const rowSelection = {
-        ...old
-      };
-      table.getRowModel().rows.forEach((row) => {
-        mutateRowIsSelected(rowSelection, row.id, resolvedValue, true, table);
-      });
-      return rowSelection;
-    });
-    table.getPreSelectedRowModel = () => table.getCoreRowModel();
-    table.getSelectedRowModel = memo(() => [table.getState().rowSelection, table.getCoreRowModel()], (rowSelection, rowModel) => {
-      if (!Object.keys(rowSelection).length) {
-        return {
-          rows: [],
-          flatRows: [],
-          rowsById: {}
-        };
-      }
-      return selectRowsFn(table, rowModel);
-    }, getMemoOptions(table.options, "debugTable", "getSelectedRowModel"));
-    table.getFilteredSelectedRowModel = memo(() => [table.getState().rowSelection, table.getFilteredRowModel()], (rowSelection, rowModel) => {
-      if (!Object.keys(rowSelection).length) {
-        return {
-          rows: [],
-          flatRows: [],
-          rowsById: {}
-        };
-      }
-      return selectRowsFn(table, rowModel);
-    }, getMemoOptions(table.options, "debugTable", "getFilteredSelectedRowModel"));
-    table.getGroupedSelectedRowModel = memo(() => [table.getState().rowSelection, table.getSortedRowModel()], (rowSelection, rowModel) => {
-      if (!Object.keys(rowSelection).length) {
-        return {
-          rows: [],
-          flatRows: [],
-          rowsById: {}
-        };
-      }
-      return selectRowsFn(table, rowModel);
-    }, getMemoOptions(table.options, "debugTable", "getGroupedSelectedRowModel"));
-    table.getIsAllRowsSelected = () => {
-      const preGroupedFlatRows = table.getFilteredRowModel().flatRows;
-      const {
-        rowSelection
-      } = table.getState();
-      let isAllRowsSelected = Boolean(preGroupedFlatRows.length && Object.keys(rowSelection).length);
-      if (isAllRowsSelected) {
-        if (preGroupedFlatRows.some((row) => row.getCanSelect() && !rowSelection[row.id])) {
-          isAllRowsSelected = false;
-        }
-      }
-      return isAllRowsSelected;
-    };
-    table.getIsAllPageRowsSelected = () => {
-      const paginationFlatRows = table.getPaginationRowModel().flatRows.filter((row) => row.getCanSelect());
-      const {
-        rowSelection
-      } = table.getState();
-      let isAllPageRowsSelected = !!paginationFlatRows.length;
-      if (isAllPageRowsSelected && paginationFlatRows.some((row) => !rowSelection[row.id])) {
-        isAllPageRowsSelected = false;
-      }
-      return isAllPageRowsSelected;
-    };
-    table.getIsSomeRowsSelected = () => {
-      var _table$getState$rowSe;
-      const totalSelected = Object.keys((_table$getState$rowSe = table.getState().rowSelection) != null ? _table$getState$rowSe : {}).length;
-      return totalSelected > 0 && totalSelected < table.getFilteredRowModel().flatRows.length;
-    };
-    table.getIsSomePageRowsSelected = () => {
-      const paginationFlatRows = table.getPaginationRowModel().flatRows;
-      return table.getIsAllPageRowsSelected() ? false : paginationFlatRows.filter((row) => row.getCanSelect()).some((d) => d.getIsSelected() || d.getIsSomeSelected());
-    };
-    table.getToggleAllRowsSelectedHandler = () => {
-      return (e) => {
-        table.toggleAllRowsSelected(e.target.checked);
-      };
-    };
-    table.getToggleAllPageRowsSelectedHandler = () => {
-      return (e) => {
-        table.toggleAllPageRowsSelected(e.target.checked);
-      };
-    };
-  },
-  createRow: (row, table) => {
-    row.toggleSelected = (value2, opts) => {
-      const isSelected = row.getIsSelected();
-      table.setRowSelection((old) => {
-        var _opts$selectChildren;
-        value2 = typeof value2 !== "undefined" ? value2 : !isSelected;
-        if (row.getCanSelect() && isSelected === value2) {
-          return old;
-        }
-        const selectedRowIds = {
-          ...old
-        };
-        mutateRowIsSelected(selectedRowIds, row.id, value2, (_opts$selectChildren = opts == null ? void 0 : opts.selectChildren) != null ? _opts$selectChildren : true, table);
-        return selectedRowIds;
-      });
-    };
-    row.getIsSelected = () => {
-      const {
-        rowSelection
-      } = table.getState();
-      return isRowSelected(row, rowSelection);
-    };
-    row.getIsSomeSelected = () => {
-      const {
-        rowSelection
-      } = table.getState();
-      return isSubRowSelected(row, rowSelection) === "some";
-    };
-    row.getIsAllSubRowsSelected = () => {
-      const {
-        rowSelection
-      } = table.getState();
-      return isSubRowSelected(row, rowSelection) === "all";
-    };
-    row.getCanSelect = () => {
-      var _table$options$enable;
-      if (typeof table.options.enableRowSelection === "function") {
-        return table.options.enableRowSelection(row);
-      }
-      return (_table$options$enable = table.options.enableRowSelection) != null ? _table$options$enable : true;
-    };
-    row.getCanSelectSubRows = () => {
-      var _table$options$enable2;
-      if (typeof table.options.enableSubRowSelection === "function") {
-        return table.options.enableSubRowSelection(row);
-      }
-      return (_table$options$enable2 = table.options.enableSubRowSelection) != null ? _table$options$enable2 : true;
-    };
-    row.getCanMultiSelect = () => {
-      var _table$options$enable3;
-      if (typeof table.options.enableMultiRowSelection === "function") {
-        return table.options.enableMultiRowSelection(row);
-      }
-      return (_table$options$enable3 = table.options.enableMultiRowSelection) != null ? _table$options$enable3 : true;
-    };
-    row.getToggleSelectedHandler = () => {
-      const canSelect = row.getCanSelect();
-      return (e) => {
-        var _target;
-        if (!canSelect) return;
-        row.toggleSelected((_target = e.target) == null ? void 0 : _target.checked);
-      };
-    };
-  }
-};
-const mutateRowIsSelected = (selectedRowIds, id2, value2, includeChildren, table) => {
-  var _row$subRows;
-  const row = table.getRow(id2, true);
-  if (value2) {
-    if (!row.getCanMultiSelect()) {
-      Object.keys(selectedRowIds).forEach((key) => delete selectedRowIds[key]);
-    }
-    if (row.getCanSelect()) {
-      selectedRowIds[id2] = true;
-    }
-  } else {
-    delete selectedRowIds[id2];
-  }
-  if (includeChildren && (_row$subRows = row.subRows) != null && _row$subRows.length && row.getCanSelectSubRows()) {
-    row.subRows.forEach((row2) => mutateRowIsSelected(selectedRowIds, row2.id, value2, includeChildren, table));
-  }
-};
-function selectRowsFn(table, rowModel) {
-  const rowSelection = table.getState().rowSelection;
-  const newSelectedFlatRows = [];
-  const newSelectedRowsById = {};
-  const recurseRows = function(rows, depth) {
-    return rows.map((row) => {
-      var _row$subRows2;
-      const isSelected = isRowSelected(row, rowSelection);
-      if (isSelected) {
-        newSelectedFlatRows.push(row);
-        newSelectedRowsById[row.id] = row;
-      }
-      if ((_row$subRows2 = row.subRows) != null && _row$subRows2.length) {
-        row = {
-          ...row,
-          subRows: recurseRows(row.subRows)
-        };
-      }
-      if (isSelected) {
-        return row;
-      }
-    }).filter(Boolean);
-  };
-  return {
-    rows: recurseRows(rowModel.rows),
-    flatRows: newSelectedFlatRows,
-    rowsById: newSelectedRowsById
-  };
-}
-function isRowSelected(row, selection) {
-  var _selection$row$id;
-  return (_selection$row$id = selection[row.id]) != null ? _selection$row$id : false;
-}
-function isSubRowSelected(row, selection, table) {
-  var _row$subRows3;
-  if (!((_row$subRows3 = row.subRows) != null && _row$subRows3.length)) return false;
-  let allChildrenSelected = true;
-  let someSelected = false;
-  row.subRows.forEach((subRow) => {
-    if (someSelected && !allChildrenSelected) {
-      return;
-    }
-    if (subRow.getCanSelect()) {
-      if (isRowSelected(subRow, selection)) {
-        someSelected = true;
-      } else {
-        allChildrenSelected = false;
-      }
-    }
-    if (subRow.subRows && subRow.subRows.length) {
-      const subRowChildrenSelected = isSubRowSelected(subRow, selection);
-      if (subRowChildrenSelected === "all") {
-        someSelected = true;
-      } else if (subRowChildrenSelected === "some") {
-        someSelected = true;
-        allChildrenSelected = false;
-      } else {
-        allChildrenSelected = false;
-      }
-    }
-  });
-  return allChildrenSelected ? "all" : someSelected ? "some" : false;
-}
-const reSplitAlphaNumeric = /([0-9]+)/gm;
-const alphanumeric = (rowA, rowB, columnId) => {
-  return compareAlphanumeric(toString(rowA.getValue(columnId)).toLowerCase(), toString(rowB.getValue(columnId)).toLowerCase());
-};
-const alphanumericCaseSensitive = (rowA, rowB, columnId) => {
-  return compareAlphanumeric(toString(rowA.getValue(columnId)), toString(rowB.getValue(columnId)));
-};
-const text$2 = (rowA, rowB, columnId) => {
-  return compareBasic(toString(rowA.getValue(columnId)).toLowerCase(), toString(rowB.getValue(columnId)).toLowerCase());
-};
-const textCaseSensitive = (rowA, rowB, columnId) => {
-  return compareBasic(toString(rowA.getValue(columnId)), toString(rowB.getValue(columnId)));
-};
-const datetime = (rowA, rowB, columnId) => {
-  const a = rowA.getValue(columnId);
-  const b = rowB.getValue(columnId);
-  return a > b ? 1 : a < b ? -1 : 0;
-};
-const basic = (rowA, rowB, columnId) => {
-  return compareBasic(rowA.getValue(columnId), rowB.getValue(columnId));
-};
-function compareBasic(a, b) {
-  return a === b ? 0 : a > b ? 1 : -1;
-}
-function toString(a) {
-  if (typeof a === "number") {
-    if (isNaN(a) || a === Infinity || a === -Infinity) {
-      return "";
-    }
-    return String(a);
-  }
-  if (typeof a === "string") {
-    return a;
-  }
-  return "";
-}
-function compareAlphanumeric(aStr, bStr) {
-  const a = aStr.split(reSplitAlphaNumeric).filter(Boolean);
-  const b = bStr.split(reSplitAlphaNumeric).filter(Boolean);
-  while (a.length && b.length) {
-    const aa = a.shift();
-    const bb = b.shift();
-    const an = parseInt(aa, 10);
-    const bn = parseInt(bb, 10);
-    const combo = [an, bn].sort();
-    if (isNaN(combo[0])) {
-      if (aa > bb) {
-        return 1;
-      }
-      if (bb > aa) {
-        return -1;
-      }
-      continue;
-    }
-    if (isNaN(combo[1])) {
-      return isNaN(an) ? -1 : 1;
-    }
-    if (an > bn) {
-      return 1;
-    }
-    if (bn > an) {
-      return -1;
-    }
-  }
-  return a.length - b.length;
-}
-const sortingFns = {
-  alphanumeric,
-  alphanumericCaseSensitive,
-  text: text$2,
-  textCaseSensitive,
-  datetime,
-  basic
-};
-const RowSorting = {
-  getInitialState: (state) => {
-    return {
-      sorting: [],
-      ...state
-    };
-  },
-  getDefaultColumnDef: () => {
-    return {
-      sortingFn: "auto",
-      sortUndefined: 1
-    };
-  },
-  getDefaultOptions: (table) => {
-    return {
-      onSortingChange: makeStateUpdater("sorting", table),
-      isMultiSortEvent: (e) => {
-        return e.shiftKey;
-      }
-    };
-  },
-  createColumn: (column, table) => {
-    column.getAutoSortingFn = () => {
-      const firstRows = table.getFilteredRowModel().flatRows.slice(10);
-      let isString2 = false;
-      for (const row of firstRows) {
-        const value2 = row == null ? void 0 : row.getValue(column.id);
-        if (Object.prototype.toString.call(value2) === "[object Date]") {
-          return sortingFns.datetime;
-        }
-        if (typeof value2 === "string") {
-          isString2 = true;
-          if (value2.split(reSplitAlphaNumeric).length > 1) {
-            return sortingFns.alphanumeric;
-          }
-        }
-      }
-      if (isString2) {
-        return sortingFns.text;
-      }
-      return sortingFns.basic;
-    };
-    column.getAutoSortDir = () => {
-      const firstRow = table.getFilteredRowModel().flatRows[0];
-      const value2 = firstRow == null ? void 0 : firstRow.getValue(column.id);
-      if (typeof value2 === "string") {
-        return "asc";
-      }
-      return "desc";
-    };
-    column.getSortingFn = () => {
-      var _table$options$sortin, _table$options$sortin2;
-      if (!column) {
-        throw new Error();
-      }
-      return isFunction(column.columnDef.sortingFn) ? column.columnDef.sortingFn : column.columnDef.sortingFn === "auto" ? column.getAutoSortingFn() : (_table$options$sortin = (_table$options$sortin2 = table.options.sortingFns) == null ? void 0 : _table$options$sortin2[column.columnDef.sortingFn]) != null ? _table$options$sortin : sortingFns[column.columnDef.sortingFn];
-    };
-    column.toggleSorting = (desc, multi) => {
-      const nextSortingOrder = column.getNextSortingOrder();
-      const hasManualValue = typeof desc !== "undefined" && desc !== null;
-      table.setSorting((old) => {
-        const existingSorting = old == null ? void 0 : old.find((d) => d.id === column.id);
-        const existingIndex = old == null ? void 0 : old.findIndex((d) => d.id === column.id);
-        let newSorting = [];
-        let sortAction;
-        let nextDesc = hasManualValue ? desc : nextSortingOrder === "desc";
-        if (old != null && old.length && column.getCanMultiSort() && multi) {
-          if (existingSorting) {
-            sortAction = "toggle";
-          } else {
-            sortAction = "add";
-          }
-        } else {
-          if (old != null && old.length && existingIndex !== old.length - 1) {
-            sortAction = "replace";
-          } else if (existingSorting) {
-            sortAction = "toggle";
-          } else {
-            sortAction = "replace";
-          }
-        }
-        if (sortAction === "toggle") {
-          if (!hasManualValue) {
-            if (!nextSortingOrder) {
-              sortAction = "remove";
-            }
-          }
-        }
-        if (sortAction === "add") {
-          var _table$options$maxMul;
-          newSorting = [...old, {
-            id: column.id,
-            desc: nextDesc
-          }];
-          newSorting.splice(0, newSorting.length - ((_table$options$maxMul = table.options.maxMultiSortColCount) != null ? _table$options$maxMul : Number.MAX_SAFE_INTEGER));
-        } else if (sortAction === "toggle") {
-          newSorting = old.map((d) => {
-            if (d.id === column.id) {
-              return {
-                ...d,
-                desc: nextDesc
-              };
-            }
-            return d;
-          });
-        } else if (sortAction === "remove") {
-          newSorting = old.filter((d) => d.id !== column.id);
-        } else {
-          newSorting = [{
-            id: column.id,
-            desc: nextDesc
-          }];
-        }
-        return newSorting;
-      });
-    };
-    column.getFirstSortDir = () => {
-      var _ref, _column$columnDef$sor;
-      const sortDescFirst = (_ref = (_column$columnDef$sor = column.columnDef.sortDescFirst) != null ? _column$columnDef$sor : table.options.sortDescFirst) != null ? _ref : column.getAutoSortDir() === "desc";
-      return sortDescFirst ? "desc" : "asc";
-    };
-    column.getNextSortingOrder = (multi) => {
-      var _table$options$enable, _table$options$enable2;
-      const firstSortDirection = column.getFirstSortDir();
-      const isSorted = column.getIsSorted();
-      if (!isSorted) {
-        return firstSortDirection;
-      }
-      if (isSorted !== firstSortDirection && ((_table$options$enable = table.options.enableSortingRemoval) != null ? _table$options$enable : true) && // If enableSortRemove, enable in general
-      (multi ? (_table$options$enable2 = table.options.enableMultiRemove) != null ? _table$options$enable2 : true : true)) {
-        return false;
-      }
-      return isSorted === "desc" ? "asc" : "desc";
-    };
-    column.getCanSort = () => {
-      var _column$columnDef$ena, _table$options$enable3;
-      return ((_column$columnDef$ena = column.columnDef.enableSorting) != null ? _column$columnDef$ena : true) && ((_table$options$enable3 = table.options.enableSorting) != null ? _table$options$enable3 : true) && !!column.accessorFn;
-    };
-    column.getCanMultiSort = () => {
-      var _ref2, _column$columnDef$ena2;
-      return (_ref2 = (_column$columnDef$ena2 = column.columnDef.enableMultiSort) != null ? _column$columnDef$ena2 : table.options.enableMultiSort) != null ? _ref2 : !!column.accessorFn;
-    };
-    column.getIsSorted = () => {
-      var _table$getState$sorti;
-      const columnSort = (_table$getState$sorti = table.getState().sorting) == null ? void 0 : _table$getState$sorti.find((d) => d.id === column.id);
-      return !columnSort ? false : columnSort.desc ? "desc" : "asc";
-    };
-    column.getSortIndex = () => {
-      var _table$getState$sorti2, _table$getState$sorti3;
-      return (_table$getState$sorti2 = (_table$getState$sorti3 = table.getState().sorting) == null ? void 0 : _table$getState$sorti3.findIndex((d) => d.id === column.id)) != null ? _table$getState$sorti2 : -1;
-    };
-    column.clearSorting = () => {
-      table.setSorting((old) => old != null && old.length ? old.filter((d) => d.id !== column.id) : []);
-    };
-    column.getToggleSortingHandler = () => {
-      const canSort = column.getCanSort();
-      return (e) => {
-        if (!canSort) return;
-        e.persist == null || e.persist();
-        column.toggleSorting == null || column.toggleSorting(void 0, column.getCanMultiSort() ? table.options.isMultiSortEvent == null ? void 0 : table.options.isMultiSortEvent(e) : false);
-      };
-    };
-  },
-  createTable: (table) => {
-    table.setSorting = (updater) => table.options.onSortingChange == null ? void 0 : table.options.onSortingChange(updater);
-    table.resetSorting = (defaultState) => {
-      var _table$initialState$s, _table$initialState;
-      table.setSorting(defaultState ? [] : (_table$initialState$s = (_table$initialState = table.initialState) == null ? void 0 : _table$initialState.sorting) != null ? _table$initialState$s : []);
-    };
-    table.getPreSortedRowModel = () => table.getGroupedRowModel();
-    table.getSortedRowModel = () => {
-      if (!table._getSortedRowModel && table.options.getSortedRowModel) {
-        table._getSortedRowModel = table.options.getSortedRowModel(table);
-      }
-      if (table.options.manualSorting || !table._getSortedRowModel) {
-        return table.getPreSortedRowModel();
-      }
-      return table._getSortedRowModel();
-    };
-  }
-};
-const builtInFeatures = [
-  Headers,
-  ColumnVisibility,
-  ColumnOrdering,
-  ColumnPinning,
-  ColumnFaceting,
-  ColumnFiltering,
-  GlobalFaceting,
-  //depends on ColumnFaceting
-  GlobalFiltering,
-  //depends on ColumnFiltering
-  RowSorting,
-  ColumnGrouping,
-  //depends on RowSorting
-  RowExpanding,
-  RowPagination,
-  RowPinning,
-  RowSelection,
-  ColumnSizing
-];
-function createTable(options) {
-  var _options$_features, _options$initialState;
-  if (process.env.NODE_ENV !== "production" && (options.debugAll || options.debugTable)) {
-    console.info("Creating Table Instance...");
-  }
-  const _features = [...builtInFeatures, ...(_options$_features = options._features) != null ? _options$_features : []];
-  let table = {
-    _features
-  };
-  const defaultOptions2 = table._features.reduce((obj, feature) => {
-    return Object.assign(obj, feature.getDefaultOptions == null ? void 0 : feature.getDefaultOptions(table));
-  }, {});
-  const mergeOptions = (options2) => {
-    if (table.options.mergeOptions) {
-      return table.options.mergeOptions(defaultOptions2, options2);
-    }
-    return {
-      ...defaultOptions2,
-      ...options2
-    };
-  };
-  const coreInitialState = {};
-  let initialState2 = {
-    ...coreInitialState,
-    ...(_options$initialState = options.initialState) != null ? _options$initialState : {}
-  };
-  table._features.forEach((feature) => {
-    var _feature$getInitialSt;
-    initialState2 = (_feature$getInitialSt = feature.getInitialState == null ? void 0 : feature.getInitialState(initialState2)) != null ? _feature$getInitialSt : initialState2;
-  });
-  const queued = [];
-  let queuedTimeout = false;
-  const coreInstance = {
-    _features,
-    options: {
-      ...defaultOptions2,
-      ...options
-    },
-    initialState: initialState2,
-    _queue: (cb) => {
-      queued.push(cb);
-      if (!queuedTimeout) {
-        queuedTimeout = true;
-        Promise.resolve().then(() => {
-          while (queued.length) {
-            queued.shift()();
-          }
-          queuedTimeout = false;
-        }).catch((error2) => setTimeout(() => {
-          throw error2;
-        }));
-      }
-    },
-    reset: () => {
-      table.setState(table.initialState);
-    },
-    setOptions: (updater) => {
-      const newOptions = functionalUpdate(updater, table.options);
-      table.options = mergeOptions(newOptions);
-    },
-    getState: () => {
-      return table.options.state;
-    },
-    setState: (updater) => {
-      table.options.onStateChange == null || table.options.onStateChange(updater);
-    },
-    _getRowId: (row, index2, parent) => {
-      var _table$options$getRow;
-      return (_table$options$getRow = table.options.getRowId == null ? void 0 : table.options.getRowId(row, index2, parent)) != null ? _table$options$getRow : `${parent ? [parent.id, index2].join(".") : index2}`;
-    },
-    getCoreRowModel: () => {
-      if (!table._getCoreRowModel) {
-        table._getCoreRowModel = table.options.getCoreRowModel(table);
-      }
-      return table._getCoreRowModel();
-    },
-    // The final calls start at the bottom of the model,
-    // expanded rows, which then work their way up
-    getRowModel: () => {
-      return table.getPaginationRowModel();
-    },
-    //in next version, we should just pass in the row model as the optional 2nd arg
-    getRow: (id2, searchAll) => {
-      let row = (searchAll ? table.getPrePaginationRowModel() : table.getRowModel()).rowsById[id2];
-      if (!row) {
-        row = table.getCoreRowModel().rowsById[id2];
-        if (!row) {
-          if (process.env.NODE_ENV !== "production") {
-            throw new Error(`getRow could not find row with ID: ${id2}`);
-          }
-          throw new Error();
-        }
-      }
-      return row;
-    },
-    _getDefaultColumnDef: memo(() => [table.options.defaultColumn], (defaultColumn) => {
-      var _defaultColumn;
-      defaultColumn = (_defaultColumn = defaultColumn) != null ? _defaultColumn : {};
-      return {
-        header: (props) => {
-          const resolvedColumnDef = props.header.column.columnDef;
-          if (resolvedColumnDef.accessorKey) {
-            return resolvedColumnDef.accessorKey;
-          }
-          if (resolvedColumnDef.accessorFn) {
-            return resolvedColumnDef.id;
-          }
-          return null;
-        },
-        // footer: props => props.header.column.id,
-        cell: (props) => {
-          var _props$renderValue$to, _props$renderValue;
-          return (_props$renderValue$to = (_props$renderValue = props.renderValue()) == null || _props$renderValue.toString == null ? void 0 : _props$renderValue.toString()) != null ? _props$renderValue$to : null;
-        },
-        ...table._features.reduce((obj, feature) => {
-          return Object.assign(obj, feature.getDefaultColumnDef == null ? void 0 : feature.getDefaultColumnDef());
-        }, {}),
-        ...defaultColumn
-      };
-    }, getMemoOptions(options, "debugColumns", "_getDefaultColumnDef")),
-    _getColumnDefs: () => table.options.columns,
-    getAllColumns: memo(() => [table._getColumnDefs()], (columnDefs) => {
-      const recurseColumns = function(columnDefs2, parent, depth) {
-        if (depth === void 0) {
-          depth = 0;
-        }
-        return columnDefs2.map((columnDef) => {
-          const column = createColumn(table, columnDef, depth, parent);
-          const groupingColumnDef = columnDef;
-          column.columns = groupingColumnDef.columns ? recurseColumns(groupingColumnDef.columns, column, depth + 1) : [];
-          return column;
-        });
-      };
-      return recurseColumns(columnDefs);
-    }, getMemoOptions(options, "debugColumns", "getAllColumns")),
-    getAllFlatColumns: memo(() => [table.getAllColumns()], (allColumns) => {
-      return allColumns.flatMap((column) => {
-        return column.getFlatColumns();
-      });
-    }, getMemoOptions(options, "debugColumns", "getAllFlatColumns")),
-    _getAllFlatColumnsById: memo(() => [table.getAllFlatColumns()], (flatColumns) => {
-      return flatColumns.reduce((acc, column) => {
-        acc[column.id] = column;
-        return acc;
-      }, {});
-    }, getMemoOptions(options, "debugColumns", "getAllFlatColumnsById")),
-    getAllLeafColumns: memo(() => [table.getAllColumns(), table._getOrderColumnsFn()], (allColumns, orderColumns2) => {
-      let leafColumns = allColumns.flatMap((column) => column.getLeafColumns());
-      return orderColumns2(leafColumns);
-    }, getMemoOptions(options, "debugColumns", "getAllLeafColumns")),
-    getColumn: (columnId) => {
-      const column = table._getAllFlatColumnsById()[columnId];
-      if (process.env.NODE_ENV !== "production" && !column) {
-        console.error(`[Table] Column with id '${columnId}' does not exist.`);
-      }
-      return column;
-    }
-  };
-  Object.assign(table, coreInstance);
-  for (let index2 = 0; index2 < table._features.length; index2++) {
-    const feature = table._features[index2];
-    feature == null || feature.createTable == null || feature.createTable(table);
-  }
-  return table;
-}
-function getCoreRowModel() {
-  return (table) => memo(() => [table.options.data], (data) => {
-    const rowModel = {
-      rows: [],
-      flatRows: [],
-      rowsById: {}
-    };
-    const accessRows = function(originalRows, depth, parentRow) {
-      if (depth === void 0) {
-        depth = 0;
-      }
-      const rows = [];
-      for (let i2 = 0; i2 < originalRows.length; i2++) {
-        const row = createRow(table, table._getRowId(originalRows[i2], i2, parentRow), originalRows[i2], i2, depth, void 0, parentRow == null ? void 0 : parentRow.id);
-        rowModel.flatRows.push(row);
-        rowModel.rowsById[row.id] = row;
-        rows.push(row);
-        if (table.options.getSubRows) {
-          var _row$originalSubRows;
-          row.originalSubRows = table.options.getSubRows(originalRows[i2], i2);
-          if ((_row$originalSubRows = row.originalSubRows) != null && _row$originalSubRows.length) {
-            row.subRows = accessRows(row.originalSubRows, depth + 1, row);
-          }
-        }
-      }
-      return rows;
-    };
-    rowModel.rows = accessRows(data);
-    return rowModel;
-  }, getMemoOptions(table.options, "debugTable", "getRowModel", () => table._autoResetPageIndex()));
-}
-function filterRows(rows, filterRowImpl, table) {
-  if (table.options.filterFromLeafRows) {
-    return filterRowModelFromLeafs(rows, filterRowImpl, table);
-  }
-  return filterRowModelFromRoot(rows, filterRowImpl, table);
-}
-function filterRowModelFromLeafs(rowsToFilter, filterRow, table) {
-  var _table$options$maxLea;
-  const newFilteredFlatRows = [];
-  const newFilteredRowsById = {};
-  const maxDepth = (_table$options$maxLea = table.options.maxLeafRowFilterDepth) != null ? _table$options$maxLea : 100;
-  const recurseFilterRows = function(rowsToFilter2, depth) {
-    if (depth === void 0) {
-      depth = 0;
-    }
-    const rows = [];
-    for (let i2 = 0; i2 < rowsToFilter2.length; i2++) {
-      var _row$subRows;
-      let row = rowsToFilter2[i2];
-      const newRow = createRow(table, row.id, row.original, row.index, row.depth, void 0, row.parentId);
-      newRow.columnFilters = row.columnFilters;
-      if ((_row$subRows = row.subRows) != null && _row$subRows.length && depth < maxDepth) {
-        newRow.subRows = recurseFilterRows(row.subRows, depth + 1);
-        row = newRow;
-        if (filterRow(row) && !newRow.subRows.length) {
-          rows.push(row);
-          newFilteredRowsById[row.id] = row;
-          newFilteredFlatRows.push(row);
-          continue;
-        }
-        if (filterRow(row) || newRow.subRows.length) {
-          rows.push(row);
-          newFilteredRowsById[row.id] = row;
-          newFilteredFlatRows.push(row);
-          continue;
-        }
-      } else {
-        row = newRow;
-        if (filterRow(row)) {
-          rows.push(row);
-          newFilteredRowsById[row.id] = row;
-          newFilteredFlatRows.push(row);
-        }
-      }
-    }
-    return rows;
-  };
-  return {
-    rows: recurseFilterRows(rowsToFilter),
-    flatRows: newFilteredFlatRows,
-    rowsById: newFilteredRowsById
-  };
-}
-function filterRowModelFromRoot(rowsToFilter, filterRow, table) {
-  var _table$options$maxLea2;
-  const newFilteredFlatRows = [];
-  const newFilteredRowsById = {};
-  const maxDepth = (_table$options$maxLea2 = table.options.maxLeafRowFilterDepth) != null ? _table$options$maxLea2 : 100;
-  const recurseFilterRows = function(rowsToFilter2, depth) {
-    if (depth === void 0) {
-      depth = 0;
-    }
-    const rows = [];
-    for (let i2 = 0; i2 < rowsToFilter2.length; i2++) {
-      let row = rowsToFilter2[i2];
-      const pass = filterRow(row);
-      if (pass) {
-        var _row$subRows2;
-        if ((_row$subRows2 = row.subRows) != null && _row$subRows2.length && depth < maxDepth) {
-          const newRow = createRow(table, row.id, row.original, row.index, row.depth, void 0, row.parentId);
-          newRow.subRows = recurseFilterRows(row.subRows, depth + 1);
-          row = newRow;
-        }
-        rows.push(row);
-        newFilteredFlatRows.push(row);
-        newFilteredRowsById[row.id] = row;
-      }
-    }
-    return rows;
-  };
-  return {
-    rows: recurseFilterRows(rowsToFilter),
-    flatRows: newFilteredFlatRows,
-    rowsById: newFilteredRowsById
-  };
-}
-function getFilteredRowModel() {
-  return (table) => memo(() => [table.getPreFilteredRowModel(), table.getState().columnFilters, table.getState().globalFilter], (rowModel, columnFilters, globalFilter) => {
-    if (!rowModel.rows.length || !(columnFilters != null && columnFilters.length) && !globalFilter) {
-      for (let i2 = 0; i2 < rowModel.flatRows.length; i2++) {
-        rowModel.flatRows[i2].columnFilters = {};
-        rowModel.flatRows[i2].columnFiltersMeta = {};
-      }
-      return rowModel;
-    }
-    const resolvedColumnFilters = [];
-    const resolvedGlobalFilters = [];
-    (columnFilters != null ? columnFilters : []).forEach((d) => {
-      var _filterFn$resolveFilt;
-      const column = table.getColumn(d.id);
-      if (!column) {
-        return;
-      }
-      const filterFn = column.getFilterFn();
-      if (!filterFn) {
-        if (process.env.NODE_ENV !== "production") {
-          console.warn(`Could not find a valid 'column.filterFn' for column with the ID: ${column.id}.`);
-        }
-        return;
-      }
-      resolvedColumnFilters.push({
-        id: d.id,
-        filterFn,
-        resolvedValue: (_filterFn$resolveFilt = filterFn.resolveFilterValue == null ? void 0 : filterFn.resolveFilterValue(d.value)) != null ? _filterFn$resolveFilt : d.value
-      });
-    });
-    const filterableIds = (columnFilters != null ? columnFilters : []).map((d) => d.id);
-    const globalFilterFn = table.getGlobalFilterFn();
-    const globallyFilterableColumns = table.getAllLeafColumns().filter((column) => column.getCanGlobalFilter());
-    if (globalFilter && globalFilterFn && globallyFilterableColumns.length) {
-      filterableIds.push("__global__");
-      globallyFilterableColumns.forEach((column) => {
-        var _globalFilterFn$resol;
-        resolvedGlobalFilters.push({
-          id: column.id,
-          filterFn: globalFilterFn,
-          resolvedValue: (_globalFilterFn$resol = globalFilterFn.resolveFilterValue == null ? void 0 : globalFilterFn.resolveFilterValue(globalFilter)) != null ? _globalFilterFn$resol : globalFilter
-        });
-      });
-    }
-    let currentColumnFilter;
-    let currentGlobalFilter;
-    for (let j = 0; j < rowModel.flatRows.length; j++) {
-      const row = rowModel.flatRows[j];
-      row.columnFilters = {};
-      if (resolvedColumnFilters.length) {
-        for (let i2 = 0; i2 < resolvedColumnFilters.length; i2++) {
-          currentColumnFilter = resolvedColumnFilters[i2];
-          const id2 = currentColumnFilter.id;
-          row.columnFilters[id2] = currentColumnFilter.filterFn(row, id2, currentColumnFilter.resolvedValue, (filterMeta) => {
-            row.columnFiltersMeta[id2] = filterMeta;
-          });
-        }
-      }
-      if (resolvedGlobalFilters.length) {
-        for (let i2 = 0; i2 < resolvedGlobalFilters.length; i2++) {
-          currentGlobalFilter = resolvedGlobalFilters[i2];
-          const id2 = currentGlobalFilter.id;
-          if (currentGlobalFilter.filterFn(row, id2, currentGlobalFilter.resolvedValue, (filterMeta) => {
-            row.columnFiltersMeta[id2] = filterMeta;
-          })) {
-            row.columnFilters.__global__ = true;
-            break;
-          }
-        }
-        if (row.columnFilters.__global__ !== true) {
-          row.columnFilters.__global__ = false;
-        }
-      }
-    }
-    const filterRowsImpl = (row) => {
-      for (let i2 = 0; i2 < filterableIds.length; i2++) {
-        if (row.columnFilters[filterableIds[i2]] === false) {
-          return false;
-        }
-      }
-      return true;
-    };
-    return filterRows(rowModel.rows, filterRowsImpl, table);
-  }, getMemoOptions(table.options, "debugTable", "getFilteredRowModel", () => table._autoResetPageIndex()));
-}
-/**
-   * react-table
-   *
-   * Copyright (c) TanStack
-   *
-   * This source code is licensed under the MIT license found in the
-   * LICENSE.md file in the root directory of this source tree.
-   *
-   * @license MIT
-   */
-function flexRender(Comp, props) {
-  return !Comp ? null : isReactComponent(Comp) ? /* @__PURE__ */ React.createElement(Comp, props) : Comp;
-}
-function isReactComponent(component) {
-  return isClassComponent(component) || typeof component === "function" || isExoticComponent(component);
-}
-function isClassComponent(component) {
-  return typeof component === "function" && (() => {
-    const proto = Object.getPrototypeOf(component);
-    return proto.prototype && proto.prototype.isReactComponent;
-  })();
-}
-function isExoticComponent(component) {
-  return typeof component === "object" && typeof component.$$typeof === "symbol" && ["react.memo", "react.forward_ref"].includes(component.$$typeof.description);
-}
-function useReactTable(options) {
-  const resolvedOptions = {
-    state: {},
-    // Dummy state
-    onStateChange: () => {
-    },
-    // noop
-    renderFallbackValue: null,
-    ...options
-  };
-  const [tableRef] = React.useState(() => ({
-    current: createTable(resolvedOptions)
-  }));
-  const [state, setState] = React.useState(() => tableRef.current.initialState);
-  tableRef.current.setOptions((prev) => ({
-    ...prev,
-    ...options,
-    state: {
-      ...state,
-      ...options.state
-    },
-    // Similarly, we'll maintain both our internal state and any user-provided
-    // state.
-    onStateChange: (updater) => {
-      setState(updater);
-      options.onStateChange == null || options.onStateChange(updater);
-    }
-  }));
-  return tableRef.current;
-}
 const PropertyTable = ({ data, columns, getProperty, multi }) => {
   var _a, _b;
   const { t: t2 } = useTranslation();
@@ -58091,6 +55308,237 @@ const Toaster = () => {
     /* @__PURE__ */ jsxRuntimeExports.jsx(ToastViewport, {})
   ] });
 };
+const formSchema = z.object({
+  currentPassword: z.string().min(8, { message: "Password must have at least 8 characters" }).max(32, { message: "Password must not exceed 32 characters" }).regex(/^[A-Za-z0-9`~!@#$%^&*()_|+\-=?;:'",.<>{}[\]/]*$/, {
+    message: "Password can only contain letters, numbers and allowed symbols"
+  }),
+  password: z.string().min(8, { message: "Password must have at least 8 characters" }).max(32, { message: "Password must not exceed 32 characters" }).regex(/^[A-Za-z0-9`~!@#$%^&*()_|+\-=?;:'",.<>{}[\]/]*$/, {
+    message: "Password can only contain letters, numbers and allowed symbols"
+  }),
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Password is not the same as confirm password",
+  path: ["confirmPassword"]
+});
+const UserSetting = ({ open, onOpenChange }) => {
+  const { t: t$1 } = useTranslation();
+  const { putPassword } = useApi();
+  const { toast } = useToast();
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const handlePasswordChangeClick = () => {
+    setIsChangingPassword((prev) => !prev);
+    if (isChangingPassword) {
+      form.reset();
+    }
+  };
+  const handleSubmit = async (data) => {
+    const { password: password2, currentPassword } = data;
+    let message2 = "";
+    let variant = "success";
+    try {
+      await putPassword(password2, currentPassword);
+      message2 = "Password updated successfully";
+      onOpenChange();
+    } catch (error2) {
+      message2 = error2.data.message;
+      variant = "destructive";
+    } finally {
+      toast({
+        title: t$1(message2),
+        duration: 3e3,
+        variant
+      });
+    }
+  };
+  const form = useForm({
+    resolver: t(formSchema),
+    defaultValues: {
+      currentPassword: "",
+      password: "",
+      confirmPassword: ""
+    },
+    mode: "onBlur"
+  });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open, onOpenChange, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    DialogContent,
+    {
+      overlay: true,
+      closeButton: false,
+      className: cn(
+        "w-full max-w-[335px] gap-0 rounded-2xl p-6 sm:max-w-[600px] sm:p-7"
+      ),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { className: "mb-3 text-start", children: /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { className: "pb-3 pt-0 text-xl font-bold", children: t$1("Edit user") }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Form, { ...form, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("form", { onSubmit: form.handleSubmit(handleSubmit), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: " w-full bg-grayscale-1000 dark:bg-dark-bg-333", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-4 p-4", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Button$1, { onClick: handlePasswordChangeClick, type: "button", children: isChangingPassword ? t$1("Cancle password change") : t$1("Change password") }),
+            isChangingPassword && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                FormInputField$1,
+                {
+                  control: form.control,
+                  name: "currentPassword",
+                  label: t$1("Current Password"),
+                  placeholder: t$1("required"),
+                  type: "password",
+                  tabIndex: 1
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                FormInputField$1,
+                {
+                  control: form.control,
+                  name: "password",
+                  label: t$1("Password"),
+                  placeholder: t$1("required"),
+                  type: "password",
+                  tabIndex: 2
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                FormInputField$1,
+                {
+                  control: form.control,
+                  name: "confirmPassword",
+                  label: t$1("Confirm Password"),
+                  placeholder: t$1("required"),
+                  type: "password",
+                  tabIndex: 3
+                }
+              )
+            ] })
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogFooter, { className: "flex min-h-0 flex-row justify-end space-x-3 pb-0 sm:space-x-3", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              Button$1,
+              {
+                variant: "destructive",
+                onClick: onOpenChange,
+                className: "rounded-lg",
+                children: t$1("Cancel")
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              Button$1,
+              {
+                type: "submit",
+                className: "rounded-lg",
+                disabled: !form.formState.isValid || !form.formState.isDirty,
+                children: t$1("Save")
+              }
+            )
+          ] })
+        ] }) })
+      ]
+    }
+  ) });
+};
+const StepperIndicator = ({ steps, activeStep }) => {
+  const { t: t2 } = useTranslation();
+  const circleSize = 40;
+  const separatorWidth = `calc((100% - ${steps.length * circleSize}px) / ${steps.length - 1})`;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center justify-center", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-[600px] px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex w-full items-center justify-between", children: steps.length > 1 && steps.map(({ step }) => /* @__PURE__ */ jsxRuntimeExports.jsxs(Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: cn(
+            "flex h-10 w-10 items-center justify-center rounded-full border-[2px]",
+            step < activeStep && "bg-primary text-white",
+            step === activeStep && "border-primary text-primary"
+          ),
+          children: step >= activeStep ? step : /* @__PURE__ */ jsxRuntimeExports.jsx(SvgCheckOff, { className: "h-5 w-5 text-primary" })
+        }
+      ),
+      step !== steps.length && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Separator,
+        {
+          orientation: "horizontal",
+          style: { width: separatorWidth },
+          className: cn(
+            "h-[2px]",
+            step <= activeStep - 1 && "bg-primary"
+          )
+        }
+      )
+    ] }, step)) }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-2 text-center text-xl font-bold", children: t2(steps[activeStep - 1].title) })
+  ] });
+};
+const MultiStepForm = ({
+  formSchema: formSchema2,
+  defaultValues,
+  getStepContent,
+  steps,
+  stepFields,
+  onSubmit,
+  onCancel
+}) => {
+  var _a;
+  const [activeStep, setActiveStep] = useState(1);
+  const form = useForm({
+    resolver: t(formSchema2),
+    defaultValues,
+    mode: "onChange"
+  });
+  const {
+    handleSubmit,
+    trigger,
+    formState: { isSubmitting, errors }
+  } = form;
+  const handleNext = async () => {
+    const currentStepFields = stepFields[activeStep];
+    const isStepValid = await trigger(currentStepFields);
+    if (isStepValid) {
+      setActiveStep((prevActiveStep) => prevActiveStep + 1);
+    }
+  };
+  const hasCurrentStepErrors = (_a = stepFields[activeStep]) == null ? void 0 : _a.some(
+    (fieldName) => errors[fieldName]
+  );
+  const handleBack = () => {
+    if (activeStep === 1) {
+      onCancel();
+    } else {
+      setActiveStep((prevActiveStep) => prevActiveStep - 1);
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-full min-h-0 w-full flex-col justify-between ", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-none border-b py-4", children: /* @__PURE__ */ jsxRuntimeExports.jsx(StepperIndicator, { steps, activeStep }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackUi, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(LazyLoader, { children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "relative h-full overflow-hidden ", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "h-full bg-grayscale-1000 p-4 dark:bg-dark-bg-333", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Form, { ...form, children: /* @__PURE__ */ jsxRuntimeExports.jsx("form", { className: "h-full", children: getStepContent(activeStep) }) }) }) }) }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-none border-t py-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-center space-x-[20px]", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Button$1,
+        {
+          type: "button",
+          className: "w-[100px]",
+          variant: "secondary",
+          onClick: handleBack,
+          children: activeStep === 1 ? "Cancel" : "Back"
+        }
+      ),
+      steps.length === activeStep ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Button$1,
+        {
+          className: "w-[100px]",
+          type: "button",
+          onClick: handleSubmit(onSubmit),
+          disabled: isSubmitting || hasCurrentStepErrors,
+          children: "Submit"
+        }
+      ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+        Button$1,
+        {
+          type: "button",
+          className: "w-[100px]",
+          onClick: handleNext,
+          disabled: hasCurrentStepErrors,
+          children: "Next"
+        }
+      )
+    ] }) })
+  ] });
+};
 const aggregation$1 = "집계";
 const alarm$1 = "알람";
 const alarms$1 = "알람";
@@ -58296,6 +55744,12 @@ const lastupdated$1 = "마지막 발생 시간";
 const description$1 = "설명";
 const point$1 = "포인트";
 const bar$1 = "바";
+const subassets = "하위 자산";
+const unassign = "할당 해제";
+const gateway = "게이트웨이";
+const dns = "DNS";
+const syncing = "동기화 중...";
+const required = "필수";
 const koTranslation = {
   "add widget": "위젯 추가",
   aggregation: aggregation$1,
@@ -58409,6 +55863,7 @@ const koTranslation = {
   "not found": "찾을 수 없습니다",
   "go to homepage": "홈페이지 이동",
   "dark mode": "다크 모드",
+  "light mode": "라이트 모드",
   logout: logout$1,
   "no dashboard to display.": "표시할 대시보드가 없습니다.",
   "no widgets to display.": "표시할 위젯이 없습니다.",
@@ -58667,7 +56122,71 @@ const koTranslation = {
   "add datapoints": "데이터포인트 추가",
   "add events": "이벤트 추가",
   "add alarms": "알람 추가",
-  "set the minimum and maximum values of the data point": "데이터포인트의 최솟값과 최댓값을 설정하세요"
+  "set the minimum and maximum values of the data point": "데이터포인트의 최솟값과 최댓값을 설정하세요",
+  "requested data denied access.": "요청된 데이터에 접근이 거부되었습니다.",
+  "delete asset": "자산 삭제",
+  "asset delete successfully": "자산 삭제 완료",
+  "asset delete failed": "자산 삭제 실패",
+  "you are about to delete asset:": "자산을 삭제합니다:",
+  "this operation is irreversible. do you want to proceed?": "이 작업은 되돌릴 수 없습니다. 계속 진행하시겠습니까?",
+  "also delete all devices inside selected asset and its subassets.": "선택한 자산과 관련 하위 자산에 있는 모든 디바이스도 함께 삭제됩니다.",
+  subassets,
+  "add group": "그룹 추가",
+  "group add successfully": "그룹 추가 완료",
+  "group add failed": "그룹 추가 실패",
+  "assign device": "디바이스 할당",
+  "name is required": "이름은 필수 입력 항목입니다.",
+  "you are about to unassign asset:": "자산의 할당을 해제합니다:",
+  "unassign asset": "자산 할당 해제",
+  unassign,
+  "no items to display": "표시할 항목이 없습니다.",
+  "devices assigned successfully": "디바이스 할당 완료",
+  "asset unassgin successfully": "자산 할당 해제 완료",
+  "asset unassgin failed": "자산 할당 해제 실패",
+  "ip address": "IP 주소",
+  "subnet mask": "서브넷 마스크",
+  gateway,
+  dns,
+  "invalid ipv4 address": "유효하지 않은 IPv4 주소",
+  "subnet mask must be numeric number between 1 and 32": "서브넷 마스크는 1과 32 사이의 숫자여야 합니다.",
+  "changing the settings will restart the device. do you want to continue?": "설정을 변경하면 디바이스가 재시작됩니다. 계속하시겠습니까?",
+  "failed to save configuration": "구성을 저장하는데 실패했습니다.",
+  "success to save configuration": "구성을 성공적으로 저장했습니다.",
+  "network configuration not found": "네트워크 구성을 찾을 수 없습니다.",
+  "interval server error": "서버 오류",
+  "success to get network configuration": "네트워크 구성을 성공적으로 가져왔습니다.",
+  "changing the settings will affect system operations. do you want to continue?": "설정을 변경하면 시스템 작동에 영향을 미칩니다. 계속하시겠습니까?",
+  "failed to sync time": "시간 동기화를 실패했습니다",
+  syncing,
+  "sync now": "즉시 동기화",
+  "add ntp server": "NTP 서버 추가",
+  "ntp servers": "NTP 서버",
+  "time synchronization": "시간 동기화",
+  "time sync": "시간 동기화",
+  "synchronization status": "동기화 상태",
+  "please configure ntp servers first": "NTP 서버를 먼저 구성해 주세요.",
+  "not synced yet": "아직 동기화되지 않았습니다.",
+  "last manual sync:": "마지막 수동 동기화: {{time}}",
+  "invalid format. Please enter a valid IPv4 address (ex: 000.000.000.000) or domain name (ex: ntp.ubuntu.com)": "유효하지 않은 형식입니다. 올바른 IPv4 주소(예: 000.000.000.000) 또는 도메인 이름(예: ntp.ubuntu.com)을 입력해 주세요.",
+  "at least one ntp server is required": "최소 한 개의 NTP 서버가 필요합니다.",
+  "ntp server is required": "NTP 서버가 필요합니다.",
+  "group info": "그룹 정보",
+  "last updated time": "마지막 업데이트 시간",
+  "please enter information about the group.": "그룹에 대한 정보를 입력해 주세요.",
+  "password must have at least 8 characters": "비밀번호는 최소 8자 이상이어야 합니다",
+  "password must not exceed 32 characters": "비밀번호는 32자를 초과할 수 없습니다",
+  "password can only contain letters, numbers and allowed symbols": "비밀번호는 영문자, 숫자 및 허용된 특수문자만 포함할 수 있습니다",
+  "please confirm your password": "비밀번호를 확인해 주세요",
+  "password is not the same as confirm password": "비밀번호가 일치하지 않습니다",
+  "cancle password change": "비밀번호 변경 취소",
+  "change password": "비밀번호 변경",
+  "confirm password": "비밀번호 확인",
+  "current password": "현재 비밀번호",
+  "the password used previously is not available": "이미 사용된 비밀번호입니다. 다른 비밀번호를 선택하세요.",
+  "invalid credentials! : Bad credentials": "현재 사용자 비밀번호가 인증 데이터와 일치하지 않습니다.",
+  "pssword updated successfully": "비밀번호가 성공적으로 업데이트되었습니다.",
+  "edit user": "사용자 편집",
+  required
 };
 const aggregation = "Aggregation";
 const alarm = "Alarm";
@@ -58987,6 +56506,7 @@ const enTranslation = {
   "not found": "Not found",
   "go to homepage": "Go to homepage",
   "dark mode": "Dark mode",
+  "light mode": "Light mode",
   logout,
   "no dashboard to display.": "No dashboard to display.",
   "no widgets to display.": "No widgets to display.",
@@ -59352,6 +56872,7 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   SvgEdit as EditIcon,
+  EditableField,
   SvgEmergencyAlert as EmergencyAlertIcon,
   SvgEmergency as EmergencyIcon,
   SvgEmptyList as EmptyListIcon,
@@ -59405,6 +56926,7 @@ export {
   SvgMoonNight as MoonNightIcon,
   SvgMore as MoreIcon,
   SvgMoreVertical as MoreVerticalIcon,
+  MultiStepForm,
   SvgNavigation as NavigationIcon,
   NavigationMenu,
   NavigationMenuContent,
@@ -59414,6 +56936,7 @@ export {
   NavigationMenuList,
   NavigationMenuTrigger,
   NavigationMenuViewport,
+  SvgNetwork as NetworkIcon,
   NotFound,
   SvgPlus as PlusIcon,
   Popover,
@@ -59448,6 +56971,7 @@ export {
   SidebarItem,
   StaticDashboard,
   Status,
+  StepperIndicator,
   SvgStyle as StyleIcon,
   SvgSuccess as SuccessIcon,
   Switch,
@@ -59464,7 +56988,9 @@ export {
   TabsContent,
   TabsList,
   TabsTrigger,
+  SvgTedge as TedgeIcon,
   Textarea,
+  SvgTimesync as TimeSyncIcon,
   Toast,
   ToastAction,
   ToastClose,
@@ -59481,8 +57007,10 @@ export {
   SvgTranslate as TranslateIcon,
   SvgTrash as TrashIcon,
   UltivisDeviceProvider,
+  SvgUnlink as UnlinkIcon,
   UserMenu,
   UserMenuItem,
+  UserSetting,
   SvgVideo as VideoIcon,
   SvgWarning as WarningIcon,
   WidgetDatePicker,
@@ -59541,6 +57069,7 @@ export {
   useDeviceInventory,
   useDeviceTree,
   useFormField,
+  useInfiniteVirtualTable,
   useIntersectionObserver,
   useInventoryContext,
   useRoleStore,
@@ -59554,6 +57083,7 @@ export {
   useUpdateForTypeDashboard,
   useUpdatedConfig,
   useUserAgentStore,
+  useVirtualTable,
   useWidgetSize,
   widgetManager,
   yAxisPositionOptions

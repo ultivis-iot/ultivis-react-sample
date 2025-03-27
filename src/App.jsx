@@ -1,7 +1,7 @@
 import ReactDOM from "react-dom/client";
 import { AppProviders, addLanguagePack, widgetManager } from "@ultivis/library";
-import "./index.css";
 import "@ultivis/style";
+import "../library/ultivis-react-library.css";
 import { router } from "./router";
 
 import koTranslation from "@locales/ko/translation.json";
