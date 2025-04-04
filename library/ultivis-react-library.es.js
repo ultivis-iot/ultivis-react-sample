@@ -18814,23 +18814,23 @@ const deepFind = function(obj, path2) {
     if (!current2 || typeof current2 !== "object") {
       return void 0;
     }
-    let next;
+    let next2;
     let nextPath = "";
     for (let j = i2; j < tokens.length; ++j) {
       if (j !== i2) {
         nextPath += keySeparator;
       }
       nextPath += tokens[j];
-      next = current2[nextPath];
-      if (next !== void 0) {
-        if (["string", "number", "boolean"].indexOf(typeof next) > -1 && j < tokens.length - 1) {
+      next2 = current2[nextPath];
+      if (next2 !== void 0) {
+        if (["string", "number", "boolean"].indexOf(typeof next2) > -1 && j < tokens.length - 1) {
           continue;
         }
         i2 += j - i2 + 1;
         break;
       }
     }
-    current2 = next;
+    current2 = next2;
   }
   return current2;
 };
@@ -20342,8 +20342,8 @@ class Connector extends EventEmitter {
     const resolver = (err, data) => {
       this.readingCalls--;
       if (this.waitingReads.length > 0) {
-        const next = this.waitingReads.shift();
-        this.read(next.lng, next.ns, next.fcName, next.tried, next.wait, next.callback);
+        const next2 = this.waitingReads.shift();
+        this.read(next2.lng, next2.ns, next2.fcName, next2.tried, next2.wait, next2.callback);
       }
       if (err && data && tried < this.maxRetries) {
         setTimeout(() => {
@@ -22734,8 +22734,8 @@ function shouldAutoRemoveFilter(filterFn, value2, column) {
   return (filterFn && filterFn.autoRemove ? filterFn.autoRemove(value2, column) : false) || typeof value2 === "undefined" || typeof value2 === "string" && !value2;
 }
 const sum = (columnId, _leafRows, childRows) => {
-  return childRows.reduce((sum2, next) => {
-    const nextValue = next.getValue(columnId);
+  return childRows.reduce((sum2, next2) => {
+    const nextValue = next2.getValue(columnId);
     return sum2 + (typeof nextValue === "number" ? nextValue : 0);
   }, 0);
 };
@@ -27385,7 +27385,7 @@ const DataItem = ({
           onChange: (e) => changeField("color", e.target.value)
         }
       ) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "w-full overflow-hidden text-ellipsis whitespace-nowrap text-base font-bold text-grayscale-100 dark:text-dark-grayscale-100", children: currentData.label }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "w-0 flex-shrink flex-grow overflow-hidden text-ellipsis whitespace-nowrap text-base font-bold text-grayscale-100 dark:text-dark-grayscale-100", children: currentData.label }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         Button$1,
         {
@@ -27730,7 +27730,7 @@ const AddData = ({
   }, [info, data]);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open: modalIsOpen, onOpenChange: onCloseModal, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "max-h-[80vh] overflow-y-auto sm:max-w-[750px]  md:w-[450px]", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { className: "pt-6 text-xl font-extrabold tracking-tight", children: t2(`add ${dataType}`) }) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(ScrollArea, { className: "flex h-[50vh] items-center justify-center pr-3", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(ScrollArea, { className: "flex h-[50vh] items-center justify-center px-3", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center space-x-2", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full flex-1 gap-2 px-1", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "my-4 flex items-center gap-x-2", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary text-grayscale-1000", children: "1" }),
@@ -27773,34 +27773,7 @@ const AddData = ({
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-grow border-t-[1px] border-solid border-grayscale-600 opacity-50 dark:text-dark-grayscale-100" })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4", children: [
-          checkedDataList.length > 0 && checkedDataList.sort((a, b) => a.label.localeCompare(b.label)).map((data2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "div",
-            {
-              className: "my-1 flex items-center gap-2",
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  Checkbox,
-                  {
-                    checked: data2.__selected,
-                    onCheckedChange: (checked) => onCheckChange(checked, data2)
-                  }
-                ),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "div",
-                  {
-                    className: "h-4 w-4 rounded-full",
-                    style: {
-                      backgroundColor: data2.color
-                    }
-                  }
-                ),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: data2.label })
-              ]
-            },
-            `${data2.__target.id}_${data2.__original.id}_${data2.label}`
-          )),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "dark:text-dark-grayscale2000 opacity100 my-3 flex-grow border-t-[1px] border-solid border-grayscale-600" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-4", children: [
           dataList.length > 0 ? dataList.sort((a, b) => a.label.localeCompare(b.label)).map((data2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
             "div",
             {
@@ -27822,7 +27795,7 @@ const AddData = ({
                     }
                   }
                 ),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: data2.label })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-0 flex-shrink flex-grow break-words", children: data2.label })
               ]
             },
             `${data2.__target.id}_${data2.__original.id}_${data2.label}_${data2.id}`
@@ -27848,6 +27821,7 @@ const AddData = ({
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               Input,
               {
+                className: "h-8",
                 value: customData.label,
                 onChange: (e) => onChangeForCustom("label", e.target.value)
               }
@@ -31408,11 +31382,11 @@ function DragHandler(axis, rootNode, ownerDocument, ownerWindow, target2, dragTr
     return boost[type2];
   }
   function allowedForce(force, targetChanged) {
-    const next = index2.add(mathSign(force) * -1);
+    const next2 = index2.add(mathSign(force) * -1);
     const baseForce = scrollTarget.byDistance(force, !dragFree).distance;
     if (dragFree || mathAbs(force) < goToNextThreshold) return baseForce;
     if (skipSnaps && targetChanged) return baseForce * 0.5;
-    return scrollTarget.byIndex(next.get(), 0).distance;
+    return scrollTarget.byIndex(next2.get(), 0).distance;
   }
   function down(evt) {
     const isMouseEvt = isMouseEvent(evt, ownerWindow);
@@ -32637,16 +32611,16 @@ function EmblaCarousel(root2, userOptions, userPlugins) {
     engine.scrollTo.index(index2, direction || 0);
   }
   function scrollNext(jump) {
-    const next = engine.index.add(1).get();
-    scrollTo(next, jump, -1);
+    const next2 = engine.index.add(1).get();
+    scrollTo(next2, jump, -1);
   }
   function scrollPrev(jump) {
     const prev = engine.index.add(-1).get();
     scrollTo(prev, jump, 1);
   }
   function canScrollNext() {
-    const next = engine.index.add(1).get();
-    return next !== selectedScrollSnap();
+    const next2 = engine.index.add(1).get();
+    return next2 !== selectedScrollSnap();
   }
   function canScrollPrev() {
     const prev = engine.index.add(-1).get();
@@ -40607,7 +40581,7 @@ const ScrollArea = forwardRef(
       className: cn("x] relative overflow-hidden", className),
       ...props,
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Viewport$2, { className: "block h-full w-full rounded [&>div]:h-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("h-full w-full rounded", innerClassName), children }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Viewport$2, { className: "block h-full w-full rounded [&>div]:!block [&>div]:h-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: cn("h-full w-full rounded", innerClassName), children }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollBar, { visible: scrollBar }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(Corner, {})
       ]
@@ -43668,10 +43642,10 @@ const WidgetDatePicker = ({
               onClick: () => {
                 dispatch({ type: "RESET_DATE_RANGE" });
                 dispatch({
-                  type: "TOGGLE_REALTIME",
-                  payload: {
-                    aggregationType: "none"
-                  }
+                  type: "TOGGLE_REALTIME"
+                  // payload: {
+                  //   aggregationType: 'none',
+                  // },
                 });
                 updateIsRealtime(!isRealtime);
               },
@@ -50171,11 +50145,11 @@ const LayoutSection = ({ mode: mode2, className, headerStyle }) => {
           /* @__PURE__ */ jsxRuntimeExports.jsx(FormControl, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
             RadioGroup,
             {
-              className: "gap-0 rounded-lg border border-grayscale-600 dark:border-dark-grayscale-600",
+              className: "gap-0 rounded-lg border border-grayscale-400 dark:border-dark-grayscale-400",
               onValueChange: onChange,
               defaultValue: headerStyle,
               children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs(FormItem, { className: "flex items-center gap-x-2 border-b-[1px] border-grayscale-600 px-4 py-3 dark:border-dark-grayscale-600", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(FormItem, { className: "flex items-center gap-x-2 border-b-[1px] border-grayscale-400 px-4 py-3 dark:border-dark-grayscale-400", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(FormControl, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                     RadioGroupItem,
                     {
@@ -50195,7 +50169,7 @@ const LayoutSection = ({ mode: mode2, className, headerStyle }) => {
                     )
                   ] })
                 ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs(FormItem, { className: "flex items-center gap-x-2 border-b-[1px] border-grayscale-600 px-4 py-3 dark:border-dark-grayscale-600", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(FormItem, { className: "flex items-center gap-x-2 border-b-[1px] border-grayscale-400 px-4 py-3 dark:border-dark-grayscale-400", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(FormControl, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                     RadioGroupItem,
                     {
@@ -50248,7 +50222,7 @@ const LayoutSection = ({ mode: mode2, className, headerStyle }) => {
         rules: { min: 0, max: 50 },
         render: ({ field }) => /* @__PURE__ */ jsxRuntimeExports.jsxs(FormItem, { className: "space-y-2", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(FormLabel, { children: t2("Widget margin") }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(FormControl, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex w-full items-center rounded-lg border border-grayscale-600 bg-grayscale-1000 dark:border-dark-grayscale-600 dark:bg-dark-bg-444", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(FormControl, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex w-full items-center rounded-lg border border-grayscale-400 bg-grayscale-1000 dark:border-dark-grayscale-400 dark:bg-dark-bg-444", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               Input,
               {
@@ -50268,7 +50242,7 @@ const headerVariants = cva("px-6 py-6", {
   variants: {
     headerStyle: {
       "panel-title-regular": "",
-      "panel-title-border": "border-b",
+      "panel-title-border": "border-b-2 border-grayscale-700 dark:border-dark-grayscale-700",
       "panel-title-hidden": "hidden"
     }
   },
@@ -50279,7 +50253,7 @@ const headerVariants = cva("px-6 py-6", {
 const PreviewWidget = () => {
   const { t: t2 } = useTranslation();
   const headerStyle = useWatch({ name: "headerStyle" });
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-[500px] rounded-lg border-2 border-grayscale-700 p-10 dark:border-dark-grayscale-400", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex h-full flex-col rounded-lg border border-grayscale-800 text-grayscale-300 shadow-md dark:border-dark-grayscale-600", children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-[572px] rounded-lg border-2 border-grayscale-700 p-10 dark:border-dark-grayscale-400", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex h-full flex-col rounded-lg border border-grayscale-800 text-grayscale-100 shadow-md dark:border-dark-grayscale-600 dark:text-dark-grayscale-100", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn(headerVariants({ headerStyle })), children: [
       t2("WIDGET TITLE"),
       /* @__PURE__ */ jsxRuntimeExports.jsx(SvgSetting, { className: "absolute right-6 top-6 cursor-pointer" })
@@ -51172,7 +51146,7 @@ const ContextWidgetWrapper = forwardRef(
     const getHeaderClass = () => {
       switch (headerStyle) {
         case "panel-title-border":
-          return "border-b border-grayscale-800 px-6 py-6";
+          return "border-b-2 border-grayscale-700 dark:border-dark-grayscale-700 px-6 py-6";
         case "panel-title-hidden":
           return "h-6 pr-6";
         default:
@@ -51623,7 +51597,7 @@ const ContextDashboard = () => {
         open: deleteModalIsOpen,
         onDelete: mutations.deleteDashboard,
         title: t2("Delete dashboard"),
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-grayscale-300", children: t2("You are about to delete the dashboard", {
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-grayscale-300 dark:text-dark-grayscale-300", children: t2("You are about to delete the dashboard", {
           dashboardName: (_a = dashboard2["u5s_Dashboard"]) == null ? void 0 : _a["name"]
         }) })
       }
@@ -53135,7 +53109,7 @@ const Header = ({ pageTitle, headerItems }) => {
                     {
                       className: "w-full max-w-full  justify-evenly sm:justify-end",
                       viewportClassNames: "right-auto sm:-right-4 lg:-right-5",
-                      children: headerItems
+                      children: /* @__PURE__ */ jsxRuntimeExports.jsx(NavigationMenuList, { children: headerItems })
                     }
                   ) })
                 }
@@ -53199,7 +53173,7 @@ const AppSwitcherItem = ({ app }) => {
   ] }) }) }) }) });
 };
 const AppSwitcher = ({ applications }) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(NavigationMenuItem, { children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(NavigationMenuItem, { className: "flex flex-1 justify-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       NavigationMenuTrigger,
       {
@@ -53242,11 +53216,11 @@ const UserMenu = () => {
     i18n.changeLanguage(newLang);
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(NavigationMenuItem, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(NavigationMenuItem, { className: "flex flex-1 justify-center", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         NavigationMenuTrigger,
         {
-          className: "group h-13 bg-white px-0 text-lg hover:font-bold disabled:pointer-events-auto disabled:cursor-not-allowed disabled:text-grayscale-500  dark:bg-dark-bg-444",
+          className: "group h-13 w-full bg-white px-0 text-lg hover:font-bold disabled:pointer-events-auto disabled:cursor-not-allowed disabled:text-grayscale-500  dark:bg-dark-bg-444",
           onPointerMove: (event) => event.preventDefault(),
           onPointerLeave: (event) => event.preventDefault(),
           children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5", children: [
@@ -55371,7 +55345,7 @@ const UserSetting = ({ open, onOpenChange }) => {
         /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { className: "mb-3 text-start", children: /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { className: "pb-3 pt-0 text-xl font-bold", children: t$1("Edit user") }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(Form, { ...form, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("form", { onSubmit: form.handleSubmit(handleSubmit), children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: " w-full bg-grayscale-1000 dark:bg-dark-bg-333", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-4 p-4", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Button$1, { onClick: handlePasswordChangeClick, type: "button", children: isChangingPassword ? t$1("Cancle password change") : t$1("Change password") }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Button$1, { onClick: handlePasswordChangeClick, type: "button", children: isChangingPassword ? t$1("Cancel password change") : t$1("Change password") }),
             isChangingPassword && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 FormInputField$1,
@@ -55476,6 +55450,7 @@ const MultiStepForm = ({
 }) => {
   var _a;
   const [activeStep, setActiveStep] = useState(1);
+  const { t: t$1 } = useTranslation();
   const form = useForm({
     resolver: t(formSchema2),
     defaultValues,
@@ -55514,7 +55489,7 @@ const MultiStepForm = ({
           className: "w-[100px]",
           variant: "secondary",
           onClick: handleBack,
-          children: activeStep === 1 ? "Cancel" : "Back"
+          children: activeStep === 1 ? t$1("Cancel") : t$1("Back")
         }
       ),
       steps.length === activeStep ? /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -55524,7 +55499,7 @@ const MultiStepForm = ({
           type: "button",
           onClick: handleSubmit(onSubmit),
           disabled: isSubmitting || hasCurrentStepErrors,
-          children: "Submit"
+          children: t$1("Submit")
         }
       ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
         Button$1,
@@ -55533,7 +55508,7 @@ const MultiStepForm = ({
           className: "w-[100px]",
           onClick: handleNext,
           disabled: hasCurrentStepErrors,
-          children: "Next"
+          children: t$1("Next")
         }
       )
     ] }) })
@@ -55750,6 +55725,9 @@ const gateway = "게이트웨이";
 const dns = "DNS";
 const syncing = "동기화 중...";
 const required = "필수";
+const back = "이전";
+const submit = "제출";
+const next = "다음";
 const koTranslation = {
   "add widget": "위젯 추가",
   aggregation: aggregation$1,
@@ -55783,7 +55761,7 @@ const koTranslation = {
   image: image$1,
   integration: integration$1,
   label: label$1,
-  "last updated": "최신 업데이트",
+  "last updated": "마지막 발생 시간",
   layout: layout$1,
   "lock dashboard": "대시보드 잠금",
   map: map$1,
@@ -56178,15 +56156,25 @@ const koTranslation = {
   "password can only contain letters, numbers and allowed symbols": "비밀번호는 영문자, 숫자 및 허용된 특수문자만 포함할 수 있습니다",
   "please confirm your password": "비밀번호를 확인해 주세요",
   "password is not the same as confirm password": "비밀번호가 일치하지 않습니다",
-  "cancle password change": "비밀번호 변경 취소",
+  "cancel password change": "비밀번호 변경 취소",
   "change password": "비밀번호 변경",
   "confirm password": "비밀번호 확인",
   "current password": "현재 비밀번호",
   "the password used previously is not available": "이미 사용된 비밀번호입니다. 다른 비밀번호를 선택하세요.",
   "invalid credentials! : Bad credentials": "현재 사용자 비밀번호가 인증 데이터와 일치하지 않습니다.",
-  "pssword updated successfully": "비밀번호가 성공적으로 업데이트되었습니다.",
+  "password updated successfully": "비밀번호가 성공적으로 업데이트되었습니다.",
   "edit user": "사용자 편집",
-  required
+  required,
+  "show border": "테두리 표시",
+  "label color": "라벨 색상",
+  "threshold color configuration": "임계치 색상 구성",
+  "applies the configured range colors to each data point. The label and current value reflect these colors.": "구성된 범위 색상을 각 데이터 포인트에 적용합니다. 라벨과 현재 값은 이 색상을 반영합니다.",
+  "rows fetched": "{{totalFetched}}개 중 {{totalDBRowCount}} 개 불러옴",
+  back,
+  submit,
+  next,
+  "menu label to display in submenu when dashboard is attached": "대시보드가 연결될 메뉴 이름",
+  "system id": "시스템 ID"
 };
 const aggregation = "Aggregation";
 const alarm = "Alarm";
@@ -56765,7 +56753,8 @@ const enTranslation = {
   "add datapoints": "Add datapoints",
   "add events": "Add events",
   "add alarms": "Add alarms",
-  "set the minimum and maximum values of the data point": "Set the minimum and maximum values of the data point"
+  "set the minimum and maximum values of the data point": "Set the minimum and maximum values of the data point",
+  "rows fetched": "{{totalFetched}} of {{totalDBRowCount}} rows fetched"
 };
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
