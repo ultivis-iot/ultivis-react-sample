@@ -13,11 +13,11 @@ import {
   useTranslation,
   useAuth,
   useApi,
-  useRoutingContext,
+  useRouting,
   useDeviceTree,
   useRoleStore,
   HomeIcon,
-} from "@ultivis/library";
+} from "@ultivis-iot/react";
 
 const Main = () => {
   const [authApp, setAuthApp] = useState([]);
@@ -25,7 +25,7 @@ const Main = () => {
   const { t } = useTranslation();
 
   const { manageRole, getInventory, putInventory } = useApi();
-  const { dashboardId, sourceId } = useRoutingContext();
+  const { dashboardId, sourceId } = useRouting();
 
   const isMounted = useRef(false);
   const { pathname } = useLocation();
