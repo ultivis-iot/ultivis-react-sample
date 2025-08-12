@@ -1,5 +1,5 @@
 import { useFormContext } from "react-hook-form";
-import { FormTextareaField } from "@ultivis/library";
+import { FormTextareaField } from "@ultivis-iot/react";
 
 const HtmlConfig = () => {
   const { control } = useFormContext();

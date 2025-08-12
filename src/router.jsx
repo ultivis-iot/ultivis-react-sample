@@ -2,11 +2,12 @@ import { lazy } from "react";
 import { createHashRouter } from "react-router-dom";
 import {
   UltivisDeviceProvider,
+  RoutingProvider,
   MenuBar,
   ContextDashboard,
   StaticDashboard,
   NotFound,
-} from "@ultivis/library";
+} from "@ultivis-iot/react";
 
 import Text from "./Text";
 
@@ -17,7 +18,9 @@ export const router = createHashRouter([
   {
     element: (
       <UltivisDeviceProvider>
-        <Main />
+        <RoutingProvider>
+          <Main />
+        </RoutingProvider>
       </UltivisDeviceProvider>
     ),
     children: [

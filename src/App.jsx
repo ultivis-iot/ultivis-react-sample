@@ -1,7 +1,11 @@
 import ReactDOM from "react-dom/client";
-import { AppProviders, addLanguagePack, widgetManager } from "@ultivis/library";
-import "@ultivis/style";
-import "../library/index.css";
+import {
+  AppProviders,
+  addLanguagePack,
+  widgetManager,
+} from "@ultivis-iot/react";
+import "@ultivis-iot/react/styles";
+// import "@ultivis-iot/react/dist/ultivis-react-library.css";
 import { router } from "./router";
 
 import koTranslation from "@locales/ko/translation.json";

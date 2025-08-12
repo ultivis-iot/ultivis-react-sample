@@ -13,14 +13,6 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     resolve: {
       alias: {
-        "@ultivis/library": resolve(
-          __dirname,
-          "./library/ultivis-react-library.es"
-        ),
-        "@ultivis/style": resolve(
-          __dirname,
-          "./library/ultivis-react-library.css"
-        ),
         "@components": resolve(__dirname, "./src/components"),
         "@data": resolve(__dirname, "./src/data"),
         "@locales": resolve(__dirname, "./src/locales"),

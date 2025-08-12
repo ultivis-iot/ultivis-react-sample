@@ -7,18 +7,18 @@ import {
   MenuBar,
   TabItem,
   useApi,
-  useRoutingContext,
+  useRouting,
   useTranslation,
   useInventoryContext,
   DashboardIcon,
   AlarmIcon,
   NavigationIcon,
-} from "@ultivis/library";
+} from "@ultivis-iot/react";
 
 const Groups = () => {
   const { t } = useTranslation();
   const { getDashboards } = useApi();
-  const { sourceId, category } = useRoutingContext();
+  const { sourceId, category } = useRouting();
   const device = useInventoryContext(sourceId);
 
   const { data: dashboards } = useSuspenseQuery({
